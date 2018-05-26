@@ -42,6 +42,7 @@ classifier = joblib.load( "train.pkl" )
 
 # Start streaming microphone data
 label_array = classifier.classes_
+print ( "Listening..." )
 while( True ):
 	audio = pyaudio.PyAudio()
 	stream = audio.open(format=FORMAT, channels=CHANNELS,
@@ -64,12 +65,16 @@ while( True ):
 	# FEATURE ENGINEERING
 	rawWav = scipy.io.wavfile.read( TEMP_FILE_NAME )[ 1 ]
 	chan1 = rawWav[:,0]
-	chan2 = rawWav[:,1]	
-	data = [ np.abs( rfft( chan1 ) + rfft( chan2 ) ) ** 2 ]
+					
+	# FFT is symmetrical - Only need one half of it to preserve memory
+	ft = fft( chan1 )
+	powerspectrum = np.abs( ft ) ** 2
+	data = [ powerspectrum ]
 	
 	# Predict the outcome - Only use the result if the probability of being correct is over 75 percent
 	probabilities = classifier.predict_proba( data ) * 100
 	probabilities = probabilities.astype(int)
+	print( probabilities )
 	for index, percent in enumerate( probabilities[0] ):
 		if( percent > 75 ):
 			label = labelDict[ str( label_array[ index ] ) ]

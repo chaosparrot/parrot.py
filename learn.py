@@ -11,13 +11,17 @@ from sklearn.externals import joblib
 import time
 
 import itertools
+import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
 import hashlib
 
-
 from scipy.fftpack import fft, rfft, fft2
 
+# Get the full directories for the dataset
+dir_path = os.path.join( os.path.dirname(os.path.realpath(__file__)), "dataset")
+data_directory_names = os.listdir( dir_path )
+data_directories = list( map( lambda n: os.path.join( dir_path, n ), data_directory_names) )
 
 def hash_directory_to_number( setdir ):
 	return float( int(hashlib.sha256( setdir.encode('utf-8')).hexdigest(), 16) % 10**8 )
@@ -57,26 +61,33 @@ def plot_confusion_matrix(cm, classes,
 def load_wav_files( directory, label ):
 	category_dataset_x = []
 	category_dataset_labels = []
-	for file in os.listdir(directory):
-		if file.endswith(".wav"):
+	first_file = False
+	for fileindex, file in enumerate(os.listdir(directory)):
+		if ( file.endswith(".wav") and fileindex < 300 ):
 			full_filename = os.path.join(directory, file)
 			
 			# Load the WAV file and turn it into a onedimensional array of numbers
-			rawWav = scipy.io.wavfile.read( full_filename )[ 1 ]
+			samplerate, rawWav = scipy.io.wavfile.read( full_filename )
 			chan1 = rawWav[:,0]
+							
+			# FFT is symmetrical - Only need one half of it to preserve memory
+			ft = fft( chan1 )
+			powerspectrum = np.abs( ft ) ** 2
+			freqs = np.fft.fftfreq( len(chan1), 1 / 60 )
+			idx = np.argsort(freqs)
+
+			if( first_file ):
+				plt.title( "Frequencies for file of " + data_directory_names[ index ] )
+				plt.plot( freqs[idx], powerspectrum[idx] )
+				plt.show()
+				first_file = False
 			
-			datarow = np.abs( fft( chan1 ) ) ** 2
-						
-			category_dataset_x.append( datarow )
+			category_dataset_x.append( powerspectrum )
 			category_dataset_labels.append( label )
 
 	return category_dataset_x, category_dataset_labels
 	
 
-# Get the full directories for the dataset
-dir_path = os.path.join( os.path.dirname(os.path.realpath(__file__)), "dataset")
-data_directory_names = os.listdir( dir_path )
-data_directories = list( map( lambda n: os.path.join( dir_path, n ), data_directory_names) )
 
 # Add a label used for classifying the sounds
 data_directories_label = list( map( hash_directory_to_number, data_directories ) )
@@ -98,16 +109,13 @@ for index, directory in enumerate( data_directories ):
 	
 print( "Loaded training set with " + str( len( dataset_x ) ) + " wav files")
 
-while( True ):
-	print( "Weeeee" )
-
 classifier = RandomForestClassifier(n_estimators=25, max_depth=5, random_state=123)
 
 #classifier = MLPClassifier(solver='lbfgs', alpha=1e-5, hidden_layer_sizes=(5, 2), random_state=1)
 #classifier = svm.SVC(C=1.0, gamma=0.01)
 #classifier = DecisionTreeClassifier(random_state=0)
 
-check_accuracy = False
+check_accuracy = True
 if( check_accuracy ):
 	print( "Beginning cross validation for accuracy prediction" )
 	scores = cross_val_score(classifier, dataset_x, dataset_labels, cv=10)
@@ -116,7 +124,7 @@ if( check_accuracy ):
 	print("Accuracy: %0.2f (+/- %0.2f)" % (scores.mean(), scores.std() * 2))
 
 # Start classifying and checking for confusion
-generate_confusion_matrix = False
+generate_confusion_matrix = True
 if( generate_confusion_matrix ):
 	X_train, X_test, y_train, y_test = train_test_split(dataset_x, dataset_labels, random_state=1)
 	classifier.fit( X_train, y_train )
