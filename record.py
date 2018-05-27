@@ -2,6 +2,7 @@ import pyaudio
 import wave
 from time import sleep
 import time
+import scipy.io.wavfile
  
 FORMAT = pyaudio.paInt16
 CHANNELS = 2
@@ -48,3 +49,4 @@ for j in range( 0, int(300.0 * ( 1.0 / RECORD_SECONDS ))):
 	waveFile.setframerate(RATE)
 	waveFile.writeframes(b''.join(frames))
 	waveFile.close()
+

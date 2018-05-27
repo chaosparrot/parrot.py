@@ -9,22 +9,26 @@ from sklearn.tree import DecisionTreeClassifier
 from sklearn.model_selection import cross_val_score, train_test_split
 from sklearn.externals import joblib
 import time
-
+import warnings
 import itertools
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
 import hashlib
+from scipy.fftpack import fft, rfft, fft2, dct
+from python_speech_features import mfcc
 
-from scipy.fftpack import fft, rfft, fft2
+def hash_directory_to_number( setdir ):
+	return float( int(hashlib.sha256( setdir.encode('utf-8')).hexdigest(), 16) % 10**8 )
 
 # Get the full directories for the dataset
 dir_path = os.path.join( os.path.dirname(os.path.realpath(__file__)), "dataset")
 data_directory_names = os.listdir( dir_path )
 data_directories = list( map( lambda n: os.path.join( dir_path, n ), data_directory_names) )
 
-def hash_directory_to_number( setdir ):
-	return float( int(hashlib.sha256( setdir.encode('utf-8')).hexdigest(), 16) % 10**8 )
+# Add a label used for classifying the sounds
+data_directories_label = list( map( hash_directory_to_number, data_directories ) )
+warnings.filterwarnings(action='ignore', category=DeprecationWarning)
 
 def plot_confusion_matrix(cm, classes,
                           normalize=False,
@@ -58,60 +62,105 @@ def plot_confusion_matrix(cm, classes,
     plt.ylabel('True label')
     plt.xlabel('Predicted label')
 	
-def load_wav_files( directory, label ):
+def load_wav_files( directory, label, start, end ):
 	category_dataset_x = []
 	category_dataset_labels = []
 	first_file = False
 	for fileindex, file in enumerate(os.listdir(directory)):
-		if ( file.endswith(".wav") and fileindex < 300 ):
+		if ( file.endswith(".wav") and fileindex >= start and fileindex < end ):
 			full_filename = os.path.join(directory, file)
 			
 			# Load the WAV file and turn it into a onedimensional array of numbers
-			samplerate, rawWav = scipy.io.wavfile.read( full_filename )
+			fs, rawWav = scipy.io.wavfile.read( full_filename )
 			chan1 = rawWav[:,0]
+			chan2 = rawWav[:,1]
 							
 			# FFT is symmetrical - Only need one half of it to preserve memory
-			ft = fft( chan1 )
-			powerspectrum = np.abs( ft ) ** 2
-			freqs = np.fft.fftfreq( len(chan1), 1 / 60 )
-			idx = np.argsort(freqs)
-
-			if( first_file ):
-				plt.title( "Frequencies for file of " + data_directory_names[ index ] )
-				plt.plot( freqs[idx], powerspectrum[idx] )
-				plt.show()
-				first_file = False
+			#complexspectrum = fft( chan1 )
+			#powerspectrum = np.abs( complexspectrum ) ** 2
 			
-			category_dataset_x.append( powerspectrum )
+			#f = np.linspace( samplerate, len( chan1 ), endpoint=False)
+			#freqs = np.fft.fftfreq( len(chan1), 1 / 60 )
+			#idx = np.argsort(freqs)
+			
+			#if( first_file ):
+			#	plt.title( "Frequencies for file of " + data_directory_names[ index ] )
+			#	plt.plot( f, abs( ft ) )
+			#	plt.show()
+			#	first_file = False
+			
+			mfcc_result1 = mfcc( chan1, samplerate=fs, nfft=1103 )
+			mfcc_result2 = mfcc( chan2, samplerate=fs, nfft=1103 )
+			data_row = []
+			data_row.extend( mfcc_result1.ravel() )
+			data_row.extend( mfcc_result2.ravel() )
+			category_dataset_x.append( data_row )
 			category_dataset_labels.append( label )
-
+				
 	return category_dataset_x, category_dataset_labels
 	
-
-
-# Add a label used for classifying the sounds
-data_directories_label = list( map( hash_directory_to_number, data_directories ) )
 
 # Generate the training set and labels with them
 dataset = []
 dataset_x = []
 dataset_labels = []
 
+clf = RandomForestClassifier(n_estimators=50, max_depth=10, random_state=123)
+classifier = RandomForestClassifier(n_estimators=50, max_depth=10, random_state=123)
+
+#clf = MLPClassifier(solver='adam', 
+#	activation='tanh',
+#	alpha=0.00001, 
+#	learning_rate='invscaling',
+#	random_state=1,
+#	tol=0.0000001,
+#	verbose=True)
+	
+#classifier = MLPClassifier(solver='adam', 
+#	activation='tanh',
+#	alpha=0.00001,
+#	learning_rate='invscaling',
+#	random_state=1,
+#	tol=0.0000001,
+#	verbose=True)
+
+
 print( "Loading training set... " )
-clf = RandomForestClassifier(n_estimators=25, max_depth=5, random_state=123)
+def partial_dataset_fitting( clf, start, end ):
+	dataset_x = []
+	dataset_labels = []
+	for index, directory in enumerate( data_directories ):
+		label = data_directories_label[ index ]
+		cat_dataset_x, cat_dataset_labels = load_wav_files( directory, label, start, end )
+		
+		print( "Loading " + str( len( cat_dataset_labels ) ) + " .wav files for category " + data_directory_names[ index ] )
+		#print( "Starting partial fitting..." )
+		
+		dataset_x.extend( cat_dataset_x )
+		dataset_labels.extend( cat_dataset_labels )
+	
+	print( "Loaded training set with " + str( len( dataset_x ) ) + " wav files")
+	if( start == 0 ):
+		clf.fit( dataset_x, dataset_labels ) # for partial fit classes=np.unique(data_directories_label)
+
+	#for i in range(50):
+	#	clf.partial_fit( dataset_x, dataset_labels )
+
+#partial_dataset_fitting( clf, 0, 400 )
+#partial_dataset_fitting( clf, 50, 100 )
+#partial_dataset_fitting( clf, 100, 150 )
+#partial_dataset_fitting( clf, 150, 200 )
+#partial_dataset_fitting( clf, 200, 250 )
+#partial_dataset_fitting( clf, 250, 300 )
+
 for index, directory in enumerate( data_directories ):
 	label = data_directories_label[ index ]
-	cat_dataset_x, cat_dataset_labels = load_wav_files( directory, label )
-	
-	print( "Loading " + str( len( cat_dataset_labels ) ) + " .wav files for category " + data_directory_names[ index ] )
+	cat_dataset_x, cat_dataset_labels = load_wav_files( directory, label, 0, 600 )
 	dataset_x.extend( cat_dataset_x )
 	dataset_labels.extend( cat_dataset_labels )
-	
-print( "Loaded training set with " + str( len( dataset_x ) ) + " wav files")
 
-classifier = RandomForestClassifier(n_estimators=25, max_depth=5, random_state=123)
 
-#classifier = MLPClassifier(solver='lbfgs', alpha=1e-5, hidden_layer_sizes=(5, 2), random_state=1)
+#classifier = RandomForestClassifier(n_estimators=25, max_depth=10, random_state=123)	
 #classifier = svm.SVC(C=1.0, gamma=0.01)
 #classifier = DecisionTreeClassifier(random_state=0)
 
