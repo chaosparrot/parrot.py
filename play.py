@@ -11,20 +11,22 @@ import os
 from pyautogui import press, hotkey, click, scroll, typewrite, moveRel
 from scipy.fftpack import fft, rfft, fft2, dct
 from python_speech_features import mfcc
+import pyautogui
+pyautogui.FAILSAFE = False
 
 TEMP_FILE_NAME = "play.wav"
 FORMAT = pyaudio.paInt16
 CHANNELS = 2
 RATE = 44100
 CHUNK = 1024
-RECORD_SECONDS = 0.5
+RECORD_SECONDS = 0.25
 
 def hash_directory_to_number( setdir ):
 	return float( int(hashlib.sha256( setdir.encode('utf-8')).hexdigest(), 16) % 10**8 )
 
 def getWavSegment( stream, frames ):	
 	range_length = int(RATE / CHUNK * RECORD_SECONDS)
-	frames = frames[5:]
+	frames = []#frames[5:]
 	frame_length = len( frames )
 	
 	#print( frame_length, range_length )
@@ -52,6 +54,26 @@ label_array = classifier.classes_
 print ( "Listening..." )
 frames = []
 
+def press_label( label, probability, total_probability ):
+	if( probability == 100 ):
+		if( label == "bell" ):
+			typewrite( 'Robbe' )
+		elif( label == "tongue_cluck" ):
+			print( '')
+			#click()
+		elif( label == "flute_smallest" ):
+			moveRel( 0, 50 )
+		elif( label == "finger_snap" ):
+			click(button='right')
+		elif( label == "flute_largest" ):
+			moveRel( 0, -50 )
+		elif( label == "voice_bll" ):
+			scroll( -300 )
+		elif( label == "voice_humm" ):
+			scroll( 300 )
+		elif( label == "voice_roll(incomplete)" ):
+			moveRel( -50, 0 )
+
 audio = pyaudio.PyAudio()
 stream = audio.open(format=FORMAT, channels=CHANNELS,
 	rate=RATE, input=True,
@@ -60,6 +82,7 @@ stream = audio.open(format=FORMAT, channels=CHANNELS,
 #stream.stop_stream()	
 total_frames = []
 last_five_probabilities = []
+action = ["", 0]
 while( True ):
 	#stream.start_stream()
 	frames = getWavSegment( stream, frames )
@@ -99,32 +122,42 @@ while( True ):
 	if( len( last_five_probabilities ) > 5 ):
 		last_five_probabilities = last_five_probabilities[1:]
 		
-	last_five_probabilities.append( probabilities )
-	probability_window = np.sum( last_five_probabilities, axis=0 ) / 5
-	for index, percent in enumerate( probability_window[0] ):
+	last_five_probabilities.append( probabilities[0] )
+	probability_window = np.sum( last_five_probabilities, axis=0 ) / 6
+	probability_window = probability_window.astype( int )
+	print( probabilities )
+	probabilityDict = {}
+	for index, percent in enumerate( probabilities[0] ):
+		label = labelDict[ str( label_array[ index ] ) ]
+		probabilityDict[ label ] = percent
+		
 		if( percent > 50 ):
-			label = labelDict[ str( label_array[ index ] ) ]
-			if( label != "new_silence" ):
-				print( label + " - " + str( percent ) + "%" )
-				i = True
+			#if( action[0] != label ):
+			action[0] = label
+			action[1] = percent
+			if( label != "silence" ):
+				print( label + " - " + str( percent ) + "%" )	
 				if( label == "bell" ):
-					typewrite( 'Robbe' )
-				elif( label == "tongue_cluck" ):
+					press('space')
+				elif( label == 'cluck' ):
 					click()
-				elif( label == "flute_smallest" ):
-					moveRel( 0, 50 )
-				elif( label == "finger_snap" ):
-					click(button='right')
-				elif( label == "flute_largest" ):
-					moveRel( 0, -50 )
-				elif( label == "voice_bll" ):
-					scroll( -300 )
-				elif( label == "voice_humm" ):
-					scroll( 300 )
-				elif( label == "voice_roll(incomplete)" ):
-					moveRel( -50, 0 )
-					
-			break
+				#elif( label == 'voice_humm(pruned)' ):
+				#	moveRel( 0, -percent )
+				#elif( label == 'voice_roll(pruned)' ):
+				#	moveRel( 0, percent )
+				#elif( label == 'voice_bll(pruned)' ):
+				#	moveRel( -percent, 0 )
+				
+
+	totalProbabilityMouse = ( probabilityDict["sound_a"] +
+		probabilityDict["sound_s"] + probabilityDict["sound_ie"] +
+		probabilityDict["sound_oe"] ) / 4
+	if( totalProbabilityMouse > 10 ):
+		x = ( probabilityDict["sound_s"] - probabilityDict["sound_a"] ) * 2
+		y = ( probabilityDict["sound_oe"] - probabilityDict["sound_ie"] ) * 2
+	
+		moveRel( x, y )
+			
 			
 	save_total_file = False
 	if( save_total_file and len( total_frames ) > 500 ):
