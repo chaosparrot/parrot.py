@@ -12,7 +12,9 @@ from pyautogui import press, hotkey, click, scroll, typewrite, moveRel
 from scipy.fftpack import fft, rfft, fft2, dct
 from python_speech_features import mfcc
 import pyautogui
+import winsound
 pyautogui.FAILSAFE = False
+import random
 
 TEMP_FILE_NAME = "play.wav"
 FORMAT = pyaudio.paInt16
@@ -74,6 +76,8 @@ def press_label( label, probability, total_probability ):
 		elif( label == "voice_roll(incomplete)" ):
 			moveRel( -50, 0 )
 
+winsound.PlaySound('responses/awaitingorders.wav', winsound.SND_FILENAME)
+			
 audio = pyaudio.PyAudio()
 stream = audio.open(format=FORMAT, channels=CHANNELS,
 	rate=RATE, input=True,
@@ -131,16 +135,23 @@ while( True ):
 		label = labelDict[ str( label_array[ index ] ) ]
 		probabilityDict[ label ] = percent
 		
-		if( percent > 50 ):
-			#if( action[0] != label ):
-			action[0] = label
-			action[1] = percent
+		if( percent >= 50 ):
+			if( action[0] != label ):
+				action[0] = label
+				action[1] = percent
+			
 			if( label != "silence" ):
 				print( label + " - " + str( percent ) + "%" )	
+				if( label == 'cluck' or label == 'finger_snap' ):
+					winsound.PlaySound('responses/' + str(random.randint(1,8)) + '.wav', winsound.SND_FILENAME)
+				
 				if( label == "bell" ):
 					press('space')
 				elif( label == 'cluck' ):
 					click()
+				elif( label == 'finger_snap' ):
+					click(button='right')
+					#winsound.PlaySound('responses/' + str(random.randint(1,8)) + '.wav', winsound.SND_FILENAME)
 				#elif( label == 'voice_humm(pruned)' ):
 				#	moveRel( 0, -percent )
 				#elif( label == 'voice_roll(pruned)' ):
