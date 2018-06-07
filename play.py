@@ -158,10 +158,13 @@ while( True ):
 	if( probabilityDict[ "bell" ] > 90 and previousProbabilityDict[ "bell" ] < 90 ):
 		winsound.PlaySound('responses/' + str( random.randint(1,8) ) + '.wav', winsound.SND_FILENAME)
 		if( strategy == "browser" ):
-			strategy = "video"
+			strategy = "twitch"
 			click()
 			hotkey('ctrl', 'f')
-		else:
+			press('pageup')
+		elif( strategy == "twitch" ):
+			press('esc')
+			press('pagedown')
 			strategy = "browser"
 		
 	if( strategy == "browser" ):
