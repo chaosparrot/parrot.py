@@ -15,6 +15,7 @@ import pyautogui
 import winsound
 pyautogui.FAILSAFE = False
 import random
+import operator
 
 TEMP_FILE_NAME = "play.wav"
 FORMAT = pyaudio.paInt16
@@ -56,25 +57,39 @@ label_array = classifier.classes_
 print ( "Listening..." )
 frames = []
 
-def press_label( label, probability, total_probability ):
-	if( probability == 100 ):
-		if( label == "bell" ):
-			typewrite( 'Robbe' )
-		elif( label == "tongue_cluck" ):
-			print( '')
-			#click()
-		elif( label == "flute_smallest" ):
-			moveRel( 0, 50 )
-		elif( label == "finger_snap" ):
-			click(button='right')
-		elif( label == "flute_largest" ):
-			moveRel( 0, -50 )
-		elif( label == "voice_bll" ):
-			scroll( -300 )
-		elif( label == "voice_humm" ):
-			scroll( 300 )
-		elif( label == "voice_roll(incomplete)" ):
-			moveRel( -50, 0 )
+def throttled_press_detection( currentDict, previousDict, label ):
+	currentProbability = currentDict[ label ]
+	previousProbability = previousDict[ label ]
+	
+	if( currentProbability > 70 and previousProbability < 70 ):
+		return True
+	elif( previousProbability < 70 and ( previousProbability + currentProbability ) / 2 > 50 ):
+		return True
+	else:
+		return False
+
+def continuous_detection( currentDict, previousDict, label ):
+	currentProbability = currentDict[ label ]
+	previousProbability = previousDict[ label ]
+	
+	if( currentProbability > 80 ):
+		return True
+	else:
+		return False
+
+		
+def press_label( label ):
+	if( label == "bell" ):
+		print( 'asdf' )
+	elif( label == "cluck" ):
+		click()
+	elif( label == "finger_snap" ):
+		click(button='right')
+	elif( label == "sound_s" ):
+		scroll( -250 )
+	elif( label == "sound_ie" ):
+		scroll( 250 )
+		
 
 winsound.PlaySound('responses/awaitingorders.wav', winsound.SND_FILENAME)
 			
@@ -87,6 +102,8 @@ stream = audio.open(format=FORMAT, channels=CHANNELS,
 total_frames = []
 last_five_probabilities = []
 action = ["", 0]
+previousProbabilityDict = {}
+strategy = "browser"
 while( True ):
 	#stream.start_stream()
 	frames = getWavSegment( stream, frames )
@@ -134,40 +151,37 @@ while( True ):
 	for index, percent in enumerate( probabilities[0] ):
 		label = labelDict[ str( label_array[ index ] ) ]
 		probabilityDict[ label ] = percent
-		
-		if( percent >= 50 ):
-			if( action[0] != label ):
-				action[0] = label
-				action[1] = percent
-			
-			if( label != "silence" ):
-				print( label + " - " + str( percent ) + "%" )	
-				if( label == 'cluck' or label == 'finger_snap' ):
-					winsound.PlaySound('responses/' + str(random.randint(1,8)) + '.wav', winsound.SND_FILENAME)
-				
-				if( label == "bell" ):
-					press('space')
-				elif( label == 'cluck' ):
-					click()
-				elif( label == 'finger_snap' ):
-					click(button='right')
-					#winsound.PlaySound('responses/' + str(random.randint(1,8)) + '.wav', winsound.SND_FILENAME)
-				#elif( label == 'voice_humm(pruned)' ):
-				#	moveRel( 0, -percent )
-				#elif( label == 'voice_roll(pruned)' ):
-				#	moveRel( 0, percent )
-				#elif( label == 'voice_bll(pruned)' ):
-				#	moveRel( -percent, 0 )
-				
 
-	totalProbabilityMouse = ( probabilityDict["sound_a"] +
-		probabilityDict["sound_s"] + probabilityDict["sound_ie"] +
-		probabilityDict["sound_oe"] ) / 4
-	if( totalProbabilityMouse > 10 ):
-		x = ( probabilityDict["sound_s"] - probabilityDict["sound_a"] ) * 2
-		y = ( probabilityDict["sound_oe"] - probabilityDict["sound_ie"] ) * 2
+	if( not previousProbabilityDict ):
+		previousProbabilityDict = probabilityDict
+		
+	if( probabilityDict[ "bell" ] > 90 and previousProbabilityDict[ "bell" ] < 90 ):
+		winsound.PlaySound('responses/' + str( random.randint(1,8) ) + '.wav', winsound.SND_FILENAME)
+		if( strategy == "browser" ):
+			strategy = "video"
+			click()
+			hotkey('ctrl', 'f')
+		else:
+			strategy = "browser"
+		
+	if( strategy == "browser" ):
+		for key in enumerate( labelDict.keys() ):
+			label = str( labelDict[ key[1] ] )
+			if( ( label == "sound_s" or label == "sound_ie" ) and continuous_detection( probabilityDict, previousProbabilityDict, label ) ):
+				press_label( label )
+			elif( throttled_press_detection( probabilityDict, previousProbabilityDict, label ) ):
+				press_label( label )
+		
+				
+	previousProbabilityDict = probabilityDict
+	#totalProbabilityMouse = ( probabilityDict["sound_a"] +
+	#	probabilityDict["sound_s"] + probabilityDict["sound_ie"] +
+	#	probabilityDict["sound_oe"] ) / 4
+	#if( totalProbabilityMouse > 10 ):
+	#	x = ( probabilityDict["sound_s"] - probabilityDict["sound_a"] ) * 2
+	#	y = ( probabilityDict["sound_oe"] - probabilityDict["sound_ie"] ) * 2
 	
-		moveRel( x, y )
+	#	moveRel( x, y )
 			
 			
 	save_total_file = False

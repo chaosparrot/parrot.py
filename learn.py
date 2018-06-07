@@ -156,7 +156,7 @@ for index, directory in enumerate( data_directories ):
 #classifier = svm.SVC(C=1.0, gamma=0.01)
 #classifier = DecisionTreeClassifier(random_state=0)
 
-check_accuracy = False
+check_accuracy = True
 if( check_accuracy ):
 	print( "Beginning cross validation for accuracy prediction" )
 	scores = cross_val_score(classifier, dataset_x, dataset_labels, cv=10)
@@ -187,24 +187,24 @@ clf.fit( dataset_x, dataset_labels )
 joblib.dump( clf, "train.pkl" )
 
 # Hyperdimension visualisation
-tsne = TSNE(n_components=2, verbose=1, perplexity=40, n_iter=300)
-tsne_results = tsne.fit_transform( dataset_x, dataset_labels )
+visualisation = True
+if( visualisation ):
+	tsne = TSNE(n_components=2, verbose=1, perplexity=40, n_iter=300)
+	tsne_results = tsne.fit_transform( dataset_x, dataset_labels )
 
+	feat_cols = [ 'pixel'+str(i) for i in range(pandas.DataFrame(dataset_x).shape[1]) ]
+	df = pandas.DataFrame(dataset_x,columns=feat_cols)
+	df['label'] = dataset_labels
+	df['label'].apply(lambda i: str(i))
 
-feat_cols = [ 'pixel'+str(i) for i in range(pandas.DataFrame(dataset_x).shape[1]) ]
-df = pandas.DataFrame(dataset_x,columns=feat_cols)
-df['label'] = dataset_labels
-df['label'].apply(lambda i: str(i))
-
-df_tsne = df
-df_tsne['x-tsne'] = tsne_results[:,0]
-df_tsne['y-tsne'] = tsne_results[:,1]
-chart = ggplot( df_tsne, aes(x='x-tsne', y='y-tsne', color='label') ) \
-        + geom_point(size=70,alpha=1) \
-        + ggtitle("tSNE dimensions colored by digit")
-
+	df_tsne = df
+	df_tsne['x-tsne'] = tsne_results[:,0]
+	df_tsne['y-tsne'] = tsne_results[:,1]
+	chart = ggplot( df_tsne, aes(x='x-tsne', y='y-tsne', color='label') ) \
+			+ geom_point(size=70,alpha=1) \
+			+ ggtitle("tSNE dimensions colored by digit")
 		
-print( chart )
+	print( chart )
 
-#if( generate_confusion_matrix ):
-#	plt.show()
+if( generate_confusion_matrix ):
+	plt.show()
