@@ -16,27 +16,33 @@ import winsound
 pyautogui.FAILSAFE = False
 import random
 import operator
+import audioop
+import math
 
 TEMP_FILE_NAME = "play.wav"
 FORMAT = pyaudio.paInt16
 CHANNELS = 2
 RATE = 44100
 CHUNK = 1024
-RECORD_SECONDS = 0.25
+RECORD_SECONDS = 0.1
 
 def hash_directory_to_number( setdir ):
 	return float( int(hashlib.sha256( setdir.encode('utf-8')).hexdigest(), 16) % 10**8 )
 
 def getWavSegment( stream, frames ):	
 	range_length = int(RATE / CHUNK * RECORD_SECONDS)
-	frames = []#frames[5:]
+	frames = []
 	frame_length = len( frames )
 	
-	#print( frame_length, range_length )
+	intensity = []
 	for i in range( frame_length, range_length):
 		data = stream.read(CHUNK)
+		peak = audioop.maxpp( data, 4 ) / 32767
+		intensity.append( peak )
 		frames.append(data)
-	return frames
+
+	highestintensity = np.amax( intensity )
+	return frames, highestintensity
 
 
 # Generate the label mapping
@@ -77,17 +83,64 @@ def continuous_detection( currentDict, previousDict, label ):
 	else:
 		return False
 
+def loud_detection( data, label ):
+	percent_met = data[-1][label]['percent'] >= 80
+	
+	if( percent_met ):
+		return True
+	else:
+		return False
 		
+def single_tap_detection( data, label, required_percent ):
+	percent_met = data[-1][label]['percent'] >= required_percent
+	rising_sound = data[-1][label]['intensity'] > data[-2][label]['intensity']
+	first_sound = data[-2][label]['percent'] < required_percent
+	previous_rising = data[-2][label]['percent'] >= required_percent and data[-2][label]['intensity'] < data[-3][label]['intensity']
+	is_winner = data[-1][label]['winner']
+	if( is_winner and percent_met and rising_sound and ( first_sound and previous_rising != True ) ):
+		print( "Detecting single tap for " + label )
+		return True
+	else:
+		return False
+
+def quick_detection( currentDict, previousDict, label ):
+	currentProbability = currentDict[ label ]
+	if( currentProbability > 60 ):
+		return True
+	else:
+		return False
+
+		
+def game_label( label ):
+	print( label )
+	if( label == "cluck" ):
+		press('q')
+		#click(button='left')
+	elif( label == "finger_snap" ):
+		click()
+	elif( label == "sound_uh" or label == "sound_a" ):
+		press('q')
+	elif( label == 'sound_s' ):
+		press('w')
+	elif( label == 'sound_f' ):
+		press('e')
+	elif( label == "sound_ax" ):
+		press('d')
+	elif( label == "sound_lol" ):
+		press('z')		
+	elif( label == "sound_whistle" ):
+		press('r')
+	elif( label == "sound_oe" ):
+		press('1')
+
 def press_label( label ):
-	if( label == "bell" ):
-		print( 'asdf' )
-	elif( label == "cluck" ):
+	if( label == "cluck" ):
 		click()
 	elif( label == "finger_snap" ):
 		click(button='right')
 	elif( label == "sound_s" ):
 		scroll( -250 )
-	elif( label == "sound_ie" ):
+	elif( label == "sound_whistle" ):
 		scroll( 250 )
 		
 
@@ -104,14 +157,25 @@ last_five_probabilities = []
 action = ["", 0]
 previousProbabilityDict = {}
 strategy = "browser"
+frames = []
+previousIntensity = 0
+previousCluckIntensity = 0
+
+# Get a minimum of these elements of data dictionaries
+dataDictsLength = 10
+dataDicts = []
+for i in range( 0, dataDictsLength ):
+	dataDict = {}
+	for directoryname in data_directory_names:
+		dataDict[ directoryname ] = {'percent': 0, 'intensity': 0}
+	dataDicts.append( dataDict )
+		
 while( True ):
 	#stream.start_stream()
-	frames = getWavSegment( stream, frames )
-	total_frames.extend( frames )
+	frames, intensity = getWavSegment( stream, frames )
+	#total_frames.extend( frames )
 	#stream.stop_stream()
-	
-	#print( len( frames ) )
-	
+		
 	tempFile = wave.open(TEMP_FILE_NAME, 'wb')
 	tempFile.setnchannels(CHANNELS)
 	tempFile.setsampwidth(audio.get_sample_size(FORMAT))
@@ -134,46 +198,78 @@ while( True ):
 	data_row.extend( mfcc_result1.ravel() )
 	data_row.extend( mfcc_result2.ravel() )
 
-	
 	data = [ data_row ]
 	
 	# Predict the outcome - Only use the result if the probability of being correct is over 50 percent
 	probabilities = classifier.predict_proba( data ) * 100
 	probabilities = probabilities.astype(int)
-	if( len( last_five_probabilities ) > 5 ):
-		last_five_probabilities = last_five_probabilities[1:]
-		
-	last_five_probabilities.append( probabilities[0] )
-	probability_window = np.sum( last_five_probabilities, axis=0 ) / 6
-	probability_window = probability_window.astype( int )
-	print( probabilities )
+	print( probabilities[0] )
+	
+	# Get the predicted winner
+	predicted = np.argmax( probabilities[0] )
+	if( isinstance(predicted, list) ):
+		predicted = predicted[0]
+
 	probabilityDict = {}
 	for index, percent in enumerate( probabilities[0] ):
 		label = labelDict[ str( label_array[ index ] ) ]
-		probabilityDict[ label ] = percent
+		probabilityDict[ label ] = { 'percent': percent, 'intensity': int(intensity), 'winner': index == predicted }
+		
+		if( index == predicted ):
+			print( "winner: " + label + " " + str( percent ) )
 
-	if( not previousProbabilityDict ):
-		previousProbabilityDict = probabilityDict
+	dataDicts.append( probabilityDict )
+	if( len(dataDicts) > dataDictsLength ):
+		dataDicts.pop(0)
 		
-	if( probabilityDict[ "bell" ] > 90 and previousProbabilityDict[ "bell" ] < 90 ):
+	# Intensity check
+	if( single_tap_detection(dataDicts, "cluck", 35 ) ):
+		print( 'intensity %0d' % intensity )
+		click()
+	elif( single_tap_detection(dataDicts, "fingersnap", 50 ) ):
+		click(button='right')
+	elif( loud_detection(dataDicts, "whistle" ) ):
+		scroll( -150 )
+	elif( loud_detection(dataDicts, "peak_sound_s" ) ):
+		scroll( 150 )
+	elif( single_tap_detection(dataDicts, "bell", 90 ) ):
+		press('f4')
 		winsound.PlaySound('responses/' + str( random.randint(1,8) ) + '.wav', winsound.SND_FILENAME)
-		if( strategy == "browser" ):
-			strategy = "twitch"
-			click()
-			hotkey('ctrl', 'f')
-			press('pageup')
-		elif( strategy == "twitch" ):
-			press('esc')
-			press('pagedown')
-			strategy = "browser"
 		
-	if( strategy == "browser" ):
-		for key in enumerate( labelDict.keys() ):
-			label = str( labelDict[ key[1] ] )
-			if( ( label == "sound_s" or label == "sound_ie" ) and continuous_detection( probabilityDict, previousProbabilityDict, label ) ):
-				press_label( label )
-			elif( throttled_press_detection( probabilityDict, previousProbabilityDict, label ) ):
-				press_label( label )
+		
+	#if( probabilityDict[ "bell" ] > 95 and previousProbabilityDict[ "bell" ] < 95 ):
+	#	winsound.PlaySound('responses/' + str( random.randint(1,8) ) + '.wav', winsound.SND_FILENAME)
+	#	if( strategy == "browser" ):
+	#		strategy = "hots"
+			#click()
+			#hotkey('ctrl', 'f')
+			#press('pageup')
+	#	elif( strategy == "hots" ):
+			#press('esc')
+			#press('pagedown')
+	#		strategy = "browser"
+	
+	# Prevent a rise from creating more than one cluck
+	#if( probabilityDict["cluck"] > 60 and previousIntensity < intensity ):
+	#	previousCluckIntensity = 1
+	#else:
+	#	previousCluckIntensity = 0
+		
+	#previousIntensity = intensity
+		
+	#if( strategy == "browser" ):
+	#	for key in enumerate( labelDict.keys() ):
+	#		label = str( labelDict[ key[1] ] )
+	#		if( ( label == "sound_s" or label == "sound_whistle" ) and continuous_detection( probabilityDict, previousProbabilityDict, label ) ):
+	#			press_label( label )
+	#		elif( throttled_press_detection( probabilityDict, previousProbabilityDict, label ) ):
+	#			press_label( label )
+	#elif( strategy == "hots" ):
+	#	for key in enumerate( labelDict.keys() ):
+	#		label = str( labelDict[ key[1] ] )
+	#		if( quick_detection( probabilityDict, previousProbabilityDict, label ) ):
+	#			game_label( label )
+
 		
 				
 	previousProbabilityDict = probabilityDict

@@ -102,7 +102,7 @@ def load_wav_files( directory, label, start, end ):
 			category_dataset_x.append( data_row )
 			category_dataset_labels.append( label )
 
-	print( "Loaded " + str( len( category_dataset_labels ) ) + " .wav files for category " + data_directory_names[ index ] )
+	print( "Loaded " + str( len( category_dataset_labels ) ) + " .wav files for category " + data_directory_names[ index ] + " (id: " + str(label) + ")" )
 	return category_dataset_x, category_dataset_labels
 	
 
@@ -162,10 +162,10 @@ if( check_accuracy ):
 	scores = cross_val_score(classifier, dataset_x, dataset_labels, cv=10)
 	print( "Cross validation done!" )
 	print( scores )
-	print("Accuracy: %0.2f (+/- %0.2f)" % (scores.mean(), scores.std() * 2))
+	print("Accuracy: %0.4f (+/- %0.4f)" % (scores.mean(), scores.std() * 2))
 
 # Start classifying and checking for confusion
-generate_confusion_matrix = False
+generate_confusion_matrix = True
 if( generate_confusion_matrix ):
 	X_train, X_test, y_train, y_test = train_test_split(dataset_x, dataset_labels, random_state=1)
 	classifier.fit( X_train, y_train )
@@ -187,7 +187,7 @@ clf.fit( dataset_x, dataset_labels )
 joblib.dump( clf, "train.pkl" )
 
 # Hyperdimension visualisation
-visualisation = True
+visualisation = False
 if( visualisation ):
 	tsne = TSNE(n_components=2, verbose=1, perplexity=40, n_iter=300)
 	tsne_results = tsne.fit_transform( dataset_x, dataset_labels )
