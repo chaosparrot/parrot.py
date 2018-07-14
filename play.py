@@ -31,7 +31,7 @@ def hash_directory_to_number( setdir ):
 
 def getWavSegment( stream, frames ):	
 	range_length = int(RATE / CHUNK * RECORD_SECONDS)
-	frames = []
+	frames = frames[5:]
 	frame_length = len( frames )
 	
 	intensity = []
@@ -90,14 +90,43 @@ def loud_detection( data, label ):
 		return True
 	else:
 		return False
+
+def medium_detection( data, label, required_percent, required_intensity ):
+	last_is_not_label = data[-1][label]['percent'] < required_percent
+	is_previous_label = data[-2][label]['percent'] >= required_percent and data[-2][label]['intensity'] >= required_intensity
+	
+	# Detect first signs of a medium length sound
+	if( is_previous_label and last_is_not_label ):
+		avg_percent = ( data[-2][label]['percent'] + data[-3][label]['percent'] + data[-4][label]['percent'] + data[-5][label]['percent'] + data[-6][label]['percent'] ) * 0.2
+		avg_intensity = ( data[-2][label]['intensity'] + data[-3][label]['intensity'] + data[-4][label]['intensity'] + data[-5][label]['intensity'] + data[-6][label]['intensity'] ) * 0.2
 		
-def single_tap_detection( data, label, required_percent ):
+		start_sound_not_label = data[-7][label]['percent'] < required_percent and data[-7][label]['intensity'] < required_intensity
+		return avg_intensity >= required_intensity and avg_percent >= required_percent and start_sound_not_label
+	return False		
+		
+def long_detection( data, label, required_percent, required_intensity ):
+	last_is_not_label = data[-1][label]['percent'] < required_percent
+	is_previous_label = data[-2][label]['percent'] >= required_percent and data[-2][label]['intensity'] >= required_intensity
+	
+	# Detect first signs of a long length sound
+	if( is_previous_label and last_is_not_label ):
+		avg_percent = ( data[-2][label]['percent'] + data[-3][label]['percent'] + data[-4][label]['percent'] + data[-5][label]['percent'] 
+			+ data[-6][label]['percent'] + data[-7][label]['percent'] + data[-8][label]['percent'] + data[-9][label]['percent'] ) * 0.11
+		avg_intensity = ( data[-2][label]['intensity'] + data[-3][label]['intensity'] + data[-4][label]['intensity'] + data[-5][label]['intensity'] 
+			+ data[-6][label]['intensity'] + data[-7][label]['intensity'] + data[-8][label]['intensity'] + data[-9][label]['intensity'] ) * 0.11
+		
+		print( avg_percent, avg_intensity )
+		
+		return avg_intensity >= required_intensity and avg_percent >= required_percent
+	return False
+		
+def single_tap_detection( data, label, required_percent, required_intensity ):
 	percent_met = data[-1][label]['percent'] >= required_percent
 	rising_sound = data[-1][label]['intensity'] > data[-2][label]['intensity']
 	first_sound = data[-2][label]['percent'] < required_percent
 	previous_rising = data[-2][label]['percent'] >= required_percent and data[-2][label]['intensity'] < data[-3][label]['intensity']
 	is_winner = data[-1][label]['winner']
-	if( is_winner and percent_met and rising_sound and ( first_sound and previous_rising != True ) ):
+	if( is_winner and percent_met and rising_sound and data[-1][label]['intensity'] >= required_intensity ):
 		print( "Detecting single tap for " + label )
 		return True
 	else:
@@ -223,16 +252,19 @@ while( True ):
 		dataDicts.pop(0)
 		
 	# Intensity check
-	if( single_tap_detection(dataDicts, "cluck", 35 ) ):
-		print( 'intensity %0d' % intensity )
+	if( single_tap_detection(dataDicts, "cluck", 35, 1000 ) ):
 		click()
-	elif( single_tap_detection(dataDicts, "fingersnap", 50 ) ):
+	elif( single_tap_detection(dataDicts, "fingersnap", 50, 1000 ) ):
 		click(button='right')
 	elif( loud_detection(dataDicts, "whistle" ) ):
 		scroll( -150 )
 	elif( loud_detection(dataDicts, "peak_sound_s" ) ):
 		scroll( 150 )
-	elif( single_tap_detection(dataDicts, "bell", 90 ) ):
+	elif( medium_detection(dataDicts, "bell", 90, 1000 ) ):
+		print( 'medium!' )
+		hotkey('alt', 'left')
+	elif( long_detection(dataDicts, "bell", 80, 1000 ) ):
+		print( 'long' )
 		press('f4')
 		winsound.PlaySound('responses/' + str( random.randint(1,8) ) + '.wav', winsound.SND_FILENAME)
 		
