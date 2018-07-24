@@ -8,7 +8,7 @@ from scipy.fftpack import fft, rfft, fft2
 from sklearn.externals import joblib
 import hashlib
 import os
-from pyautogui import press, hotkey, click, scroll, typewrite, moveRel
+from pyautogui import press, hotkey, click, scroll, typewrite, moveRel, moveTo, position
 from scipy.fftpack import fft, rfft, fft2, dct
 from python_speech_features import mfcc
 import pyautogui
@@ -18,6 +18,8 @@ import random
 import operator
 import audioop
 import math
+import time
+centerXPos, centerYPos = position()
 
 TEMP_FILE_NAME = "play.wav"
 FORMAT = pyaudio.paInt16
@@ -44,6 +46,14 @@ def getWavSegment( stream, frames ):
 	highestintensity = np.amax( intensity )
 	return frames, highestintensity
 
+def rotateMouse( radians, radius ):
+	theta = np.radians( radians )
+	c, s = np.cos(theta), np.sin(theta)
+	R = np.matrix('{} {}; {} {}'.format(c, -s, s, c))
+	
+	mousePos = np.array([radius, radius])
+	relPos = np.dot( mousePos, R )
+	moveTo( centerXPos + relPos.flat[0], centerYPos + relPos.flat[1] )
 
 # Generate the label mapping
 labelDict = {}
@@ -132,6 +142,12 @@ def single_tap_detection( data, label, required_percent, required_intensity ):
 	else:
 		return False
 
+def no_detection( data, label ):
+	peak_percent = np.max( [data[-1][label]['percent'], data[-2][label]['percent'], data[-3][label]['percent'], data[-4][label]['percent'], data[-5][label]['percent'], 
+	data[-6][label]['percent'], data[-7][label]['percent'], data[-8][label]['percent'], data[-9][label]['percent']] )
+
+	return peak_percent < 30
+		
 def quick_detection( currentDict, previousDict, label ):
 	currentProbability = currentDict[ label ]
 	if( currentProbability > 60 ):
@@ -199,6 +215,7 @@ for i in range( 0, dataDictsLength ):
 		dataDict[ directoryname ] = {'percent': 0, 'intensity': 0}
 	dataDicts.append( dataDict )
 		
+mode = "regular"
 while( True ):
 	#stream.start_stream()
 	frames, intensity = getWavSegment( stream, frames )
@@ -253,10 +270,17 @@ while( True ):
 		
 	# Intensity check
 	if( single_tap_detection(dataDicts, "cluck", 35, 1000 ) ):
-		click()
+		click()		
 	elif( single_tap_detection(dataDicts, "fingersnap", 50, 1000 ) ):
 		click(button='right')
 	elif( loud_detection(dataDicts, "whistle" ) ):
+		if( mode == "regular" ):
+			mode = "precision"
+			centerXPos, centerYPos = position()
+			press("f4")
+
+		rotateMouse( np.abs( np.abs( time.time() * 200 ) % 360 ), 25 )
+	elif( loud_detection(dataDicts, "peak_sound_f" ) ):
 		scroll( -150 )
 	elif( loud_detection(dataDicts, "peak_sound_s" ) ):
 		scroll( 150 )
@@ -267,7 +291,10 @@ while( True ):
 		print( 'long' )
 		press('f4')
 		winsound.PlaySound('responses/' + str( random.randint(1,8) ) + '.wav', winsound.SND_FILENAME)
-		
+	
+	if( mode == "precision" and no_detection(dataDicts, "whistle") ):
+		mode = "regular"
+		press("f4")
 		
 	#if( probabilityDict[ "bell" ] > 95 and previousProbabilityDict[ "bell" ] < 95 ):
 	#	winsound.PlaySound('responses/' + str( random.randint(1,8) ) + '.wav', winsound.SND_FILENAME)
