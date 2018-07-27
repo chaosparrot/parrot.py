@@ -27,7 +27,7 @@ def hash_directory_to_number( setdir ):
 # Get the full directories for the dataset
 dir_path = os.path.join( os.path.dirname(os.path.realpath(__file__)), "dataset")
 data_directory_names = os.listdir( dir_path )
-data_directories = list( map( lambda n: os.path.join( dir_path, n ), data_directory_names) )
+data_directories = list( map( lambda n: os.path.join( dir_path, n ).lower(), data_directory_names) )
 
 # Add a label used for classifying the sounds
 data_directories_label = list( map( hash_directory_to_number, data_directories ) )

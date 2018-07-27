@@ -63,7 +63,7 @@ seperator = ", "
 print( "Predicting sounds using machine learning with the following categories: " )
 print( seperator.join(data_directory_names) )
 for directoryname in data_directory_names:
-	labelDict[ str( hash_directory_to_number( os.path.join( dir_path, directoryname ) ) ) ] = directoryname
+	labelDict[ str( hash_directory_to_number( os.path.join( dir_path, directoryname ).lower() ) ) ] = directoryname
 
 # Load the trained classifier
 classifier = joblib.load( "train.pkl" )	
@@ -124,9 +124,7 @@ def long_detection( data, label, required_percent, required_intensity ):
 			+ data[-6][label]['percent'] + data[-7][label]['percent'] + data[-8][label]['percent'] + data[-9][label]['percent'] ) * 0.11
 		avg_intensity = ( data[-2][label]['intensity'] + data[-3][label]['intensity'] + data[-4][label]['intensity'] + data[-5][label]['intensity'] 
 			+ data[-6][label]['intensity'] + data[-7][label]['intensity'] + data[-8][label]['intensity'] + data[-9][label]['intensity'] ) * 0.11
-		
-		print( avg_percent, avg_intensity )
-		
+				
 		return avg_intensity >= required_intensity and avg_percent >= required_percent
 	return False
 		

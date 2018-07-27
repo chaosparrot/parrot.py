@@ -6,6 +6,8 @@ import scipy.io.wavfile
 import audioop
 import math
 import numpy as np
+from numpy.fft import rfft
+from scipy.signal import blackmanharris
  
 FORMAT = pyaudio.paInt16
 CHANNELS = 2
@@ -35,11 +37,13 @@ for j in range( 0, int(300.0 * ( 1.0 / RECORD_SECONDS ))):
 					frames_per_buffer=CHUNK)
 	frames = []
 	intensity = []
+	
 	for i in range(0, int(RATE / CHUNK * RECORD_SECONDS)):
 		data = stream.read(CHUNK)
 		frames.append(data)
 		peak = audioop.maxpp( data, 4 ) / 32767
 		intensity.append( peak )
+		
 		
 	highestintensity = np.amax( intensity )
 	print( "%0d" % highestintensity )
