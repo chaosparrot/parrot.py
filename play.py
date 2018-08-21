@@ -20,6 +20,7 @@ import audioop
 import math
 import time
 import csv
+import threading
 centerXPos, centerYPos = position()
 
 TEMP_FILE_NAME = "play.wav"
@@ -95,7 +96,7 @@ def continuous_detection( currentDict, previousDict, label ):
 		return False
 
 def loud_detection( data, label ):
-	percent_met = data[-1][label]['percent'] >= 80
+	percent_met = data[-1][label]['percent'] >= 70
 	
 	if( percent_met ):
 		return True
@@ -209,8 +210,23 @@ previousCluckIntensity = 0
 dataDictsLength = 10
 dataDicts = []
 
+starttime = int(time.time())
+if( os.path.isfile('run.csv') ):
+	os.rename('run.csv', 'previous_run_' + str(starttime) + ".csv")
+
+def fluent_mode():
+	t = threading.Timer(0.05, fluent_mode)
+	t.daemon = True
+	t.start()
+	
+	if( mode == "precision" ):
+		rotateMouse( np.abs( np.abs( time.time() * 200 ) % 360 ), 25 )
+	
 # Write a replay for the percentages
-with open('run' + str( int(time.time()) ) + '.csv', 'w', newline='') as csvfile:
+with open('run.csv', 'a', newline='') as csvfile:
+	mode = "regular"
+	fluent_mode()
+
 	headers = ['time', 'winner', 'intensity']
 	headers.extend( data_directory_names )
 	writer = csv.DictWriter(csvfile, fieldnames=headers, delimiter=',')
@@ -222,9 +238,7 @@ with open('run' + str( int(time.time()) ) + '.csv', 'w', newline='') as csvfile:
 			dataDict[ directoryname ] = {'percent': 0, 'intensity': 0}
 		dataDicts.append( dataDict )
 	
-	rownum = 1
-	mode = "regular"
-	while( True ):
+	while( True ):		
 		#stream.start_stream()
 		frames, intensity = getWavSegment( stream, frames )
 		#total_frames.extend( frames )
@@ -263,8 +277,7 @@ with open('run' + str( int(time.time()) ) + '.csv', 'w', newline='') as csvfile:
 		predicted = np.argmax( probabilities[0] )
 		if( isinstance(predicted, list) ):
 			predicted = predicted[0]
-		replay_row = { 'time': rownum, 'winner': predicted, 'intensity': int(intensity) }
-		rownum+=1
+		replay_row = { 'time': int((time.time() - starttime ) * 1000) / 1000, 'winner': predicted, 'intensity': int(intensity) }
 		
 		probabilityDict = {}
 		for index, percent in enumerate( probabilities[0] ):
@@ -272,27 +285,25 @@ with open('run' + str( int(time.time()) ) + '.csv', 'w', newline='') as csvfile:
 			probabilityDict[ label ] = { 'percent': percent, 'intensity': int(intensity), 'winner': index == predicted }
 			replay_row[ label ] = percent
 			
-			if( index == predicted ):
-				print( "winner: " + label + " " + str( percent ) )
-
 		writer.writerow( replay_row )
+		csvfile.flush()
 				
 		dataDicts.append( probabilityDict )
 		if( len(dataDicts) > dataDictsLength ):
 			dataDicts.pop(0)
 			
 		# Intensity check
+		mouseMoving = loud_detection(dataDicts, "whistle" )
 		if( single_tap_detection(dataDicts, "cluck", 35, 1000 ) ):
 			click()		
 		elif( single_tap_detection(dataDicts, "fingersnap", 50, 1000 ) ):
 			click(button='right')
-		elif( loud_detection(dataDicts, "whistle" ) ):
-			if( mode == "regular" ):
+		elif( mouseMoving == True ):						
+			if( mode != "precision" ):
+				if( mode == "regular" ):
+					press("f4")
 				mode = "precision"
 				centerXPos, centerYPos = position()
-				press("f4")
-
-			rotateMouse( np.abs( np.abs( time.time() * 200 ) % 360 ), 25 )
 		elif( loud_detection(dataDicts, "peak_sound_f" ) ):
 			scroll( -150 )
 		elif( loud_detection(dataDicts, "peak_sound_s" ) ):
@@ -305,9 +316,13 @@ with open('run' + str( int(time.time()) ) + '.csv', 'w', newline='') as csvfile:
 			press('f4')
 			winsound.PlaySound('responses/' + str( random.randint(1,8) ) + '.wav', winsound.SND_FILENAME)
 		
-		if( mode == "precision" and no_detection(dataDicts, "whistle") ):
-			mode = "regular"
-			press("f4")
+		if( mode == "precision" or mode == "pause" ):
+			if( mouseMoving == False ):
+				mode = "pause"
+			
+			if( no_detection(dataDicts, "whistle") ):
+				mode = "regular"
+				press("f4")
 			
 		#if( probabilityDict[ "bell" ] > 95 and previousProbabilityDict[ "bell" ] < 95 ):
 		#	winsound.PlaySound('responses/' + str( random.randint(1,8) ) + '.wav', winsound.SND_FILENAME)
