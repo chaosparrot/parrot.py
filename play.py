@@ -9,7 +9,7 @@ from sklearn.externals import joblib
 import hashlib
 import os
 from pyautogui import press, hotkey, click, scroll, typewrite, moveRel, moveTo, position
-from scipy.fftpack import fft, rfft, fft2, dct
+from scipy.fftpack import fft, rfft, fft2, dct, fftfreq
 from python_speech_features import mfcc
 import pyautogui
 import winsound
@@ -220,7 +220,7 @@ def fluent_mode():
 	t.start()
 	
 	if( mode == "precision" ):
-		rotateMouse( np.abs( np.abs( time.time() * 200 ) % 360 ), 25 )
+		rotateMouse( np.abs( np.abs( time.time() * 200 ) % 360 ), 20 )
 	
 # Write a replay for the percentages
 with open('run.csv', 'a', newline='') as csvfile:
@@ -265,7 +265,7 @@ with open('run.csv', 'a', newline='') as csvfile:
 		data_row = []
 		data_row.extend( mfcc_result1.ravel() )
 		data_row.extend( mfcc_result2.ravel() )
-
+		
 		data = [ data_row ]
 		
 		# Predict the outcome - Only use the result if the probability of being correct is over 50 percent
@@ -305,9 +305,9 @@ with open('run.csv', 'a', newline='') as csvfile:
 				mode = "precision"
 				centerXPos, centerYPos = position()
 		elif( loud_detection(dataDicts, "peak_sound_f" ) ):
-			scroll( -150 )
-		elif( loud_detection(dataDicts, "peak_sound_s" ) ):
 			scroll( 150 )
+		elif( loud_detection(dataDicts, "peak_sound_s" ) ):
+			scroll( -150 )
 		elif( medium_detection(dataDicts, "bell", 90, 1000 ) ):
 			print( 'medium!' )
 			hotkey('alt', 'left')
