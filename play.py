@@ -21,6 +21,9 @@ import math
 import time
 import csv
 import threading
+import pythoncom
+import mode_browse
+import mode_switch
 centerXPos, centerYPos = position()
 
 TEMP_FILE_NAME = "play.wav"
@@ -94,67 +97,6 @@ def continuous_detection( currentDict, previousDict, label ):
 		return True
 	else:
 		return False
-
-def loud_detection( data, label ):
-	percent_met = data[-1][label]['percent'] >= 70
-	
-	if( percent_met ):
-		return True
-	else:
-		return False
-
-def medium_detection( data, label, required_percent, required_intensity ):
-	last_is_not_label = data[-1][label]['percent'] < required_percent
-	is_previous_label = data[-2][label]['percent'] >= required_percent and data[-2][label]['intensity'] >= required_intensity
-	
-	# Detect first signs of a medium length sound
-	if( is_previous_label and last_is_not_label ):
-		avg_percent = ( data[-2][label]['percent'] + data[-3][label]['percent'] + data[-4][label]['percent'] + data[-5][label]['percent'] + data[-6][label]['percent'] ) * 0.2
-		avg_intensity = ( data[-2][label]['intensity'] + data[-3][label]['intensity'] + data[-4][label]['intensity'] + data[-5][label]['intensity'] + data[-6][label]['intensity'] ) * 0.2
-		
-		start_sound_not_label = data[-7][label]['percent'] < required_percent and data[-7][label]['intensity'] < required_intensity
-		return avg_intensity >= required_intensity and avg_percent >= required_percent and start_sound_not_label
-	return False		
-		
-def long_detection( data, label, required_percent, required_intensity ):
-	last_is_not_label = data[-1][label]['percent'] < required_percent
-	is_previous_label = data[-2][label]['percent'] >= required_percent and data[-2][label]['intensity'] >= required_intensity
-	
-	# Detect first signs of a long length sound
-	if( is_previous_label and last_is_not_label ):
-		avg_percent = ( data[-2][label]['percent'] + data[-3][label]['percent'] + data[-4][label]['percent'] + data[-5][label]['percent'] 
-			+ data[-6][label]['percent'] + data[-7][label]['percent'] + data[-8][label]['percent'] + data[-9][label]['percent'] ) * 0.11
-		avg_intensity = ( data[-2][label]['intensity'] + data[-3][label]['intensity'] + data[-4][label]['intensity'] + data[-5][label]['intensity'] 
-			+ data[-6][label]['intensity'] + data[-7][label]['intensity'] + data[-8][label]['intensity'] + data[-9][label]['intensity'] ) * 0.11
-				
-		return avg_intensity >= required_intensity and avg_percent >= required_percent
-	return False
-		
-def single_tap_detection( data, label, required_percent, required_intensity ):
-	percent_met = data[-1][label]['percent'] >= required_percent
-	rising_sound = data[-1][label]['intensity'] > data[-2][label]['intensity']
-	first_sound = data[-2][label]['percent'] < required_percent
-	previous_rising = data[-2][label]['percent'] >= required_percent and data[-2][label]['intensity'] < data[-3][label]['intensity']
-	is_winner = data[-1][label]['winner']
-	if( is_winner and percent_met and rising_sound and data[-1][label]['intensity'] >= required_intensity ):
-		print( "Detecting single tap for " + label )
-		return True
-	else:
-		return False
-
-def no_detection( data, label ):
-	peak_percent = np.max( [data[-1][label]['percent'], data[-2][label]['percent'], data[-3][label]['percent'], data[-4][label]['percent'], data[-5][label]['percent'], 
-	data[-6][label]['percent'], data[-7][label]['percent'], data[-8][label]['percent'], data[-9][label]['percent']] )
-
-	return peak_percent < 30
-		
-def quick_detection( currentDict, previousDict, label ):
-	currentProbability = currentDict[ label ]
-	if( currentProbability > 60 ):
-		return True
-	else:
-		return False
-
 		
 def game_label( label ):
 	print( label )
@@ -213,19 +155,11 @@ dataDicts = []
 starttime = int(time.time())
 if( os.path.isfile('run.csv') ):
 	os.rename('run.csv', 'previous_run_' + str(starttime) + ".csv")
-
-def fluent_mode():
-	t = threading.Timer(0.05, fluent_mode)
-	t.daemon = True
-	t.start()
-	
-	if( mode == "precision" ):
-		rotateMouse( np.abs( np.abs( time.time() * 200 ) % 360 ), 20 )
 	
 # Write a replay for the percentages
 with open('run.csv', 'a', newline='') as csvfile:
-	mode = "regular"
-	fluent_mode()
+	currentMode = mode_browse.BrowseMode()
+	currentMode.start()
 
 	headers = ['time', 'winner', 'intensity']
 	headers.extend( data_directory_names )
@@ -252,7 +186,6 @@ with open('run.csv', 'a', newline='') as csvfile:
 		tempFile.close()
 
 		# FEATURE ENGINEERING
-		#rawWav = scipy.io.wavfile.read( TEMP_FILE_NAME )[ 1 ]
 		fs, rawWav = scipy.io.wavfile.read( TEMP_FILE_NAME )
 		chan1 = rawWav[:,0]
 		chan2 = rawWav[:,1]
@@ -292,83 +225,9 @@ with open('run.csv', 'a', newline='') as csvfile:
 		if( len(dataDicts) > dataDictsLength ):
 			dataDicts.pop(0)
 			
-		# Intensity check
-		mouseMoving = loud_detection(dataDicts, "whistle" )
-		if( single_tap_detection(dataDicts, "cluck", 35, 1000 ) ):
-			click()		
-		elif( single_tap_detection(dataDicts, "fingersnap", 50, 1000 ) ):
-			click(button='right')
-		elif( mouseMoving == True ):						
-			if( mode != "precision" ):
-				if( mode == "regular" ):
-					press("f4")
-				mode = "precision"
-				centerXPos, centerYPos = position()
-		elif( loud_detection(dataDicts, "peak_sound_f" ) ):
-			scroll( 150 )
-		elif( loud_detection(dataDicts, "peak_sound_s" ) ):
-			scroll( -150 )
-		elif( medium_detection(dataDicts, "bell", 90, 1000 ) ):
-			print( 'medium!' )
-			hotkey('alt', 'left')
-		elif( long_detection(dataDicts, "bell", 80, 1000 ) ):
-			print( 'long' )
-			press('f4')
-			winsound.PlaySound('responses/' + str( random.randint(1,8) ) + '.wav', winsound.SND_FILENAME)
-		
-		if( mode == "precision" or mode == "pause" ):
-			if( mouseMoving == False ):
-				mode = "pause"
-			
-			if( no_detection(dataDicts, "whistle") ):
-				mode = "regular"
-				press("f4")
-			
-		#if( probabilityDict[ "bell" ] > 95 and previousProbabilityDict[ "bell" ] < 95 ):
-		#	winsound.PlaySound('responses/' + str( random.randint(1,8) ) + '.wav', winsound.SND_FILENAME)
-		#	if( strategy == "browser" ):
-		#		strategy = "hots"
-				#click()
-				#hotkey('ctrl', 'f')
-				#press('pageup')
-		#	elif( strategy == "hots" ):
-				#press('esc')
-				#press('pagedown')
-		#		strategy = "browser"
-		
-		# Prevent a rise from creating more than one cluck
-		#if( probabilityDict["cluck"] > 60 and previousIntensity < intensity ):
-		#	previousCluckIntensity = 1
-		#else:
-		#	previousCluckIntensity = 0
-			
-		#previousIntensity = intensity
-			
-		#if( strategy == "browser" ):
-		#	for key in enumerate( labelDict.keys() ):
-		#		label = str( labelDict[ key[1] ] )
-		#		if( ( label == "sound_s" or label == "sound_whistle" ) and continuous_detection( probabilityDict, previousProbabilityDict, label ) ):
-		#			press_label( label )
-		#		elif( throttled_press_detection( probabilityDict, previousProbabilityDict, label ) ):
-		#			press_label( label )
-		#elif( strategy == "hots" ):
-		#	for key in enumerate( labelDict.keys() ):
-		#		label = str( labelDict[ key[1] ] )
-		#		if( quick_detection( probabilityDict, previousProbabilityDict, label ) ):
-		#			game_label( label )
+		currentMode.handle_input( dataDicts )
 
-			
-					
-		previousProbabilityDict = probabilityDict
-		#totalProbabilityMouse = ( probabilityDict["sound_a"] +
-		#	probabilityDict["sound_s"] + probabilityDict["sound_ie"] +
-		#	probabilityDict["sound_oe"] ) / 4
-		#if( totalProbabilityMouse > 10 ):
-		#	x = ( probabilityDict["sound_s"] - probabilityDict["sound_a"] ) * 2
-		#	y = ( probabilityDict["sound_oe"] - probabilityDict["sound_ie"] ) * 2
-		
-		#	moveRel( x, y )
-				
+		pythoncom.PumpWaitingMessages()
 				
 		save_total_file = False
 		if( save_total_file and len( total_frames ) > 500 ):
