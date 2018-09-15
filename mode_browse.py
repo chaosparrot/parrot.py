@@ -1,4 +1,4 @@
-from detection_strategies import single_tap_detection, loud_detection, medium_detection
+from detection_strategies import *
 import threading
 import numpy as np
 import pyautogui
@@ -6,6 +6,7 @@ from pyautogui import press, hotkey, click, scroll, typewrite, moveRel, moveTo, 
 import time
 from subprocess import call
 import os
+from system_toggles import mute_sound
 
 class BrowseMode:
 
@@ -15,7 +16,7 @@ class BrowseMode:
 	def start( self ):
 		self.mode = "regular"
 		self.centerXPos, self.centerYPos = pyautogui.position()
-		self.toggle_sound()
+		mute_sound()
 
 		self.fluent_mode()
 
@@ -65,10 +66,6 @@ class BrowseMode:
 		relPos = np.dot( mousePos, R )
 		moveTo( self.centerXPos + relPos.flat[0], self.centerYPos + relPos.flat[1] )
 
-		
-	def toggle_sound( self ):
-		call(["nircmd.exe", "mutesysvolume", "2"])
-			
+					
 	def exit( self ):
 		self.mode = "regular"
-		self.toggle_sound()
