@@ -6,16 +6,18 @@ from pyautogui import press, hotkey, click, scroll, typewrite, moveRel, moveTo, 
 import time
 from subprocess import call
 import os
-from system_toggles import mute_sound
+from system_toggles import mute_sound, toggle_speechrec, toggle_eyetracker
 
 class BrowseMode:
 
-	def __init__(self):
+	def __init__(self, modeSwitcher):
 		self.mode = "regular"
+		self.modeSwitcher = modeSwitcher
 
 	def start( self ):
 		self.mode = "regular"
 		self.centerXPos, self.centerYPos = pyautogui.position()
+		toggle_eyetracker()
 		mute_sound()
 
 		self.fluent_mode()
@@ -36,10 +38,18 @@ class BrowseMode:
 			scroll( 150 )
 		elif( loud_detection(dataDicts, "peak_sound_s" ) ):
 			scroll( -150 )
-		elif( medium_detection(dataDicts, "bell", 90, 1000 ) ):
-			print( 'medium!' )
-			hotkey('alt', 'left')
-		
+		elif( loud_detection(dataDicts, "bell" ) ):
+			self.modeSwitcher.turnOnModeSwitch()
+		elif( percentage_detection(dataDicts, "peak_sound_gg", 75 ) ):
+			quadrant = detect_mouse_quadrant( 3, 3 )
+			if( quadrant == 1 ):
+				hotkey('ctrl', 'w')
+			elif( quadrant == 2 ):
+				hotkey('ctrl', 't')
+			elif( quadrant > 3 ):
+				self.modeSwitcher.turnOnModeSwitch()				
+
+			
 		if( self.mode == "precision" or self.mode == "pause" ):
 			if( mouseMoving == False ):
 				self.mode = "pause"
@@ -69,3 +79,4 @@ class BrowseMode:
 					
 	def exit( self ):
 		self.mode = "regular"
+		toggle_eyetracker()

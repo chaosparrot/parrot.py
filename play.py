@@ -22,9 +22,7 @@ import time
 import csv
 import threading
 import pythoncom
-import mode_browse
 import mode_switch
-import switch
 centerXPos, centerYPos = position()
 
 TEMP_FILE_NAME = "play.wav"
@@ -160,7 +158,7 @@ if( os.path.isfile('run.csv') ):
 # Write a replay for the percentages
 with open('run.csv', 'a', newline='') as csvfile:
 	mode_switcher = mode_switch.ModeSwitcher()
-	mode_switcher.switchMode( switch.SwitchMode() )
+	mode_switcher.switchMode('browse')
 
 	headers = ['time', 'winner', 'intensity']
 	headers.extend( data_directory_names )

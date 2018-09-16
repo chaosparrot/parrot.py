@@ -16,15 +16,20 @@ from mode_switch import *
 
 class SwitchMode:
 
-	def __init__(self):
+	def __init__(self, modeSwitcher):
 		self.mode = "regular"
+				
 		# Create a grammar which contains and loads the command rule.
 		grammar = Grammar("example grammar")                # Create a grammar to contain the command    rule.
-		grammar.add_rule(TwitchModeRule())                     # Add the command rule to the grammar.
-		grammar.add_rule(YoutubeModeRule())                     # Add the command rule to the grammar.
-		grammar.add_rule(BrowseModeRule())                     # Add the command rule to the grammar.
-		grammar.add_rule(GameModeRule())                     # Add the command rule to the grammar.
-		grammar.add_rule(DraftModeRule())                     # Add the command rule to the grammar.
+		twitchRule = TwitchModeRule()
+		twitchRule.setModeSwitch( modeSwitcher )
+		grammar.add_rule(twitchRule)                     	# Add the command rule to the grammar.
+		youtubeRule = YoutubeModeRule()
+		youtubeRule.setModeSwitch( modeSwitcher )		
+		grammar.add_rule(youtubeRule)                     	# Add the command rule to the grammar.
+		browseRule = BrowseModeRule()
+		browseRule.setModeSwitch( modeSwitcher )
+		grammar.add_rule(browseRule)                     	# Add the command rule to the grammar.
 		grammar.load()                                      # Load the grammar.		
 
 	def start( self ):
@@ -36,39 +41,40 @@ class SwitchMode:
 		sleep(.1)
 		
 	def exit( self ):
-		turn_on_sound()
 		toggle_speechrec()
+		turn_on_sound()
 
 # Voice command rule combining spoken form and recognition processing.
 class TwitchModeRule(CompoundRule):
     spec = "Twitchmode"                  # Spoken form of command.
+	
     def _process_recognition(self, node, extras):   # Callback when command is spoken.
-        toggle_speechrec()
-        x = ModeSwitcher()
-        x.switchMode(TwitchMode())
+        self.modeSwitcher.switchMode("twitch")
+		
+    def setModeSwitch( self, modeSwitcher ):
+        self.modeSwitcher = modeSwitcher
 		
 # Voice command rule combining spoken form and recognition processing.
 class YoutubeModeRule(CompoundRule):
-    spec = "Youtubemode"                  # Spoken form of command.
+    spec = "Chinchilla purge"                  # Spoken form of command.
     def _process_recognition(self, node, extras):   # Callback when command is spoken.
-        # SWITCH TO YOUTUBE MODE
-        toggle_speechrec()		
-        x = ModeSwitcher()
-        x.switchMode(YoutubeMode())
+        self.modeSwitcher.switchMode("youtube")
+		
+    def setModeSwitch( self, modeSwitcher ):
+        self.modeSwitcher = modeSwitcher
 
 class BrowseModeRule(CompoundRule):
-    spec = "Browsemode"                  # Spoken form of command.
+    spec = "BrowseMode"                  # Spoken form of command.
     def _process_recognition(self, node, extras):   # Callback when command is spoken.
-        # SWITCH TO BROWSE MODE
-        toggle_speechrec()
-        x = ModeSwitcher()
-        x.switchMode(BrowseMode())
+        self.modeSwitcher.switchMode("browse")
+		
+    def setModeSwitch( self, modeSwitcher ):
+        self.modeSwitcher = modeSwitcher
 
 class GameModeRule(CompoundRule):
-    spec = "GameMode"                  # Spoken form of command.
+    spec = "HeroesMode"                  # Spoken form of command.
     def _process_recognition(self, node, extras):   # Callback when command is spoken.
         # SWITCH TO GAME MODE
-        toggle_speechrec()
         x = ModeSwitcher()
         x.switchMode(BrowseMode())
 
@@ -76,6 +82,5 @@ class DraftModeRule(CompoundRule):
     spec = "DraftMode"                  # Spoken form of command.
     def _process_recognition(self, node, extras):   # Callback when command is spoken.
         # SWITCH TO GAME MODE
-        toggle_speechrec()
         x = ModeSwitcher()		
         x.switchMode(BrowseMode())

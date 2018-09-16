@@ -18,6 +18,15 @@ def loud_detection( data, label ):
 		return True
 	else:
 		return False
+		
+def percentage_detection( data, label, percentage ):
+	percent_met = data[-1][label]['percent'] >= percentage
+	
+	if( percent_met ):
+		return True
+	else:
+		return False
+
 
 def medium_detection( data, label, required_percent, required_intensity ):
 	last_is_not_label = data[-1][label]['percent'] < required_percent
@@ -70,3 +79,21 @@ def quick_detection( currentDict, previousDict, label ):
 		return True
 	else:
 		return False
+		
+		
+# Return the quadrant of the mouse position
+def detect_mouse_quadrant( widthSegments, heightSegments ):
+	width, height = pyautogui.size()
+	x, y = position()
+	if( x == 0 ):
+		widthPosition = 0
+	else:
+		widthPosition = math.floor( x / ( width / widthSegments ) )
+	
+	if( y == 0 ):
+		heightPosition = 0
+	else:
+		heightPosition = math.floor( y /( height / heightSegments ) )
+
+	quadrant = 1 + widthPosition + ( heightPosition * widthSegments )
+	return quadrant
