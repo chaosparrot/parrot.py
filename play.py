@@ -158,7 +158,7 @@ if( os.path.isfile('run.csv') ):
 # Write a replay for the percentages
 with open('run.csv', 'a', newline='') as csvfile:
 	mode_switcher = mode_switch.ModeSwitcher()
-	mode_switcher.switchMode('browse')
+	mode_switcher.switchMode('heroes')
 
 	headers = ['time', 'winner', 'intensity']
 	headers.extend( data_directory_names )
@@ -226,7 +226,7 @@ with open('run.csv', 'a', newline='') as csvfile:
 			
 		mode_switcher.getMode().handle_input( dataDicts )
 
-		pythoncom.PumpWaitingMessages()
+		#pythoncom.PumpWaitingMessages()
 				
 		save_total_file = False
 		if( save_total_file and len( total_frames ) > 500 ):

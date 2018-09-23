@@ -111,8 +111,8 @@ dataset = []
 dataset_x = []
 dataset_labels = []
 
-clf = RandomForestClassifier(n_estimators=50, max_depth=10, random_state=123)
-classifier = RandomForestClassifier(n_estimators=50, max_depth=10, random_state=123)
+clf = RandomForestClassifier(n_estimators=100, max_depth=10, random_state=123)
+classifier = RandomForestClassifier(n_estimators=100, max_depth=10, random_state=123)
 #clf = MLPClassifier(hidden_layer_sizes=(527, 527, 527), solver='adam', activation='tanh', alpha=0.00001, learning_rate='invscaling', random_state=1, tol=0.0000001, verbose=True, max_iter=400)
 #classifier = MLPClassifier(hidden_layer_sizes=(527, 527, 527), solver='adam', activation='tanh', alpha=0.00001, learning_rate='invscaling', random_state=1, tol=0.0000001, verbose=True, max_iter=400)
 	

@@ -20,7 +20,7 @@ class YoutubeMode:
 		moveTo( 500, 500 )
 		click()
 		press('space')
-		moveTo(2000, 2000)
+		moveTo(500, 2000)
 
 		press('f')
 		

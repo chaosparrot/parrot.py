@@ -6,6 +6,7 @@ from switch import *
 from mode_twitch import *
 from mode_browse import *
 from mode_youtube import *
+from mode_heroes import *
 from system_toggles import toggle_speechrec
 
 class ModeSwitcher(object):
@@ -22,7 +23,8 @@ class ModeSwitcher(object):
 				'browse': BrowseMode(ModeSwitcher.__instance),
 				'youtube': YoutubeMode(ModeSwitcher.__instance),
 				'twitch': TwitchMode(ModeSwitcher.__instance),
-				'switch': SwitchMode(ModeSwitcher.__instance)
+				'switch': SwitchMode(ModeSwitcher.__instance),
+				'heroes': HeroesMode(ModeSwitcher.__instance)
 			}
 			
 		return ModeSwitcher.__instance

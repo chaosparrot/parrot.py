@@ -30,6 +30,10 @@ class SwitchMode:
 		browseRule = BrowseModeRule()
 		browseRule.setModeSwitch( modeSwitcher )
 		grammar.add_rule(browseRule)                     	# Add the command rule to the grammar.
+		heroesRule = HeroesModeRule()
+		heroesRule.setModeSwitch( modeSwitcher )
+		grammar.add_rule(heroesRule)                     	# Add the command rule to the grammar.
+
 		grammar.load()                                      # Load the grammar.		
 
 	def start( self ):
@@ -71,16 +75,19 @@ class BrowseModeRule(CompoundRule):
     def setModeSwitch( self, modeSwitcher ):
         self.modeSwitcher = modeSwitcher
 
-class GameModeRule(CompoundRule):
+class HeroesModeRule(CompoundRule):
     spec = "HeroesMode"                  # Spoken form of command.
     def _process_recognition(self, node, extras):   # Callback when command is spoken.
-        # SWITCH TO GAME MODE
-        x = ModeSwitcher()
-        x.switchMode(BrowseMode())
+        self.modeSwitcher.switchMode("heroes")
+		
+    def setModeSwitch( self, modeSwitcher ):
+        self.modeSwitcher = modeSwitcher
+
 
 class DraftModeRule(CompoundRule):
     spec = "DraftMode"                  # Spoken form of command.
     def _process_recognition(self, node, extras):   # Callback when command is spoken.
-        # SWITCH TO GAME MODE
-        x = ModeSwitcher()		
-        x.switchMode(BrowseMode())
+        self.modeSwitcher.switchMode("heroes")
+
+    def setModeSwitch( self, modeSwitcher ):
+        self.modeSwitcher = modeSwitcher
