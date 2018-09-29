@@ -19,6 +19,8 @@ for column in df.drop(['winner', 'intensity', 'time'], axis=1):
 	
 	if(column == "silence"):
 		color = "w"
+	if(column == "whistle"):
+		color = "r"
 	
 	num+=1
 	plt.bar(np.arange(df['time'].size), df[column], color=color, linewidth=1, alpha=0.9, label=column, bottom=bottom)

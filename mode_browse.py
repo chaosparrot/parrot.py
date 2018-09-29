@@ -40,7 +40,7 @@ class BrowseMode:
 			scroll( -150 )
 		elif( loud_detection(dataDicts, "bell" ) ):
 			self.modeSwitcher.turnOnModeSwitch()
-		elif( percentage_detection(dataDicts, "peak_sound_gg", 75 ) ):
+		elif( percentage_detection(dataDicts, "sound_thr", 75 ) ):
 			quadrant = detect_mouse_quadrant( 3, 3 )
 			if( quadrant == 1 ):
 				hotkey('ctrl', 'w')

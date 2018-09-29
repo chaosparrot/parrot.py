@@ -33,6 +33,10 @@ class SwitchMode:
 		heroesRule = HeroesModeRule()
 		heroesRule.setModeSwitch( modeSwitcher )
 		grammar.add_rule(heroesRule)                     	# Add the command rule to the grammar.
+		testingRule = TestingModeRule()
+		testingRule.setModeSwitch( modeSwitcher )
+		grammar.add_rule(testingRule)                     	# Add the command rule to the grammar.
+
 
 		grammar.load()                                      # Load the grammar.		
 
@@ -82,7 +86,14 @@ class HeroesModeRule(CompoundRule):
 		
     def setModeSwitch( self, modeSwitcher ):
         self.modeSwitcher = modeSwitcher
-
+		
+class TestingModeRule(CompoundRule):
+    spec = "TestingMode"                  # Spoken form of command.
+    def _process_recognition(self, node, extras):   # Callback when command is spoken.
+        self.modeSwitcher.switchMode("testing")
+		
+    def setModeSwitch( self, modeSwitcher ):
+        self.modeSwitcher = modeSwitcher
 
 class DraftModeRule(CompoundRule):
     spec = "DraftMode"                  # Spoken form of command.

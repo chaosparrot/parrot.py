@@ -152,13 +152,13 @@ dataDictsLength = 10
 dataDicts = []
 
 starttime = int(time.time())
-if( os.path.isfile('run.csv') ):
-	os.rename('run.csv', 'previous_run_' + str(starttime) + ".csv")
+if( os.path.isfile('replays/run.csv') ):
+	os.rename('run.csv', 'replays/previous_run_' + str(starttime) + ".csv")
 	
 # Write a replay for the percentages
-with open('run.csv', 'a', newline='') as csvfile:
+with open('replays/run.csv', 'a', newline='') as csvfile:
 	mode_switcher = mode_switch.ModeSwitcher()
-	mode_switcher.switchMode('heroes')
+	mode_switcher.switchMode('browse')
 
 	headers = ['time', 'winner', 'intensity']
 	headers.extend( data_directory_names )
@@ -187,16 +187,11 @@ with open('run.csv', 'a', newline='') as csvfile:
 		# FEATURE ENGINEERING
 		fs, rawWav = scipy.io.wavfile.read( TEMP_FILE_NAME )
 		chan1 = rawWav[:,0]
-		chan2 = rawWav[:,1]
 											
 		# FFT is symmetrical - Only need one half of it to preserve memory
-		ft = fft( chan1 )
-		powerspectrum = np.abs( rfft( chan1 ) ) ** 2
 		mfcc_result1 = mfcc( chan1, samplerate=fs, nfft=1103 )
-		mfcc_result2 = mfcc( chan2, samplerate=fs, nfft=1103 )
 		data_row = []
 		data_row.extend( mfcc_result1.ravel() )
-		data_row.extend( mfcc_result2.ravel() )
 		
 		data = [ data_row ]
 		
@@ -214,6 +209,9 @@ with open('run.csv', 'a', newline='') as csvfile:
 		probabilityDict = {}
 		for index, percent in enumerate( probabilities[0] ):
 			label = labelDict[ str( label_array[ index ] ) ]
+			percentage = 0
+			if( index == predicted ):
+				percentage = 100
 			probabilityDict[ label ] = { 'percent': percent, 'intensity': int(intensity), 'winner': index == predicted }
 			replay_row[ label ] = percent
 			
@@ -225,8 +223,6 @@ with open('run.csv', 'a', newline='') as csvfile:
 			dataDicts.pop(0)
 			
 		mode_switcher.getMode().handle_input( dataDicts )
-
-		#pythoncom.PumpWaitingMessages()
 				
 		save_total_file = False
 		if( save_total_file and len( total_frames ) > 500 ):

@@ -97,3 +97,21 @@ def detect_mouse_quadrant( widthSegments, heightSegments ):
 
 	quadrant = 1 + widthPosition + ( heightPosition * widthSegments )
 	return quadrant
+
+# Detects on what edge the mouse is
+def detect_screen_edge( threshold ):
+	width, height = pyautogui.size()
+	x, y = position()
+	
+	edges = []
+	if( y <= threshold ):
+		edges.append( "up" )
+	elif( y >= height - threshold ):
+		edges.append( "down" )
+	
+	if( x <= threshold ):
+		edges.append( "left" )
+	elif( x >= width - threshold ):
+		edges.append( "right" )
+		
+	return edges

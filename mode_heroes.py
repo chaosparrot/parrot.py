@@ -15,29 +15,21 @@ class HeroesMode:
 		self.modeSwitcher = modeSwitcher
 		self.pressed_keys = []
 		self.should_follow = False
+		
+		self.hold_key = ""
 
 	def start( self ):
 		mute_sound()
 		toggle_eyetracker()
-		self.camera_movement( -1 )
 				
 	def handle_input( self, dataDicts ):
-		quadrant = detect_mouse_quadrant( 4, 3 )
-	
-		if( percentage_detection(dataDicts, "sound_thr", 10 ) ):
-			print( "PERCENT!" )
-			self.camera_movement( quadrant )
-			self.mode = "movement"
-		elif( self.mode == "movement"):
-			print( "NOT PERCENT!" )
-		
-			self.camera_movement( -1 )
-			self.mode = "regular"
-	
-		if( single_tap_detection(dataDicts, "peak_sound_haha", 70, 100 ) ):
+		if( single_tap_detection(dataDicts, "peak_sound_ie", 70, 1000 ) ):
+			quadrant = detect_mouse_quadrant( 4, 3 )
 			self.character_movement( quadrant )
-			
-		if( single_tap_detection(dataDicts, "peak_sound_q", 50, 1000 ) ):
+		elif( single_tap_detection(dataDicts, "sound_huu", 80, 1000 ) ):
+			quadrant = detect_mouse_quadrant( 3, 3 )
+			self.set_hold_key( quadrant )
+		elif( single_tap_detection(dataDicts, "peak_sound_oh", 50, 1000 ) ):
 			self.press_ability( 'q' )
 		elif( single_tap_detection(dataDicts, "peak_sound_s", 60, 1000 ) ):
 			self.press_ability( 'w' )			
@@ -45,20 +37,34 @@ class HeroesMode:
 			self.press_ability( 'e' )
 		elif( percentage_detection(dataDicts, "whistle", 70 ) ):
 			self.press_ability( 'r' )
-	
-		if( single_tap_detection(dataDicts, "cluck", 35, 1000 ) ):
-			if( self.mode == "movement" ):
-				self.mode = "regular"
-				
-				print( "CLUCK MOVEMENT!" )				
-				self.camera_movement( -1 )
+		elif( single_tap_detection(dataDicts, "sound_pfft", 70, 1000 ) ):
+			self.press_ability( 'z' )
 
-			self.follow_mouse( False )
-			#click(button='right')
-			print( "RMB" )
-		elif( single_tap_detection(dataDicts, "fingersnap", 30, 500 ) ):
+		if( percentage_detection(dataDicts, "sound_thr", 40 ) ):
+			edges = detect_screen_edge( 100 )
+
+			self.mode = "cameramovement"
+			print ( "Camera movement!" ) 
+			self.camera_movement( edges )
+		elif( self.mode == "cameramovement" ):
+			self.camera_movement( [] )
+			print( "Regular mode!" )
+			self.mode = "regular"
+					
+		if( single_tap_detection(dataDicts, "cluck", 50, 1000 ) ):
+			if( self.hold_key == ""):
+				self.follow_mouse( False )
+				click(button='right')
+				print( "RMB" )
+			elif( self.hold_key == "click"):
+				click()
+			else:
+				self.press_ability( self.hold_key )
+				
+			self.hold_key = ""
+		elif( single_tap_detection(dataDicts, "fingersnap", 60, 1200 ) ):
 			print( "LMB" )
-			#click()
+			click()
 			
 		if( percentage_detection(dataDicts, "bell", 90 ) ):
 			self.modeSwitcher.switchMode('browse')
@@ -66,37 +72,39 @@ class HeroesMode:
 	def character_movement( self, quadrant ):
 		print ( "Character movement!" ) 
 	
-		## Mount up
-		if( quadrant >= 9 ):
-			#press('z')
-			print( "Pressing Z" )
-		elif( quadrant > 4 and quadrant < 9 ):
-			self.follow_mouse( True )
+		## Show tab
+		if( quadrant == 1 ):
+			self.hold_key = "a"
+		elif( quadrant == 4 ):
+			self.press_ability('s')
 		## Hearth home
-		elif( quadrant >= 0 and quadrant < 5 ):
-			#press('b')
-			print( "Pressing B" )
-			
+		elif( quadrant == 9 ):
+			self.press_ability('b')
+		elif( quadrant == 12 ):
+			click()
+		else:
+			self.follow_mouse( True )
+		
+	def set_hold_key( self, quadrant ):
+		if( quadrant == 1 ):
+			self.hold_key = "1"
+		elif( quadrant == 2 ):
+			self.hold_key = "2"
+		elif( quadrant == 3 ):
+			self.hold_key = "3"
+		elif( quadrant == 7 ):
+			self.press_ability("n")
+			self.hold_key = "click"
+		elif( quadrant == 9 ):
+			self.press_ability( "tab" )
 			
 	def press_ability( self, key ):
 		print( "pressing " + key )
+		press( key )
 		
-	def camera_movement( self, quadrant ):
-		print ( "Camera movement!" ) 
-	
-		detected = []
+	def camera_movement( self, edges ):	
 		self.follow_mouse( False )
-		if( quadrant <= 4 and quadrant >= 0 ):
-			detected.append( "up" )
-		elif( quadrant >= 9 ):
-			detected.append( "down" )
-			
-		if( quadrant == 1 or quadrant == 5 or quadrant == 9 ):
-			detected.append("left")
-		elif( quadrant == 4 or quadrant == 8 or quadrant == 12 ):
-			detected.append("right")
-		
-		print( self.pressed_keys, detected )
+		detected = edges
 		
 		# Release all the keys that it doesnt have anymore
 		for held in self.pressed_keys:
@@ -109,14 +117,9 @@ class HeroesMode:
 			if( pressed not in self.pressed_keys ):
 				keyDown( pressed )
 				print ( "holding down " + pressed )
-								
-		## Center area detected - Put camera to follow hero
-		if( len( self.pressed_keys ) > 0 and len( detected ) == 0 ):
+				
+		if( len( self.pressed_keys ) == 0 and len( detected ) == 0 ):
 			press('space')
-			self.camera_mode = "following"
-			print ( "space!" )
-		else:
-			self.camera_mode = "moving"
 
 		self.pressed_keys = detected
 
@@ -124,10 +127,10 @@ class HeroesMode:
 		if( self.should_follow != should_follow ):
 			if( should_follow == True ):
 				print( "Following mouse!" )
-				#mouseDown(button="right")
+				mouseDown(button="right")
 			else:
 				print( "Stopped following mouse!" )
-				#mouseUp(button='right')
+				mouseUp(button='right')
 			
 		self.should_follow = should_follow
 		

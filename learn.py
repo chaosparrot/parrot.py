@@ -20,6 +20,7 @@ from scipy.fftpack import fft, rfft, fft2, dct
 from python_speech_features import mfcc
 from sklearn.manifold import TSNE
 from ggplot import *
+from sklearn import preprocessing
 
 def hash_directory_to_number( setdir ):
 	return float( int(hashlib.sha256( setdir.encode('utf-8')).hexdigest(), 16) % 10**8 )
@@ -77,7 +78,6 @@ def load_wav_files( directory, label, start, end ):
 			# Load the WAV file and turn it into a onedimensional array of numbers
 			fs, rawWav = scipy.io.wavfile.read( full_filename )
 			chan1 = rawWav[:,0]
-			chan2 = rawWav[:,1]
 							
 			# FFT is symmetrical - Only need one half of it to preserve memory
 			#complexspectrum = fft( chan1 )
@@ -94,10 +94,8 @@ def load_wav_files( directory, label, start, end ):
 			#	first_file = False
 			
 			mfcc_result1 = mfcc( chan1, samplerate=fs, nfft=1103 )
-			mfcc_result2 = mfcc( chan2, samplerate=fs, nfft=1103 )
 			data_row = []
 			data_row.extend( mfcc_result1.ravel() )
-			data_row.extend( mfcc_result2.ravel() )
 			
 			category_dataset_x.append( data_row )
 			category_dataset_labels.append( label )

@@ -55,7 +55,7 @@ for j in range( 0, int(300.0 * ( 1.0 / RECORD_SECONDS ))):
 	stream.close()
 	audio.terminate()
 	 
-	if( highestintensity > 1500 ):
+	if( highestintensity > 700 ):
 		print ("Saving recording " + fileid )
 		waveFile = wave.open(WAVE_OUTPUT_FILENAME + fileid + WAVE_OUTPUT_FILE_EXTENSION, 'wb')
 		waveFile.setnchannels(CHANNELS)
