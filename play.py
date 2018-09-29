@@ -153,7 +153,7 @@ dataDicts = []
 
 starttime = int(time.time())
 if( os.path.isfile('replays/run.csv') ):
-	os.rename('run.csv', 'replays/previous_run_' + str(starttime) + ".csv")
+	os.rename('replays/run.csv', 'replays/previous_run_' + str(starttime) + ".csv")
 	
 # Write a replay for the percentages
 with open('replays/run.csv', 'a', newline='') as csvfile:
