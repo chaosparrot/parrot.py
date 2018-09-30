@@ -1,2 +1,8 @@
 replays/*.csv
 !replays
+recordings/*
+!recordings/.gitkeep
+!recordings
+dataset/*
+!dataset
+!dataset/.gitkeep

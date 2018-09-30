@@ -155,6 +155,10 @@ starttime = int(time.time())
 if( os.path.isfile('replays/run.csv') ):
 	os.rename('replays/run.csv', 'replays/previous_run_' + str(starttime) + ".csv")
 	
+# Useful for later recording
+# var = input("Please enter something: ")
+# print( var )
+	
 # Write a replay for the percentages
 with open('replays/run.csv', 'a', newline='') as csvfile:
 	mode_switcher = mode_switch.ModeSwitcher()

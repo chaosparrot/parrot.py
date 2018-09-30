@@ -15,6 +15,7 @@ class HeroesMode:
 		self.modeSwitcher = modeSwitcher
 		self.pressed_keys = []
 		self.should_follow = False
+		self.should_drag = False
 		
 		self.hold_key = ""
 
@@ -24,9 +25,9 @@ class HeroesMode:
 				
 	def handle_input( self, dataDicts ):
 		if( single_tap_detection(dataDicts, "peak_sound_ie", 70, 1000 ) ):
-			quadrant = detect_mouse_quadrant( 4, 3 )
+			quadrant = detect_mouse_quadrant( 3, 3 )
 			self.character_movement( quadrant )
-		elif( single_tap_detection(dataDicts, "sound_huu", 80, 1000 ) ):
+		elif( single_tap_detection(dataDicts, "sound_huu", 50, 1000 ) ):
 			quadrant = detect_mouse_quadrant( 3, 3 )
 			self.set_hold_key( quadrant )
 		elif( single_tap_detection(dataDicts, "peak_sound_oh", 50, 1000 ) ):
@@ -41,13 +42,13 @@ class HeroesMode:
 			self.press_ability( 'z' )
 
 		if( percentage_detection(dataDicts, "sound_thr", 40 ) ):
-			edges = detect_screen_edge( 100 )
+			edges = detect_screen_edge( 200 )
 
 			self.mode = "cameramovement"
 			print ( "Camera movement!" ) 
-			self.camera_movement( edges )
+			self.camera_movement( edges, detect_mouse_quadrant( 4, 3 ) )
 		elif( self.mode == "cameramovement" ):
-			self.camera_movement( [] )
+			self.camera_movement( [], -1 )
 			print( "Regular mode!" )
 			self.mode = "regular"
 					
@@ -71,18 +72,18 @@ class HeroesMode:
 			
 	def character_movement( self, quadrant ):
 		print ( "Character movement!" ) 
-	
+		
 		## Show tab
 		if( quadrant == 1 ):
 			self.hold_key = "a"
-		elif( quadrant == 4 ):
+			self.follow_mouse( False )			
+		elif( quadrant == 3 ):
 			self.press_ability('s')
+			self.follow_mouse( False )
 		## Hearth home
-		elif( quadrant == 9 ):
+		elif( quadrant == 7 ):
 			self.press_ability('b')
-		elif( quadrant == 12 ):
-			click()
-		else:
+		elif( quadrant == 5 ):
 			self.follow_mouse( True )
 		
 	def set_hold_key( self, quadrant ):
@@ -102,27 +103,43 @@ class HeroesMode:
 		print( "pressing " + key )
 		press( key )
 		
-	def camera_movement( self, edges ):	
+	def camera_movement( self, edges, quadrant ):	
 		self.follow_mouse( False )
 		detected = edges
 		
-		# Release all the keys that it doesnt have anymore
-		for held in self.pressed_keys:
-			if( held not in detected ):
-				keyUp( held )
-				print ( "releasing " + held )
-		
-		## Hold down new keys
-		for pressed in detected:
-			if( pressed not in self.pressed_keys ):
-				keyDown( pressed )
-				print ( "holding down " + pressed )
-				
-		if( len( self.pressed_keys ) == 0 and len( detected ) == 0 ):
-			press('space')
+		if( quadrant == 12 ):
+			self.drag_mouse( True )
+		else:
+			self.drag_mouse( False )		
+			# Release all the keys that it doesnt have anymore
+			for held in self.pressed_keys:
+				if( held not in detected ):
+					keyUp( held )
+					print ( "releasing " + held )
+			
+			## Hold down new keys
+			for pressed in detected:
+				if( pressed not in self.pressed_keys ):
+					keyDown( pressed )
+					print ( "holding down " + pressed )
+					
+			if( quadrant == 6 or quadrant == 7 ):
+				press('space')
+
 
 		self.pressed_keys = detected
 
+	def drag_mouse( self, should_drag ):
+		if( self.should_drag != should_drag ):
+			if( should_drag == True ):
+				print( "Start dragging!" )			
+				mouseDown()
+			else:
+				print( "Stopped dragging!" )			
+				mouseUp()
+				
+		self.should_drag = should_drag
+		
 	def follow_mouse( self, should_follow ):
 		if( self.should_follow != should_follow ):
 			if( should_follow == True ):
