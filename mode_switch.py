@@ -8,6 +8,7 @@ from mode_browse import *
 from mode_youtube import *
 from mode_heroes import *
 from mode_test import *
+from mode_excel import *
 from system_toggles import toggle_speechrec
 
 class ModeSwitcher(object):
@@ -26,7 +27,9 @@ class ModeSwitcher(object):
 				'twitch': TwitchMode(ModeSwitcher.__instance),
 				'switch': SwitchMode(ModeSwitcher.__instance),
 				'heroes': HeroesMode(ModeSwitcher.__instance),
-				'testing': TestMode(ModeSwitcher.__instance)
+				'testing': TestMode(ModeSwitcher.__instance),
+				'worklog': ExcelMode(ModeSwitcher.__instance, 'C:/Users/anonymous/Documents/Recognize/werktijden3.ods'),
+				'excel': ExcelMode(ModeSwitcher.__instance, ''),
 			}
 			
 		return ModeSwitcher.__instance

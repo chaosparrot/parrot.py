@@ -40,6 +40,8 @@ class HeroesMode:
 			self.press_ability( 'r' )
 		elif( single_tap_detection(dataDicts, "sound_pfft", 70, 1000 ) ):
 			self.press_ability( 'z' )
+		elif( single_tap_detection(dataDicts, "sound_tschk", 50, 1000 ) ):
+			self.press_ability( 'a' )
 
 		if( percentage_detection(dataDicts, "sound_thr", 40 ) ):
 			edges = detect_screen_edge( 200 )
@@ -78,7 +80,7 @@ class HeroesMode:
 			self.hold_key = "a"
 			self.follow_mouse( False )			
 		elif( quadrant == 3 ):
-			self.press_ability('s')
+			self.press_ability('h')
 			self.follow_mouse( False )
 		## Hearth home
 		elif( quadrant == 7 ):

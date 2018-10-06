@@ -43,9 +43,11 @@ class BrowseMode:
 		elif( percentage_detection(dataDicts, "sound_thr", 75 ) ):
 			quadrant = detect_mouse_quadrant( 3, 3 )
 			if( quadrant == 1 ):
-				hotkey('ctrl', 'w')
+				hotkey('alt', 'left')
 			elif( quadrant == 2 ):
 				hotkey('ctrl', 't')
+			elif( quadrant == 3 ):
+				hotkey('ctrl', 'w')
 			elif( quadrant > 3 ):
 				self.modeSwitcher.turnOnModeSwitch()				
 

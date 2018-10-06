@@ -1,4 +1,4 @@
-from dragonfly import Grammar, CompoundRule
+from dragonfly import Grammar, CompoundRule, Integer
 from detection_strategies import single_tap_detection, loud_detection, medium_detection
 import threading
 import numpy as np
@@ -13,6 +13,7 @@ from mode_twitch import *
 from mode_browse import *
 from mode_youtube import *
 from mode_switch import *
+from excel_grammar import *
 
 class SwitchMode:
 
@@ -20,35 +21,44 @@ class SwitchMode:
 		self.mode = "regular"
 				
 		# Create a grammar which contains and loads the command rule.
-		grammar = Grammar("example grammar")                # Create a grammar to contain the command    rule.
+		self.grammar = Grammar("Switch grammar")                # Create a grammar to contain the command    rule.
 		twitchRule = TwitchModeRule()
 		twitchRule.setModeSwitch( modeSwitcher )
-		grammar.add_rule(twitchRule)                     	# Add the command rule to the grammar.
+		self.grammar.add_rule(twitchRule)                     	# Add the command rule to the grammar.
 		youtubeRule = YoutubeModeRule()
 		youtubeRule.setModeSwitch( modeSwitcher )		
-		grammar.add_rule(youtubeRule)                     	# Add the command rule to the grammar.
+		self.grammar.add_rule(youtubeRule)                     	# Add the command rule to the grammar.
 		browseRule = BrowseModeRule()
 		browseRule.setModeSwitch( modeSwitcher )
-		grammar.add_rule(browseRule)                     	# Add the command rule to the grammar.
+		self.grammar.add_rule(browseRule)                     	# Add the command rule to the grammar.
 		heroesRule = HeroesModeRule()
 		heroesRule.setModeSwitch( modeSwitcher )
-		grammar.add_rule(heroesRule)                     	# Add the command rule to the grammar.
+		self.grammar.add_rule(heroesRule)                     	# Add the command rule to the grammar.
 		testingRule = TestingModeRule()
 		testingRule.setModeSwitch( modeSwitcher )
-		grammar.add_rule(testingRule)                     	# Add the command rule to the grammar.
+		self.grammar.add_rule(testingRule)                     	# Add the command rule to the grammar.
+		excelLogModeRule = ExcelLogModeRule()
+		excelLogModeRule.setModeSwitch( modeSwitcher )
+		self.grammar.add_rule(excelLogModeRule)                  # Add the command rule to the grammar.		
+		
+		excelModeRule = ExcelModeRule()
+		excelModeRule.setModeSwitch( modeSwitcher )
+		self.grammar.add_rule(excelModeRule)                  # Add the command rule to the grammar.		
 
-
-		grammar.load()                                      # Load the grammar.		
+		
 
 	def start( self ):
+		self.grammar.load()	
 		mute_sound()
 		toggle_speechrec()
+		
 		
 	def handle_input( self, dataDicts ):
 		pythoncom.PumpWaitingMessages()
 		sleep(.1)
 		
 	def exit( self ):
+		self.grammar.unload()		
 		toggle_speechrec()
 		turn_on_sound()
 
@@ -99,6 +109,22 @@ class DraftModeRule(CompoundRule):
     spec = "DraftMode"                  # Spoken form of command.
     def _process_recognition(self, node, extras):   # Callback when command is spoken.
         self.modeSwitcher.switchMode("heroes")
+
+    def setModeSwitch( self, modeSwitcher ):
+        self.modeSwitcher = modeSwitcher
+			
+class ExcelLogModeRule(CompoundRule):
+    spec = "Captains log"                  # Spoken form of command.
+    def _process_recognition(self, node, extras):   # Callback when command is spoken.
+        self.modeSwitcher.switchMode("worklog")
+
+    def setModeSwitch( self, modeSwitcher ):
+        self.modeSwitcher = modeSwitcher
+
+class ExcelModeRule(CompoundRule):
+    spec = "This is Jimmy over"                  # Spoken form of command.
+    def _process_recognition(self, node, extras):   # Callback when command is spoken.
+        self.modeSwitcher.switchMode("excel")
 
     def setModeSwitch( self, modeSwitcher ):
         self.modeSwitcher = modeSwitcher

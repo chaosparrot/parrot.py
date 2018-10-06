@@ -27,7 +27,7 @@ def hash_directory_to_number( setdir ):
 
 # Get the full directories for the dataset
 dir_path = os.path.join( os.path.dirname(os.path.realpath(__file__)), "dataset")
-data_directory_names = os.listdir( dir_path )
+data_directory_names =  [directory for directory in os.listdir( dir_path ) if directory != ".gitkeep"]
 data_directories = list( map( lambda n: os.path.join( dir_path, n ).lower(), data_directory_names) )
 
 # Add a label used for classifying the sounds
