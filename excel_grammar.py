@@ -71,7 +71,6 @@ class ColumnNumberPrintRule(CompoundRule):
 	def _process_recognition(self, node, extras):
 		natoNumber = extras["alphabet"]
 		
-		print( extras )
 		numbers = extras["n"]
 		
 		# Move to the correct column
@@ -82,6 +81,38 @@ class ColumnNumberPrintRule(CompoundRule):
 		
 		press( rightPresses )
 		typewrite( "".join( str(x) for x in numbers ) )
+		
+		# Make sure we keep our row selected
+		press(["right", "left"])
+		
+class ColumnModePrintRule(CompoundRule):
+	spec = "<alphabet> <n> stop"
+	extras = [Repetition(Integer("n", 0, 10), 0, 10, "n"), Repetition(natoAlphabet, 2, 3, "alphabet" )]
+
+	def _process_recognition(self, node, extras):
+		natoNumbers = extras["alphabet"]
+		numbers = extras["n"]
+		
+		# Move to the correct column
+		press('home')
+		rightPresses = []
+		for i in range(natoNumbers[0] - 1):
+			rightPresses.append('right')
+		press( rightPresses )
+		
+		if( natoNumberToLetter( natoNumbers[1] ) == "n" ):
+			typewrite( "".join( str(x) for x in numbers ) )
+		elif( natoNumberToLetter( natoNumbers[1] ) == "t" ):
+			if( len( numbers ) == 3 ):
+				typewrite( ".0" + str(numbers[0]) + ":" + str(numbers[1]) + str(numbers[2]) + ":00" ) 
+			elif( len( numbers ) == 4 ):
+				typewrite( "." + str(numbers[0]) + str(numbers[1]) + ":" + str(numbers[2]) + str(numbers[3]) + ":00" )
+		elif( natoNumberToLetter( natoNumbers[1] ) == "d" ):
+			if( len( numbers ) == 3 ):
+				typewrite( "0" + str(numbers[0]) + " - " + str(numbers[1]) + str(numbers[2]) )
+			elif( len( numbers ) == 4 ):
+				typewrite( str(numbers[0]) + str(numbers[1]) + " - " + str(numbers[2]) + str(numbers[3]) )
+
 		
 		# Make sure we keep our row selected
 		press(["right", "left"])

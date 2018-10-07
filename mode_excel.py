@@ -21,6 +21,8 @@ class ExcelMode:
 		self.grammar = Grammar("Excel")
 		columnNumberRule = ColumnNumberPrintRule()
 		self.grammar.add_rule( columnNumberRule )
+		columnModeRule = ColumnModePrintRule()
+		self.grammar.add_rule( columnModeRule )		
 		correctionRule = CorrectionRule()
 		self.grammar.add_rule( correctionRule )
 		copyRowRule = CopyRowRule()
