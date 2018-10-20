@@ -1,4 +1,4 @@
-from detection_strategies import *
+from lib.detection_strategies import *
 import threading
 import numpy as np
 import pyautogui
@@ -6,7 +6,7 @@ from pyautogui import press, hotkey, click, scroll, typewrite, moveRel, moveTo, 
 import time
 from subprocess import call
 import os
-from system_toggles import mute_sound, toggle_speechrec, toggle_eyetracker
+from lib.system_toggles import mute_sound, toggle_speechrec, toggle_eyetracker
 
 class BrowseMode:
 

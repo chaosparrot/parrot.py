@@ -1,4 +1,4 @@
-from detection_strategies import *
+from lib.detection_strategies import *
 import threading
 import numpy as np
 import pyautogui
@@ -6,7 +6,7 @@ from pyautogui import press, hotkey, click, scroll, typewrite, moveRel, moveTo, 
 import time
 from subprocess import call
 import os
-from system_toggles import mute_sound, toggle_speechrec, toggle_eyetracker, turn_on_sound
+from lib.system_toggles import mute_sound, toggle_speechrec, toggle_eyetracker, turn_on_sound
 import pandas as pd
 import matplotlib.pyplot as plt
 
@@ -74,6 +74,8 @@ class TestMode:
 				color = "w"
 			if(column == "whistle"):
 				color = "r"
+			if(column == "hotel_bell"):
+				color = "g"
 			
 			num+=1
 			plt.bar(np.arange(self.testdata['time'].size), self.testdata[column], color=color, linewidth=1, alpha=0.9, label=column, bottom=bottom)

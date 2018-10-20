@@ -2,14 +2,9 @@ from dragonfly import Grammar, CompoundRule
 import pythoncom
 from time import sleep
 import pyautogui
-from switch import *
-from mode_twitch import *
-from mode_browse import *
-from mode_youtube import *
-from mode_heroes import *
-from mode_test import *
-from mode_excel import *
-from system_toggles import toggle_speechrec
+from lib.modes import *
+from lib.modes.mode_switch import SwitchMode
+from lib.system_toggles import toggle_speechrec
 
 class ModeSwitcher(object):
 	__instance = None
