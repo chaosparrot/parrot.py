@@ -13,6 +13,7 @@ import os
 from sklearn.externals import joblib
 import pandas as pd
 import matplotlib.pyplot as plt
+from lib.listen import start_listen_loop
 
 def test_data( with_intro ):
 	available_models = []
@@ -100,6 +101,42 @@ def audio_analysis( available_models ):
 	print( "Loading model " + classifier_file )
 	classifier = joblib.load( classifier_file )
 	
+	if not os.path.exists(REPLAYS_AUDIO_FOLDER ):
+		os.makedirs(REPLAYS_AUDIO_FOLDER)	
+
+	wav_files = os.listdir(REPLAYS_AUDIO_FOLDER)
+
+	print( "Should we analyse the existing audio files or record a new set?" )
+	print( " - [E] for using the existing files" )
+	print( " - [N] for clearing the files and recording new ones" )
+	new_or_existing = ""
+	
+	while( new_or_existing == "" ):
+		new_or_existing = input("")
+	
+	if( new_or_existing.lower() == "n" ):
+		for wav_file in wav_files:
+			file_path = os.path.join(REPLAYS_AUDIO_FOLDER, wav_file)
+			if( file_path.endswith(".wav") ):
+				try:
+					if os.path.isfile(file_path):
+						os.unlink(file_path)
+				except Exception as e:
+					print("Could not delete " + wav_file)
+		
+		print( "-------------------------" )
+		print( "Recording new audio files" )
+		replay_file = start_listen_loop( classifier, True, True, 15 )
+		print( "-------------------------" )
+		print( "Analyzing file " + replay_file )
+		plot_replay( pd.read_csv( replay_file, skiprows=0, header=0) )
+	elif( new_or_existing.lower() == "e" ):
+		print( "-------------------------" )
+		print( "Analysing existing audio files" )
+		print( "-------------------------" )
+		print( "Analyzing file REPLAY!" )
+			
+	# Go back to main menu afterwards
 	test_data( True )
 
 def analyze_replay_or_audio( available_models, available_replays ):
