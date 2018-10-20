@@ -92,7 +92,7 @@ def start_listen_loop( classifier, persist_replay, persist_files, amount_of_seco
 def listen_loop( audio, stream, classifier, dataDicts, audio_frames ):
 	audio_frames, intensity = get_stream_wav_segment( stream, audio_frames )
 
-	tempFile = wave.open(wav_file, 'wb')
+	tempFile = wave.open(TEMP_FILE_NAME, 'wb')
 	tempFile.setnchannels(CHANNELS)
 	tempFile.setsampwidth(audio.get_sample_size(FORMAT))
 	tempFile.setframerate(RATE)
