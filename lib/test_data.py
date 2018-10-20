@@ -13,7 +13,7 @@ import os
 from sklearn.externals import joblib
 import pandas as pd
 import matplotlib.pyplot as plt
-from lib.listen import start_listen_loop
+from lib.listen import start_listen_loop, predict_wav_files
 
 def test_data( with_intro ):
 	available_models = []
@@ -110,7 +110,6 @@ def audio_analysis( available_models ):
 	print( " - [E] for using the existing files" )
 	print( " - [N] for clearing the files and recording new ones" )
 	new_or_existing = ""
-	
 	while( new_or_existing == "" ):
 		new_or_existing = input("")
 	
@@ -133,8 +132,26 @@ def audio_analysis( available_models ):
 	elif( new_or_existing.lower() == "e" ):
 		print( "-------------------------" )
 		print( "Analysing existing audio files" )
+		full_wav_files = []
+		for wav_file in wav_files:
+			file_path = os.path.join(REPLAYS_AUDIO_FOLDER, wav_file)
+			if( file_path.endswith(".wav") ):
+				full_wav_files.append( file_path )
+				
+		predictions = predict_wav_files( classifier, full_wav_files )
+		
+		dataRows = []
+		start_time = time.time()
+		for index, prediction in enumerate( predictions ):
+			dataRow = {'time': int((time.time() - start_time ) * 1000) / 1000, 'intensity': 0 }
+			for column in prediction:
+				dataRow[column] = prediction[ column ]['percent']
+				if( prediction[ column ]['winner'] ):
+					dataRow['winner'] = column
+			dataRows.append( dataRow )
 		print( "-------------------------" )
-		print( "Analyzing file REPLAY!" )
+		print( "Analyzing replay!" )
+		plot_replay( pd.DataFrame(data=dataRows) )
 			
 	# Go back to main menu afterwards
 	test_data( True )

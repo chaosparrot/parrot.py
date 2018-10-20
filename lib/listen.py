@@ -16,10 +16,9 @@ import csv
 
 def start_listen_loop( classifier, persist_replay, persist_files, amount_of_seconds ):		
 	# Get a minimum of these elements of data dictionaries
-	dataDictsLength = PREDICTION_LENGTH
 	dataDicts = []
 	audio_frames = []
-	for i in range( 0, dataDictsLength ):
+	for i in range( 0, PREDICTION_LENGTH ):
 		dataDict = {}
 		for directoryname in classifier.classes_:
 			dataDict[ directoryname ] = {'percent': 0, 'intensity': 0}
@@ -92,16 +91,61 @@ def start_listen_loop( classifier, persist_replay, persist_files, amount_of_seco
 
 def listen_loop( audio, stream, classifier, dataDicts, audio_frames ):
 	audio_frames, intensity = get_stream_wav_segment( stream, audio_frames )
-			
-	tempFile = wave.open(TEMP_FILE_NAME, 'wb')
+
+	tempFile = wave.open(wav_file, 'wb')
 	tempFile.setnchannels(CHANNELS)
 	tempFile.setsampwidth(audio.get_sample_size(FORMAT))
 	tempFile.setframerate(RATE)
 	tempFile.writeframes(b''.join(audio_frames))
 	tempFile.close()
+	
+	probabilityDict, predicted = predict_wav_file( TEMP_FILE_NAME, classifier, intensity )
+	return probabilityDict, predicted, audio_frames, intensity
+	
+def get_stream_wav_segment( stream, frames ):
+	range_length = int(RATE / CHUNK * RECORD_SECONDS)
+	
+	remove_half = int( range_length / 2 )
+	
+	frames = frames[remove_half:]
+	frame_length = len( frames )
+	
+	intensity = []
+	for i in range( frame_length, range_length):
+		data = stream.read(CHUNK)
+		peak = audioop.maxpp( data, 4 ) / 32767
+		intensity.append( peak )
+		frames.append(data)
 
+	highestintensity = np.amax( intensity )
+	return frames, highestintensity
+
+def predict_wav_files( classifier, wav_files ):
+	dataDicts = []
+	audio_frames = []
+	print ( "Analyzing " + str( len( wav_files) ) + " audio files..." )
+	print ( "" )
+	
+	for i in range( 0, PREDICTION_LENGTH ):
+		dataDict = {}
+		for directoryname in classifier.classes_:
+			dataDict[ directoryname ] = {'percent': 0, 'intensity': 0}
+		dataDicts.append( dataDict )
+
+	probabilities = []
+	for index, wav_file in enumerate( wav_files ):
+		probabilityDict, predicted = predict_wav_file( wav_file, classifier, 0 )
+		winner = classifier.classes_[predicted]
+		print( "Analyzing file " + str( index + 1 ) + " - Winner: %s - Percentage: %0.2f" % (winner, probabilityDict[winner]['percent']) , end="\r")
+		probabilities.append( probabilityDict )
+
+	print( "                                                                          ", end="\r" )
+	
+	return probabilities
+	
+def predict_wav_file( wav_file, classifier, intensity ):
 	# FEATURE ENGINEERING
-	data_row = feature_engineering( TEMP_FILE_NAME )		
+	data_row = feature_engineering( wav_file )		
 	data = [ data_row ]
 		
 	# Predict the outcome of the audio file
@@ -118,21 +162,6 @@ def listen_loop( audio, stream, classifier, dataDicts, audio_frames ):
 		label = classifier.classes_[ index ]
 		probabilityDict[ label ] = { 'percent': percent, 'intensity': int(intensity), 'winner': index == predicted }
 				
-	return probabilityDict, predicted, audio_frames, intensity
-	
-def get_stream_wav_segment( stream, frames ):
-	range_length = int(RATE / CHUNK * RECORD_SECONDS)
-	
-	# TODO PROPER WINDOWING!
-	frames = []
-	frame_length = len( frames )
-	
-	intensity = []
-	for i in range( frame_length, range_length):
-		data = stream.read(CHUNK)
-		peak = audioop.maxpp( data, 4 ) / 32767
-		intensity.append( peak )
-		frames.append(data)
+	return probabilityDict, predicted
 
-	highestintensity = np.amax( intensity )
-	return frames, highestintensity
+	
