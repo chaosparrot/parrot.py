@@ -7,7 +7,8 @@ import scipy.io.wavfile
 import audioop
 import math
 import numpy as np
-from numpy.fft import rfft
+from scipy.fftpack import fft
+from scipy.fftpack import fftfreq
 from scipy.signal import blackmanharris
 import os
 
@@ -45,7 +46,9 @@ def record_sound():
 						frames_per_buffer=CHUNK)
 		frames = []
 		intensity = []
+		frequencies = [0]
 		
+		start_time = time.time()
 		for i in range(0, int(RATE / CHUNK * RECORD_SECONDS)):
 			data = stream.read(CHUNK)
 			frames.append(data)
@@ -53,8 +56,30 @@ def record_sound():
 			intensity.append( peak )
 			
 		highestintensity = np.amax( intensity )
-		print( "%0d" % highestintensity )
+			
+		byteString = b''.join(frames)
+		fftData = np.frombuffer( data, dtype=np.int16 )
+		fft_result = fft( fftData )
+		positiveFreqs = np.abs( fft_result[ 0:round( len(fft_result)/2 ) ] )
+		highestFreq = 0
+		loudestPeak = 1000
+		for freq in range( 0, len( positiveFreqs ) ):
+			if( positiveFreqs[ freq ] > loudestPeak ):
+				loudestPeak = positiveFreqs[ freq ]
+				highestFreq = freq
+					
+		if( loudestPeak > 1000 ):
+			frequencies.append( highestFreq )
 		
+		if( RECORD_SECONDS < 1 ):
+			# Considering our sound sample is, for example, 100 ms, our lowest frequency we can find is 10Hz ( I think )
+			# So add that as a base to our found frequency
+			freqInHz = ( 1 / RECORD_SECONDS ) + np.amax( frequencies )
+		else:
+			# I have no clue how to calculate Hz for fft frames longer than a second
+			freqInHz = np.amax( frequencies )
+		print( "Intensity: %0d - Freq: %0d" % ( highestintensity, freqInHz ) )
+				
 		fileid = "%0.2f" % ((j + 1) * RECORD_SECONDS )
 		 
 		# stop Recording
@@ -68,6 +93,6 @@ def record_sound():
 			waveFile.setnchannels(CHANNELS)
 			waveFile.setsampwidth(audio.get_sample_size(FORMAT))
 			waveFile.setframerate(RATE)
-			waveFile.writeframes(b''.join(frames))
+			waveFile.writeframes(byteString)
 			waveFile.close()
 

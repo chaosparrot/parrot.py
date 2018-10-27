@@ -75,7 +75,7 @@ def start_listen_loop( classifier, persist_replay, persist_files, amount_of_seco
 			if( len(dataDicts) > PREDICTION_LENGTH ):
 				dataDicts.pop(0)
 				
-			seconds_playing = time.time() - starttime;					
+			seconds_playing = time.time() - starttime;
 			
 			if( persist_files ):
 				seconds = int(seconds_playing )
@@ -90,7 +90,7 @@ def start_listen_loop( classifier, persist_replay, persist_files, amount_of_seco
 	return replay_file
 
 def listen_loop( audio, stream, classifier, dataDicts, audio_frames ):
-	audio_frames, intensity = get_stream_wav_segment( stream, audio_frames )
+	audio_frames, intensity, freqInHz = get_stream_wav_segment( stream, audio_frames )
 
 	tempFile = wave.open(TEMP_FILE_NAME, 'wb')
 	tempFile.setnchannels(CHANNELS)
@@ -99,14 +99,12 @@ def listen_loop( audio, stream, classifier, dataDicts, audio_frames ):
 	tempFile.writeframes(b''.join(audio_frames))
 	tempFile.close()
 	
-	probabilityDict, predicted = predict_wav_file( TEMP_FILE_NAME, classifier, intensity )
+	probabilityDict, predicted = predict_wav_file( TEMP_FILE_NAME, classifier, intensity, freqInHz )
 	return probabilityDict, predicted, audio_frames, intensity
 	
 def get_stream_wav_segment( stream, frames ):
 	range_length = int(RATE / CHUNK * RECORD_SECONDS)
-	
 	remove_half = int( range_length / 2 )
-	
 	frames = frames[remove_half:]
 	frame_length = len( frames )
 	
@@ -116,9 +114,10 @@ def get_stream_wav_segment( stream, frames ):
 		peak = audioop.maxpp( data, 4 ) / 32767
 		intensity.append( peak )
 		frames.append(data)
-
+		
 	highestintensity = np.amax( intensity )
-	return frames, highestintensity
+	freqInHz = get_loudest_freq_in_hz(  np.frombuffer( b''.join(frames), dtype=np.int16 ) )
+	return frames, highestintensity, freqInHz
 
 def predict_wav_files( classifier, wav_files ):
 	dataDicts = []
@@ -134,7 +133,7 @@ def predict_wav_files( classifier, wav_files ):
 
 	probabilities = []
 	for index, wav_file in enumerate( wav_files ):
-		probabilityDict, predicted = predict_wav_file( wav_file, classifier, 0 )
+		probabilityDict, predicted = predict_wav_file( wav_file, classifier, 0, 0 )
 		winner = classifier.classes_[predicted]
 		print( "Analyzing file " + str( index + 1 ) + " - Winner: %s - Percentage: %0.2f" % (winner, probabilityDict[winner]['percent']) , end="\r")
 		probabilities.append( probabilityDict )
@@ -143,7 +142,30 @@ def predict_wav_files( classifier, wav_files ):
 	
 	return probabilities
 	
-def predict_wav_file( wav_file, classifier, intensity ):
+def get_loudest_freq_in_hz( fftData, recordLength ):
+	fft_result = fft( fftData )
+	positiveFreqs = np.abs( fft_result[ 0:round( len(fft_result)/2 ) ] )
+	highestFreq = 0
+	loudestPeak = 1000
+	for freq in range( 0, len( positiveFreqs ) ):
+		if( positiveFreqs[ freq ] > loudestPeak ):
+			loudestPeak = positiveFreqs[ freq ]
+			highestFreq = freq
+				
+	if( loudestPeak > 1000 ):
+		frequencies.append( highestFreq )
+	
+	if( RECORD_SECONDS < 1 ):
+		# Considering our sound sample is, for example, 100 ms, our lowest frequency we can find is 10Hz ( I think )
+		# So add that as a base to our found frequency
+		freqInHz = ( 1 / RECORD_SECONDS ) + np.amax( frequencies )
+	else:
+		# I have no clue how to calculate Hz for fft frames longer than a second
+		freqInHz = np.amax( frequencies )
+		
+	return freqInHz
+	
+def predict_wav_file( wav_file, classifier, intensity, freqInHz ):
 	# FEATURE ENGINEERING
 	data_row = feature_engineering( wav_file )		
 	data = [ data_row ]
@@ -160,7 +182,7 @@ def predict_wav_file( wav_file, classifier, intensity ):
 	probabilityDict = {}
 	for index, percent in enumerate( probabilities[0] ):
 		label = classifier.classes_[ index ]
-		probabilityDict[ label ] = { 'percent': percent, 'intensity': int(intensity), 'winner': index == predicted }
+		probabilityDict[ label ] = { 'percent': percent, 'intensity': int(intensity), 'winner': index == predicted, 'freqInHz': freqInHz }
 				
 	return probabilityDict, predicted
 
