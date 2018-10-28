@@ -1,6 +1,6 @@
 import numpy as np
 from config.config import *
-from lib.machinelearning import feature_engineering, get_label_for_directory
+from lib.machinelearning import feature_engineering, get_label_for_directory, get_highest_intensity_of_wav_file
 import pyaudio
 import wave
 import time
@@ -134,7 +134,9 @@ def predict_wav_files( classifier, wav_files ):
 
 	probabilities = []
 	for index, wav_file in enumerate( wav_files ):
-		probabilityDict, predicted, frequency = predict_wav_file( wav_file, classifier, 0 )
+		highestintensity = get_highest_intensity_of_wav_file( wav_file )
+		probabilityDict, predicted, frequency = predict_wav_file( wav_file, classifier, highestintensity )
+		
 		winner = classifier.classes_[predicted]
 		print( "Analyzing file " + str( index + 1 ) + " - Winner: %s - Percentage: %0d - Frequency: %0d           " % (winner, probabilityDict[winner]['percent'], probabilityDict[winner]['frequency']) , end="\r")
 		probabilities.append( probabilityDict )
@@ -147,7 +149,7 @@ def predict_wav_file( wav_file, classifier, intensity ):
 	# FEATURE ENGINEERING
 	data_row, frequency = feature_engineering( wav_file )		
 	data = [ data_row ]
-		
+			
 	# Predict the outcome of the audio file
 	probabilities = classifier.predict_proba( data ) * 100
 	probabilities = probabilities.astype(int)

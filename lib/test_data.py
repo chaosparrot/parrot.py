@@ -133,10 +133,19 @@ def audio_analysis( available_models ):
 		print( "-------------------------" )
 		print( "Analysing existing audio files" )
 		full_wav_files = []
+		
+		# First sort the wav files by time
+		raw_wav_filenames = []
 		for wav_file in wav_files:
-			file_path = os.path.join(REPLAYS_AUDIO_FOLDER, wav_file)
-			if( file_path.endswith(".wav") ):
-				full_wav_files.append( file_path )
+			if( wav_file.endswith(".wav") ):
+				raw_wav_filenames.append( float( wav_file.replace(".wav", "") ) )
+				
+		raw_wav_filenames.sort()
+		
+		for float_wav_file in raw_wav_filenames:
+			wav_file_name = '%0.3f.wav' % ( float_wav_file )
+			file_path = os.path.join(REPLAYS_AUDIO_FOLDER, wav_file_name )
+			full_wav_files.append( file_path )
 				
 		predictions = predict_wav_files( classifier, full_wav_files )
 		
@@ -149,6 +158,7 @@ def audio_analysis( available_models ):
 				if( prediction[ column ]['winner'] ):
 					dataRow['winner'] = column
 					dataRow['frequency'] = prediction[column]['frequency']
+					dataRow['intensity'] = prediction[column]['intensity']					
 
 			dataRows.append( dataRow )
 		print( "-------------------------" )

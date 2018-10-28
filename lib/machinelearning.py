@@ -11,6 +11,8 @@ import itertools
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 from config.config import *
+import wave
+import audioop
 
 def feature_engineering( wavFile ):
 	fs, rawWav = scipy.io.wavfile.read( wavFile )
@@ -73,6 +75,17 @@ def plot_confusion_matrix(cm, classes,
     plt.ylabel('True category')
     plt.xlabel('Predicted category')
     plt.show()
+	
+def get_highest_intensity_of_wav_file( wav_file ):
+	intensity = []
+	with wave.open( wav_file ) as fd:
+		params = fd.getparams()
+		for i in range( 0, int(RATE / CHUNK * RECORD_SECONDS)):
+			data = fd.readframes(CHUNK)
+			peak = audioop.maxpp( data, 4 ) / 32767
+			intensity.append( peak )
+	
+	return np.amax( intensity )
 	
 def get_loudest_freq( fftData, recordLength ):
 	fft_result = fft( fftData )
