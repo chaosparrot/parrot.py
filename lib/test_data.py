@@ -71,7 +71,7 @@ def replay( available_replays ):
 			replay_index = int( replay_index ) - 1
 					
 	replay_file = available_replays[ replay_index ]
-	print( "Analyzing in " + replay_file )
+	print( "Analyzing " + replay_file )
 	plot_replay( pd.read_csv( REPLAYS_FOLDER + "/" + replay_file, skiprows=0, header=0) )
 	
 	# Go back to main menu afterwards
@@ -141,13 +141,15 @@ def audio_analysis( available_models ):
 		predictions = predict_wav_files( classifier, full_wav_files )
 		
 		dataRows = []
-		start_time = time.time()
 		for index, prediction in enumerate( predictions ):
-			dataRow = {'time': int((time.time() - start_time ) * 1000) / 1000, 'intensity': 0 }
+			timeString = full_wav_files[ index ].replace( REPLAYS_AUDIO_FOLDER + os.sep, "" ).replace( ".wav", "" )
+			dataRow = {'time': int(float(timeString) * 1000) / 1000, 'intensity': 0 }
 			for column in prediction:
 				dataRow[column] = prediction[ column ]['percent']
 				if( prediction[ column ]['winner'] ):
 					dataRow['winner'] = column
+					dataRow['frequency'] = prediction[column]['frequency']
+
 			dataRows.append( dataRow )
 		print( "-------------------------" )
 		print( "Analyzing replay!" )
@@ -186,7 +188,7 @@ def plot_replay( replay_data ):
 	plt.title("Percentage distribution of predicted sounds", loc='left', fontsize=12, fontweight=0, color='black')
 	plt.ylabel("Percentage")
 
-	for column in replay_data.drop(['winner', 'intensity', 'time'], axis=1):
+	for column in replay_data.drop(['winner', 'intensity', 'time', 'frequency'], axis=1):
 		if( column != "silence" ):
 			color = colors[num]		
 			num+=1
@@ -196,13 +198,19 @@ def plot_replay( replay_data ):
 	 
 	plt.legend(loc=1, bbox_to_anchor=(1, 1.3), ncol=4)
 
-	plt.subplot(2, 1, 2)
+	ax1 = plt.subplot(2, 1, 2)
 
 	# Add audio subplot
 	plt.title('Audio', loc='left', fontsize=12, fontweight=0, color='black')
-	plt.ylabel('Loudness')
-	plt.xlabel("Time( s )")
-	plt.ylim(ymax=40000)
-	plt.plot(np.array( replay_data['time'] ), np.array( replay_data['intensity'] ), '-')
+	ax1.set_ylabel('Loudness', color='green')
+	ax1.set_xlabel("Time( in files )")
+	ax1.set_ylim(ymax=40000)
+	ax1.tick_params('y', colors='black')
+	ax1.bar(np.arange(replay_data['time'].size), np.array( replay_data['intensity'] ), color='green', linewidth=1)
+	
+	frequencyAxis = ax1.twinx()
+	frequencyAxis.plot(np.arange(replay_data['time'].size), replay_data['frequency'], '-', color='red')
+	frequencyAxis.set_ylabel('Frequency', color='red')
+	frequencyAxis.set_ylim(ymax=750)
 
 	plt.show()

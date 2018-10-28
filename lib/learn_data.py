@@ -45,6 +45,7 @@ def learn_data():
 	print( "--------------------------" )
 	print( "Learning the data...", end="\r" )
 	classifier = get_classifier()
+	
 	classifier.fit( dataX, dataY )
 	print( "Data analyzed!               " )
 	
@@ -80,7 +81,7 @@ def load_wav_files( directory, label, int_label, start, end ):
 			print( "Loading " + str(fileindex) + " files for " + label + "... ", end="\r" )
 			
 			# Load the WAV file and turn it into a onedimensional array of numbers
-			data_row = feature_engineering( full_filename )			
+			data_row, frequency = feature_engineering( full_filename )			
 			category_dataset_x.append( data_row )
 			category_dataset_labels.append( label )
 
@@ -112,5 +113,5 @@ def load_data( max_files ):
 		dataset_x.extend( cat_dataset_x )
 		dataset_labels.extend( cat_dataset_labels )
 
-	return [dataset_x, dataset_labels, data_directory_names]
+	return dataset_x, dataset_labels, data_directory_names
 

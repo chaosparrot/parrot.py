@@ -10,15 +10,18 @@ import numpy as np
 import itertools
 import matplotlib as mpl
 import matplotlib.pyplot as plt
+from config.config import *
 
 def feature_engineering( wavFile ):
 	fs, rawWav = scipy.io.wavfile.read( wavFile )
-	chan1 = rawWav[:,0]
-				
-	mfcc_result1 = mfcc( chan1, samplerate=fs, nfft=1103 )
+	
+	return feature_engineering_raw( rawWav[:,0], fs )
+	
+def feature_engineering_raw( wavData, sampleRate ):				
+	mfcc_result1 = mfcc( wavData, samplerate=sampleRate, nfft=1103 )
 	data_row = []
 	data_row.extend( mfcc_result1.ravel() )
-	return data_row
+	return data_row, get_loudest_freq( wavData, RECORD_SECONDS )
 	
 def get_label_for_directory( setdir ):
 	return float( int(hashlib.sha256( setdir.encode('utf-8')).hexdigest(), 16) % 10**8 )
@@ -71,6 +74,30 @@ def plot_confusion_matrix(cm, classes,
     plt.xlabel('Predicted category')
     plt.show()
 	
+def get_loudest_freq( fftData, recordLength ):
+	fft_result = fft( fftData )
+	positiveFreqs = np.abs( fft_result[ 0:round( len(fft_result)/2 ) ] )
+	highestFreq = 0
+	loudestPeak = 1000
+	frequencies = [0]
+	for freq in range( 0, len( positiveFreqs ) ):
+		if( positiveFreqs[ freq ] > loudestPeak ):
+			loudestPeak = positiveFreqs[ freq ]
+			highestFreq = freq
+				
+	if( loudestPeak > 1000 ):
+		frequencies.append( highestFreq )
+	
+	if( recordLength < 1 ):
+		# Considering our sound sample is, for example, 100 ms, our lowest frequency we can find is 10Hz ( I think )
+		# So add that as a base to our found frequency to get Hz - This is probably wrong
+		freqInHz = ( 1 / recordLength ) + np.amax( frequencies )
+	else:
+		# I have no clue how to even pretend to know how to calculate Hz for fft frames longer than a second
+		freqInHz = np.amax( frequencies )
+		
+	return freqInHz
+
 #def generate_tnse( dataset_x, dataset_labels ):
 	#tsne = TSNE(n_components=2, verbose=1, perplexity=40, n_iter=300)
 	#tsne_results = tsne.fit_transform( dataset_x, dataset_labels )

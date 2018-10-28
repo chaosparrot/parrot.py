@@ -73,12 +73,12 @@ def record_sound():
 		
 		if( RECORD_SECONDS < 1 ):
 			# Considering our sound sample is, for example, 100 ms, our lowest frequency we can find is 10Hz ( I think )
-			# So add that as a base to our found frequency
-			freqInHz = ( 1 / RECORD_SECONDS ) + np.amax( frequencies )
+			# So add that as a base to our found frequency to get Hz - This is probably wrong
+			frequency = ( 1 / RECORD_SECONDS ) + np.amax( frequencies )
 		else:
-			# I have no clue how to calculate Hz for fft frames longer than a second
-			freqInHz = np.amax( frequencies )
-		print( "Intensity: %0d - Freq: %0d" % ( highestintensity, freqInHz ) )
+			# I have no clue how to even pretend to know how to calculate Hz for fft frames longer than a second
+			frequency = np.amax( frequencies )
+		print( "Intensity: %0d - Freq: %0d" % ( highestintensity, frequency ) )
 				
 		fileid = "%0.2f" % ((j + 1) * RECORD_SECONDS )
 		 
