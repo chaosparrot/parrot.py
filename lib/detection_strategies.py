@@ -66,6 +66,38 @@ def single_tap_detection( data, label, required_percent, required_intensity ):
 		return True
 	else:
 		return False
+		
+def pitch_up_detection( data, label, required_percent ):
+	percent_met = data[-1][label]['percent'] >= required_percent and data[-2][label]['percent'] >= required_percent
+	pitch_up_sound = data[-1][label]['frequency'] > data[-2][label]['frequency']
+	is_winner = data[-1][label]['winner']
+	if( is_winner and percent_met and pitch_up_sound ):
+		print( "Detecting pitch up for " + label + " " + str(data[-1][label]['frequency'] ) )
+		return True
+	else:
+		return False
+		
+def pitch_down_detection( data, label, required_percent ):
+	percent_met = data[-1][label]['percent'] >= required_percent and data[-2][label]['percent'] >= required_percent
+	pitch_down_sound = data[-1][label]['frequency'] < data[-2][label]['frequency']
+	is_winner = data[-1][label]['winner']
+	if( is_winner and percent_met and pitch_down_sound ):
+		print( "Detecting pitch down for " + label + " " + str(data[-1][label]['frequency'] ) )
+		return True
+	else:
+		return False
+
+def monotone_detection( data, label, required_percent, freqband ):
+	percent_met = data[-1][label]['percent'] >= required_percent and data[-2][label]['percent'] >= required_percent
+	in_freq_band = max( data[-1][label]['frequency'], data[-2][label]['frequency'] ) - min( data[-1][label]['frequency'], data[-2][label]['frequency'] ) < freqband
+	is_winner = data[-1][label]['winner']
+	if( is_winner and percent_met and in_freq_band ):
+		print( "Detecting monotone frequency for " + label + " " + str(data[-1][label]['frequency'] ) )
+		return True
+	else:
+		return False
+
+
 
 def no_detection( data, label ):
 	peak_percent = np.max( [data[-1][label]['percent'], data[-2][label]['percent'], data[-3][label]['percent'], data[-4][label]['percent'], data[-5][label]['percent'], 
@@ -79,7 +111,6 @@ def quick_detection( currentDict, previousDict, label ):
 		return True
 	else:
 		return False
-		
 		
 # Return the quadrant of the mouse position
 def detect_mouse_quadrant( widthSegments, heightSegments ):
