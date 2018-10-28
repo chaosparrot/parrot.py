@@ -10,6 +10,7 @@ import numpy as np
 from scipy.fftpack import fft
 from scipy.fftpack import fftfreq
 from scipy.signal import blackmanharris
+from lib.machinelearning import get_loudest_freq
 import os
 
 # Countdown from seconds to 0
@@ -58,26 +59,8 @@ def record_sound():
 		highestintensity = np.amax( intensity )
 			
 		byteString = b''.join(frames)
-		fftData = np.frombuffer( data, dtype=np.int16 )
-		fft_result = fft( fftData )
-		positiveFreqs = np.abs( fft_result[ 0:round( len(fft_result)/2 ) ] )
-		highestFreq = 0
-		loudestPeak = 0
-		for freq in range( 0, len( positiveFreqs ) ):
-			if( positiveFreqs[ freq ] > loudestPeak ):
-				loudestPeak = positiveFreqs[ freq ]
-				highestFreq = freq
-					
-		if( loudestPeak > 0 ):
-			frequencies.append( highestFreq )
-		
-		if( RECORD_SECONDS < 1 ):
-			# Considering our sound sample is, for example, 100 ms, our lowest frequency we can find is 10Hz ( I think )
-			# So add that as a base to our found frequency to get Hz - This is probably wrong
-			frequency = ( 1 / RECORD_SECONDS ) + np.amax( frequencies )
-		else:
-			# I have no clue how to even pretend to know how to calculate Hz for fft frames longer than a second
-			frequency = np.amax( frequencies )
+		fftData = np.frombuffer( byteString, dtype=np.int16 )
+		frequency = get_loudest_freq( fftData, RECORD_SECONDS )
 		print( "Intensity: %0d - Freq: %0d" % ( highestintensity, frequency ) )
 				
 		fileid = "%0.2f" % ((j + 1) * RECORD_SECONDS )
