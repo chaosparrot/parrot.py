@@ -52,9 +52,9 @@ class ExcelMode:
 					click()		
 				elif( single_tap_detection(dataDicts, "fingersnap", 50, 1000 ) ):
 					click(button='right')
-				elif( loud_detection(dataDicts, "peak_sound_f" ) ):
+				elif( loud_detection(dataDicts, "sound_f" ) ):
 					scroll( 150 )
-				elif( loud_detection(dataDicts, "peak_sound_s" ) ):
+				elif( loud_detection(dataDicts, "sound_s" ) ):
 					scroll( -150 )
 
 				if( percentage_detection(dataDicts, "sound_thr", 75 ) ):

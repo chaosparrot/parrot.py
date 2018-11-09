@@ -76,8 +76,7 @@ def replay( available_replays ):
 	
 	# Go back to main menu afterwards
 	test_data( True )
-	
-	
+		
 def audio_analysis( available_models ):
 	print( "-------------------------" )
 	print( "Putting our algorithms to the test!")
@@ -125,7 +124,7 @@ def audio_analysis( available_models ):
 		
 		print( "-------------------------" )
 		print( "Recording new audio files" )
-		replay_file = start_listen_loop( classifier, True, True, 15 )
+		replay_file = start_listen_loop( classifier, False, True, True, 15 )
 		print( "-------------------------" )
 		print( "Analyzing file " + replay_file )
 		plot_replay( pd.read_csv( replay_file, skiprows=0, header=0) )

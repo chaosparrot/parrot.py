@@ -28,15 +28,17 @@ class BrowseMode:
 			click()		
 		elif( single_tap_detection(dataDicts, "fingersnap", 50, 1000 ) ):
 			click(button='right')
-		elif( mouseMoving == True ):						
+		elif( mouseMoving == True ):
+			if( monotone_detection( dataDicts, "whistle", 50, 1 ) ):
+				print( "MONOTONE!" )
 			if( self.mode != "precision" ):
 				if( self.mode == "regular" ):
 					press("f4")
 				self.mode = "precision"
 				self.centerXPos, self.centerYPos = pyautogui.position()
-		elif( loud_detection(dataDicts, "peak_sound_f" ) ):
+		elif( winner_detection(dataDicts, "sound_f" ) ):
 			scroll( 150 )
-		elif( loud_detection(dataDicts, "peak_sound_s" ) ):
+		elif( winner_detection(dataDicts, "sound_s" ) ):
 			scroll( -150 )
 		elif( loud_detection(dataDicts, "bell" ) ):
 			self.modeSwitcher.turnOnModeSwitch()

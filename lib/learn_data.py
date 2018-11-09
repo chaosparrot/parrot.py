@@ -19,6 +19,7 @@ from python_speech_features import mfcc
 from sklearn.manifold import TSNE
 from sklearn import preprocessing
 from lib.machinelearning import *
+from sklearn.ensemble import ExtraTreesClassifier
 
 def learn_data():
 	print( "-------------------------" )
@@ -81,7 +82,7 @@ def load_wav_files( directory, label, int_label, start, end ):
 			print( "Loading " + str(fileindex) + " files for " + label + "... ", end="\r" )
 			
 			# Load the WAV file and turn it into a onedimensional array of numbers
-			data_row, frequency = feature_engineering( full_filename )			
+			data_row, frequency = feature_engineering( full_filename )
 			category_dataset_x.append( data_row )
 			category_dataset_labels.append( label )
 
@@ -89,7 +90,8 @@ def load_wav_files( directory, label, int_label, start, end ):
 	return category_dataset_x, category_dataset_labels
 
 def get_classifier():
-	return RandomForestClassifier(n_estimators=100, max_depth=10, random_state=123)
+	#return ExtraTreesClassifier(n_estimators=500, max_depth=20, random_state=123 )
+	return RandomForestClassifier(n_estimators=500, max_depth=20, random_state=123)
 		
 def load_data( max_files ):
 	# Get the full directories for the dataset

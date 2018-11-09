@@ -11,8 +11,11 @@ import csv
 import threading
 centerXPos, centerYPos = position()
 
+def winner_detection( data, label ):
+	return data[-1][label]['winner']
+
 def loud_detection( data, label ):
-	percent_met = data[-1][label]['percent'] >= 70
+	percent_met = data[-1][label]['percent'] >= 50
 	
 	if( percent_met ):
 		return True

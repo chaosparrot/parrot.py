@@ -24,17 +24,17 @@ class HeroesMode:
 		toggle_eyetracker()
 				
 	def handle_input( self, dataDicts ):
-		if( single_tap_detection(dataDicts, "peak_sound_ie", 70, 1000 ) ):
+		if( single_tap_detection(dataDicts, "sound_ie", 70, 1000 ) ):
 			quadrant = detect_mouse_quadrant( 3, 3 )
 			self.character_movement( quadrant )
 		elif( single_tap_detection(dataDicts, "sound_huu", 50, 1000 ) ):
 			quadrant = detect_mouse_quadrant( 3, 3 )
 			self.set_hold_key( quadrant )
-		elif( single_tap_detection(dataDicts, "peak_sound_oh", 50, 1000 ) ):
+		elif( single_tap_detection(dataDicts, "sound_oh", 50, 1000 ) ):
 			self.press_ability( 'q' )
-		elif( single_tap_detection(dataDicts, "peak_sound_s", 60, 1000 ) ):
+		elif( single_tap_detection(dataDicts, "sound_s", 60, 1000 ) ):
 			self.press_ability( 'w' )			
-		elif( single_tap_detection(dataDicts, "peak_sound_f", 40, 1000 ) ):
+		elif( single_tap_detection(dataDicts, "sound_f", 40, 1000 ) ):
 			self.press_ability( 'e' )
 		elif( percentage_detection(dataDicts, "whistle", 70 ) ):
 			self.press_ability( 'r' )

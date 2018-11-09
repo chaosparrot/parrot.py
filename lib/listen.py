@@ -16,7 +16,7 @@ import csv
 from scipy.fftpack import fft
 from scipy.fftpack import fftfreq
 
-def start_listen_loop( classifier, persist_replay, persist_files, amount_of_seconds ):		
+def start_listen_loop( classifier, mode_switcher = False, persist_replay = False, persist_files = False, amount_of_seconds=-1 ):
 	# Get a minimum of these elements of data dictionaries
 	dataDicts = []
 	audio_frames = []
@@ -34,6 +34,14 @@ def start_listen_loop( classifier, persist_replay, persist_files, amount_of_seco
 	continue_loop = True
 	starttime = int(time.time())
 	replay_file = REPLAYS_FOLDER + "/replay_" + str(starttime) + ".csv"
+	
+	infinite_duration = amount_of_seconds == -1
+	if( infinite_duration ):
+		print( "Listening..." )
+	else:
+		print ( "Listening for " + str( amount_of_seconds ) + " seconds..." )
+	print ( "" )
+			
 	if( persist_replay ):
 		with open(replay_file, 'a', newline='') as csvfile:
 			headers = ['time', 'winner', 'intensity', 'frequency']
@@ -41,14 +49,9 @@ def start_listen_loop( classifier, persist_replay, persist_files, amount_of_seco
 			writer = csv.DictWriter(csvfile, fieldnames=headers, delimiter=',')
 			writer.writeheader()
 			
-			print ( "Listening for " + str( amount_of_seconds ) + " seconds..." )
-			print ( "" )
-			
 			starttime = int(time.time())
 			while( continue_loop ):
 				seconds_playing = time.time() - starttime			
-				if( seconds_playing > amount_of_seconds ):
-					continue_loop = False
 			
 				probabilityDict, predicted, audio_frames, intensity, frequency = listen_loop( audio, stream, classifier, dataDicts, audio_frames )
 				winner = classifier.classes_[ predicted ]
@@ -56,13 +59,19 @@ def start_listen_loop( classifier, persist_replay, persist_files, amount_of_seco
 				if( len(dataDicts) > PREDICTION_LENGTH ):
 					dataDicts.pop(0)
 				
-				print( "Time: %0.2f - Winner: %s - Percentage: %0d - Frequency %0d                                        " % (seconds_playing, winner, probabilityDict[winner]['percent'], probabilityDict[winner]['frequency']), end="\r" )
+				print( "Time: %0.2f - Winner: %s - Percentage: %0d - Frequency %0d                                        " % (seconds_playing, winner, probabilityDict[winner]['percent'], probabilityDict[winner]['frequency']), end="\r" )				
+				if( infinite_duration == False and seconds_playing > amount_of_seconds ):
+					continue_loop = False
+
+				if( mode_switcher ):
+					mode_switcher.getMode().handle_input( dataDicts )
+
 				replay_row = { 'time': int(seconds_playing * 1000) / 1000, 'winner': winner, 'intensity': int(intensity), 'frequency': frequency }
 				for label, labelDict in probabilityDict.items():
 					replay_row[ label ] = labelDict['percent']
 				writer.writerow( replay_row )
-				csvfile.flush()
-				
+				csvfile.flush()					
+					
 				if( persist_files ):
 					os.rename( TEMP_FILE_NAME, REPLAYS_AUDIO_FOLDER + "/%0.3f.wav" % (seconds_playing))
 					
@@ -76,17 +85,19 @@ def start_listen_loop( classifier, persist_replay, persist_files, amount_of_seco
 			dataDicts.append( probabilityDict )
 			if( len(dataDicts) > PREDICTION_LENGTH ):
 				dataDicts.pop(0)
-				
+			
 			seconds_playing = time.time() - starttime;
+			if( infinite_duration == False and seconds_playing > amount_of_seconds ):
+				continue_loop = False
+
+			if( mode_switcher ):
+				mode_switcher.getMode().handle_input( dataDicts )		
 			
 			if( persist_files ):
 				seconds = int(seconds_playing )
 				milliseconds = int( seconds_playing * 1000 ) % 1000
 				os.rename( TEMP_FILE_NAME, REPLAYS_AUDIO_FOLDER + '/' + str(seconds) + "." + str(milliseconds) + ".wav")
-
-			if( seconds_playing > amount_of_seconds ):
-				continue_loop = False
-
+				
 		stream.close()
 		
 	return replay_file

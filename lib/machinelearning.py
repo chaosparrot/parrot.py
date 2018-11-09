@@ -23,7 +23,9 @@ def feature_engineering_raw( wavData, sampleRate ):
 	mfcc_result1 = mfcc( wavData, samplerate=sampleRate, nfft=1103 )
 	data_row = []
 	data_row.extend( mfcc_result1.ravel() )
-	return data_row, get_loudest_freq( wavData, RECORD_SECONDS )
+	freq = get_loudest_freq( wavData, RECORD_SECONDS )
+	data_row.append( freq )
+	return data_row, freq
 	
 def get_label_for_directory( setdir ):
 	return float( int(hashlib.sha256( setdir.encode('utf-8')).hexdigest(), 16) % 10**8 )
