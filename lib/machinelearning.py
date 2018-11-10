@@ -16,15 +16,17 @@ import audioop
 
 def feature_engineering( wavFile ):
 	fs, rawWav = scipy.io.wavfile.read( wavFile )
+	intensity = get_highest_intensity_of_wav_file( wavFile )
 	
-	return feature_engineering_raw( rawWav[:,0], fs )
+	return feature_engineering_raw( rawWav[:,0], fs, intensity )
 	
-def feature_engineering_raw( wavData, sampleRate ):				
+def feature_engineering_raw( wavData, sampleRate, intensity ):				
 	mfcc_result1 = mfcc( wavData, samplerate=sampleRate, nfft=1103 )
 	data_row = []
 	data_row.extend( mfcc_result1.ravel() )
 	freq = get_loudest_freq( wavData, RECORD_SECONDS )
 	data_row.append( freq )
+	data_row.append( intensity )
 	return data_row, freq
 	
 def get_label_for_directory( setdir ):

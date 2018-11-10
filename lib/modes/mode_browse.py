@@ -7,12 +7,59 @@ import time
 from subprocess import call
 import os
 from lib.system_toggles import mute_sound, toggle_speechrec, toggle_eyetracker
+from lib.pattern_detector import PatternDetector
 
 class BrowseMode:
 
 	def __init__(self, modeSwitcher):
 		self.mode = "regular"
 		self.modeSwitcher = modeSwitcher
+		self.detector = PatternDetector({
+			'click': {
+				'strategy': 'single_tap',
+				'sound': 'cluck',
+				'percentage': 40,
+				'intensity': 600
+			},
+			'rightclick': {
+				'strategy': 'single_tap',
+				'sound': 'fingersnap',
+				'percentage': 50,
+				'intensity': 1000
+			},
+			'moving': {
+				'strategy': 'continuous',
+				'sound': 'whistle',
+				'percentage': 70,
+				'intensity': 500,
+				'lowest_percentage': 30,
+				'lowest_intensity': 500
+			},
+			'scroll_up': {
+				'strategy': 'rapid',
+				'sound': 'sound_f',
+				'percentage': 70,
+				'intensity': 1000
+			},
+			'scroll_down': {
+				'strategy': 'rapid',
+				'sound': 'sound_s',
+				'percentage': 70,
+				'intensity': 1000
+			},
+			'special': {
+				'strategy': 'rapid',
+				'sound': 'sound_thr',
+				'percentage': 50,
+				'intensity': 1000
+			},
+			'exit': {
+				'strategy': 'rapid',
+				'sound': 'hotel_bell',
+				'percentage': 90,
+				'intensity': 1000
+			}
+		})
 
 	def start( self ):
 		self.mode = "regular"
@@ -23,26 +70,27 @@ class BrowseMode:
 		self.fluent_mode()
 
 	def handle_input( self, dataDicts ):
-		mouseMoving = loud_detection(dataDicts, "whistle" )
-		if( single_tap_detection(dataDicts, "cluck", 35, 1000 ) ):
-			click()		
-		elif( single_tap_detection(dataDicts, "fingersnap", 50, 1000 ) ):
-			click(button='right')
-		elif( mouseMoving == True ):
-			if( monotone_detection( dataDicts, "whistle", 50, 1 ) ):
-				print( "MONOTONE!" )
+		self.detector.tick( dataDicts )
+		
+		mouseMoving = False
+		if( self.detector.detect("moving" ) ):
+			mouseMoving = True
 			if( self.mode != "precision" ):
 				if( self.mode == "regular" ):
 					press("f4")
 				self.mode = "precision"
 				self.centerXPos, self.centerYPos = pyautogui.position()
-		elif( winner_detection(dataDicts, "sound_f" ) ):
+		elif( self.detector.detect("click") ):
+			click()
+		elif( self.detector.detect("rightclick") ):
+			click(button='right')
+		elif( self.detector.detect("scroll_up") ):
 			scroll( 150 )
-		elif( winner_detection(dataDicts, "sound_s" ) ):
+		elif( self.detector.detect("scroll_down") ):
 			scroll( -150 )
-		elif( loud_detection(dataDicts, "bell" ) ):
+		elif( self.detector.detect( "exit" ) ):
 			self.modeSwitcher.turnOnModeSwitch()
-		elif( percentage_detection(dataDicts, "sound_thr", 75 ) ):
+		elif( self.detector.detect( "special" ) ):
 			quadrant = detect_mouse_quadrant( 3, 3 )
 			if( quadrant == 1 ):
 				hotkey('alt', 'left')
@@ -51,8 +99,7 @@ class BrowseMode:
 			elif( quadrant == 3 ):
 				hotkey('ctrl', 'w')
 			elif( quadrant > 3 ):
-				self.modeSwitcher.turnOnModeSwitch()				
-
+				self.modeSwitcher.turnOnModeSwitch()
 			
 		if( self.mode == "precision" or self.mode == "pause" ):
 			if( mouseMoving == False ):
@@ -62,6 +109,7 @@ class BrowseMode:
 				self.mode = "regular"
 				press("f4")
 
+		return self.detector.tickActions
 
 	def fluent_mode( self ):
 		t = threading.Timer(0.05, self.fluent_mode)
@@ -80,7 +128,6 @@ class BrowseMode:
 		relPos = np.dot( mousePos, R )
 		moveTo( self.centerXPos + relPos.flat[0], self.centerYPos + relPos.flat[1] )
 
-					
 	def exit( self ):
 		self.mode = "regular"
 		toggle_eyetracker()

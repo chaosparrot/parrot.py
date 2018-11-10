@@ -23,7 +23,7 @@ def start_listen_loop( classifier, mode_switcher = False, persist_replay = False
 	for i in range( 0, PREDICTION_LENGTH ):
 		dataDict = {}
 		for directoryname in classifier.classes_:
-			dataDict[ directoryname ] = {'percent': 0, 'intensity': 0}
+			dataDict[ directoryname ] = {'percent': 0, 'intensity': 0, 'frequency': 0, 'winner': False}
 		dataDicts.append( dataDict )
 	
 	audio = pyaudio.PyAudio()
@@ -44,7 +44,7 @@ def start_listen_loop( classifier, mode_switcher = False, persist_replay = False
 			
 	if( persist_replay ):
 		with open(replay_file, 'a', newline='') as csvfile:
-			headers = ['time', 'winner', 'intensity', 'frequency']
+			headers = ['time', 'winner', 'intensity', 'frequency', 'actions']
 			headers.extend( classifier.classes_ )
 			writer = csv.DictWriter(csvfile, fieldnames=headers, delimiter=',')
 			writer.writeheader()
@@ -63,10 +63,13 @@ def start_listen_loop( classifier, mode_switcher = False, persist_replay = False
 				if( infinite_duration == False and seconds_playing > amount_of_seconds ):
 					continue_loop = False
 
+				actions = []
 				if( mode_switcher ):
-					mode_switcher.getMode().handle_input( dataDicts )
-
-				replay_row = { 'time': int(seconds_playing * 1000) / 1000, 'winner': winner, 'intensity': int(intensity), 'frequency': frequency }
+					actions = mode_switcher.getMode().handle_input( dataDicts )
+					if( isinstance( actions, list ) == False ):
+						actions = []
+						
+				replay_row = { 'time': int(seconds_playing * 1000) / 1000, 'winner': winner, 'intensity': int(intensity), 'frequency': frequency, 'actions': ':'.join(actions) }
 				for label, labelDict in probabilityDict.items():
 					replay_row[ label ] = labelDict['percent']
 				writer.writerow( replay_row )
@@ -116,6 +119,7 @@ def listen_loop( audio, stream, classifier, dataDicts, audio_frames ):
 	return probabilityDict, predicted, audio_frames, intensity, frequency
 	
 def get_stream_wav_segment( stream, frames ):
+	stream.start_stream()
 	range_length = int(RATE / CHUNK * RECORD_SECONDS)
 	remove_half = int( range_length / 2 )
 	frames = frames[remove_half:]
@@ -129,6 +133,7 @@ def get_stream_wav_segment( stream, frames ):
 		frames.append(data)
 		
 	highestintensity = np.amax( intensity )
+	stream.stop_stream()
 	return frames, highestintensity
 
 def predict_wav_files( classifier, wav_files ):

@@ -97,7 +97,17 @@ def load_data( max_files ):
 	# Get the full directories for the dataset
 	dir_path = os.path.join( os.path.dirname( os.path.dirname( os.path.realpath(__file__)) ), DATASET_FOLDER)
 	data_directory_names =  [directory for directory in os.listdir( dir_path ) if directory != ".gitkeep"]
-	data_directories = list( map( lambda n: (DATASET_FOLDER + "/" + n).lower(), data_directory_names) )
+	
+	print( "Selecting categories to train on... ( Y / N )" )
+	filtered_data_directory_names = []
+	for directory_name in data_directory_names:
+		add = input(" - " + directory_name)
+		if( add == "" or add.lower() == "y" ):
+			filtered_data_directory_names.append( directory_name )
+		else:
+			print( "Disabled " + directory_name )
+
+	data_directories = list( map( lambda n: (DATASET_FOLDER + "/" + n).lower(), filtered_data_directory_names) )
 
 	# Add a label used for classifying the sounds
 	data_directories_label = list( map( get_label_for_directory, data_directories ) )
@@ -110,10 +120,10 @@ def load_data( max_files ):
 	
 	for index, directory in enumerate( data_directories ):
 		id_label = data_directories_label[ index ]
-		str_label = data_directory_names[ index ]
+		str_label = filtered_data_directory_names[ index ]
 		cat_dataset_x, cat_dataset_labels = load_wav_files( directory, str_label, id_label, 0, max_files )
 		dataset_x.extend( cat_dataset_x )
 		dataset_labels.extend( cat_dataset_labels )
 
-	return dataset_x, dataset_labels, data_directory_names
+	return dataset_x, dataset_labels, filtered_data_directory_names
 

@@ -13,6 +13,9 @@ centerXPos, centerYPos = position()
 
 def winner_detection( data, label ):
 	return data[-1][label]['winner']
+	
+def first_winner_detection( data, label ):
+	return data[-2][label]['winner'] == False and data[-1][label]['winner']
 
 def loud_detection( data, label ):
 	percent_met = data[-1][label]['percent'] >= 50
@@ -29,7 +32,6 @@ def percentage_detection( data, label, percentage ):
 		return True
 	else:
 		return False
-
 
 def medium_detection( data, label, required_percent, required_intensity ):
 	last_is_not_label = data[-1][label]['percent'] < required_percent
@@ -61,10 +63,9 @@ def long_detection( data, label, required_percent, required_intensity ):
 def single_tap_detection( data, label, required_percent, required_intensity ):
 	percent_met = data[-1][label]['percent'] >= required_percent
 	rising_sound = data[-1][label]['intensity'] > data[-2][label]['intensity']
-	first_sound = data[-2][label]['percent'] < required_percent
 	previous_rising = data[-2][label]['percent'] >= required_percent and data[-2][label]['intensity'] < data[-3][label]['intensity']
 	is_winner = data[-1][label]['winner']
-	if( is_winner and percent_met and rising_sound and data[-1][label]['intensity'] >= required_intensity ):
+	if( is_winner and percent_met and rising_sound and previous_rising == False and data[-1][label]['intensity'] >= required_intensity ):
 		print( "Detecting single tap for " + label )
 		return True
 	else:

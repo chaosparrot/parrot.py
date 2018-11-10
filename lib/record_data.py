@@ -12,14 +12,44 @@ from scipy.fftpack import fftfreq
 from scipy.signal import blackmanharris
 from lib.machinelearning import get_loudest_freq
 import os
+import msvcrt
 
 # Countdown from seconds to 0
 def countdown( seconds ):
 	for i in range( -seconds, 0 ):
 		print("recording in... " + str(abs(i)), end="\r")
 		sleep( 1 )
+		if( record_controls() == False ):
+			return False;
 	print("                          ", end="\r")
+	return True
 
+def record_controls():
+	ESCAPEKEY = b'\x1b'
+	SPACEBAR = b' '
+	
+	if( msvcrt.kbhit() ):
+		character = msvcrt.getch()
+		if( character == SPACEBAR ):
+			print( "Recording paused!" )
+			
+			# Pause the recording by looping until we get a new keypress
+			while( True ):
+				if( msvcrt.kbhit() ):
+					character = msvcrt.getch()
+					if( character == SPACEBAR ):
+						print( "Recording resumed!" )
+						return True
+					elif( character == ESCAPEKEY ):
+						print( "Recording stopped" )
+						return False
+		elif( character == ESCAPEKEY ):
+			print( "Recording stopped" )
+			return False
+			
+		print( character )
+	return True	
+	
 def record_sound():	
 	print( "-------------------------" )
 	print( "Let's record some sounds!")
@@ -31,13 +61,17 @@ def record_sound():
 	if not os.path.exists(RECORDINGS_FOLDER + "/" + directory):
 		os.makedirs(RECORDINGS_FOLDER + "/"  + directory)
 	threshold = int( input("What loudness threshold do you need? " ) )
+	frequency_threshold = int( input("What frequency threshold do you need? " ) )
 	print("")
+	print("You can pause/resume the recording session using the [SPACE] key, and stop the recording using the [ESC] key" )
 
 	WAVE_OUTPUT_FILENAME = RECORDINGS_FOLDER + "/" + directory + "/" + str(int(time.time() ) ) + "file";
 	WAVE_OUTPUT_FILE_EXTENSION = ".wav";
 
-	countdown( 5 )
+	if( countdown( 5 ) == False ):
+		return;
 	
+	files_recorded = 0
 	for j in range( 0, int(300.0 * ( 1.0 / RECORD_SECONDS ))):
 		audio = pyaudio.PyAudio()
 		 
@@ -61,21 +95,27 @@ def record_sound():
 		byteString = b''.join(frames)
 		fftData = np.frombuffer( byteString, dtype=np.int16 )
 		frequency = get_loudest_freq( fftData, RECORD_SECONDS )
-		print( "Intensity: %0d - Freq: %0d" % ( highestintensity, frequency ) )
 				
 		fileid = "%0.2f" % ((j + 1) * RECORD_SECONDS )
-		 
+		
+		if( record_controls() == False ):
+			break;
+		
 		# stop Recording
 		stream.stop_stream()
 		stream.close()
 		audio.terminate()
 		 
-		if( highestintensity > threshold ):
-			print ("Saving recording " + fileid )
+		if( frequency > frequency_threshold and highestintensity > threshold ):
+			files_recorded += 1
+			print( "Files recorded: %0d - Intensity: %0d - Freq: %0d - Saving %s" % ( files_recorded, highestintensity, frequency, fileid ) )
 			waveFile = wave.open(WAVE_OUTPUT_FILENAME + fileid + WAVE_OUTPUT_FILE_EXTENSION, 'wb')
 			waveFile.setnchannels(CHANNELS)
 			waveFile.setsampwidth(audio.get_sample_size(FORMAT))
 			waveFile.setframerate(RATE)
 			waveFile.writeframes(byteString)
 			waveFile.close()
+		else:
+			print( "Files recorded: %0d - Intensity: %0d - Freq: %0d" % ( files_recorded, highestintensity, frequency ) )
+
 

@@ -197,14 +197,13 @@ def plot_replay( replay_data ):
 	plt.title("Percentage distribution of predicted sounds", loc='left', fontsize=12, fontweight=0, color='black')
 	plt.ylabel("Percentage")
 
-	for column in replay_data.drop(['winner', 'intensity', 'time', 'frequency'], axis=1):
+	for column in replay_data.drop(['winner', 'intensity', 'time', 'frequency', 'actions'], axis=1):
 		if( column != "silence" ):
 			color = colors[num]		
 			num+=1
 			plt.bar(np.arange(replay_data['time'].size), replay_data[column], color=color, linewidth=1, alpha=0.9, label=column, bottom=bottom)
 			bottom += np.array( replay_data[column] )
 			
-	 
 	plt.legend(loc=1, bbox_to_anchor=(1, 1.3), ncol=4)
 
 	ax1 = plt.subplot(2, 1, 2)
