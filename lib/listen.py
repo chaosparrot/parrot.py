@@ -15,6 +15,31 @@ import time
 import csv
 from scipy.fftpack import fft
 from scipy.fftpack import fftfreq
+import msvcrt
+
+def break_loop_controls():
+	ESCAPEKEY = b'\x1b'
+	SPACEBAR = b' '
+	
+	if( msvcrt.kbhit() ):
+		character = msvcrt.getch()
+		if( character == SPACEBAR ):
+			print( "Listening paused                                                          " )
+			
+			# Pause the recording by looping until we get a new keypress
+			while( True ):
+				if( msvcrt.kbhit() ):
+					character = msvcrt.getch()
+					if( character == SPACEBAR ):
+						print( "Listening resumed!                                                   " )
+						return True
+					elif( character == ESCAPEKEY ):
+						print( "Listening stopped                                                    " )
+						return False
+		elif( character == ESCAPEKEY ):
+			print( "Listening stopped                                                         " )
+			return False			
+	return True	
 
 def start_listen_loop( classifier, mode_switcher = False, persist_replay = False, persist_files = False, amount_of_seconds=-1 ):
 	# Get a minimum of these elements of data dictionaries
@@ -60,7 +85,7 @@ def start_listen_loop( classifier, mode_switcher = False, persist_replay = False
 					dataDicts.pop(0)
 				
 				print( "Time: %0.2f - Winner: %s - Percentage: %0d - Frequency %0d                                        " % (seconds_playing, winner, probabilityDict[winner]['percent'], probabilityDict[winner]['frequency']), end="\r" )				
-				if( infinite_duration == False and seconds_playing > amount_of_seconds ):
+				if( ( infinite_duration == False and seconds_playing > amount_of_seconds ) or break_loop_controls() == False ):
 					continue_loop = False
 
 				actions = []
@@ -90,7 +115,7 @@ def start_listen_loop( classifier, mode_switcher = False, persist_replay = False
 				dataDicts.pop(0)
 			
 			seconds_playing = time.time() - starttime;
-			if( infinite_duration == False and seconds_playing > amount_of_seconds ):
+			if( ( infinite_duration == False and seconds_playing > amount_of_seconds ) or break_loop_controls() == False ):
 				continue_loop = False
 
 			if( mode_switcher ):
@@ -100,7 +125,9 @@ def start_listen_loop( classifier, mode_switcher = False, persist_replay = False
 				seconds = int(seconds_playing )
 				milliseconds = int( seconds_playing * 1000 ) % 1000
 				os.rename( TEMP_FILE_NAME, REPLAYS_AUDIO_FOLDER + '/' + str(seconds) + "." + str(milliseconds) + ".wav")
-				
+			
+			
+			
 		stream.close()
 		
 	return replay_file

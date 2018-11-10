@@ -1,5 +1,6 @@
 import time
 import pyautogui
+from config.config import *
 pyautogui.FAILSAFE = False
 
 class PatternDetector:
@@ -20,8 +21,8 @@ class PatternDetector:
 
 	# Update the timestamp used for throttle detection
 	# And set the prediction dicts to be used for detection
-	def tick( self, predictionDicts ):
-		self.currentTime = time.time()
+	def tick( self, predictionDicts, timestamp=None ):
+		self.currentTime = timestamp if timestamp != None else time.time()
 		self.mouseX, self.mouseY = pyautogui.position()
 		self.predictionDicts = predictionDicts
 		self.tickActions = []
@@ -60,14 +61,13 @@ class PatternDetector:
 				self.above_intensity( lastDict, config['intensity'] ) )
 				
 		elif( strategy == 'continuous' ):
-			if( self.throttle_detection( action, 0.3 ) == False ):
+			if( self.throttle_detection( action, RECORD_SECONDS * 2 ) == False ):
 				detected = ( self.above_percentage( lastDict, label, config['lowest_percentage'] ) and
 					self.above_intensity( lastDict, config['lowest_intensity'] ) )
 			else:
 				detected = ( self.above_percentage( lastDict, label, config['percentage'] ) and
 					self.above_intensity( lastDict, config['intensity'] ) )
 			
-				
 		if( detected == True ):
 			self.tickActions.append( action )
 			self.timestamps[action] = self.currentTime

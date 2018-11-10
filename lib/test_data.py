@@ -151,7 +151,7 @@ def audio_analysis( available_models ):
 		dataRows = []
 		for index, prediction in enumerate( predictions ):
 			timeString = full_wav_files[ index ].replace( REPLAYS_AUDIO_FOLDER + os.sep, "" ).replace( ".wav", "" )
-			dataRow = {'time': int(float(timeString) * 1000) / 1000, 'intensity': 0 }
+			dataRow = {'time': int(float(timeString) * 1000) / 1000, 'intensity': 0, 'actions': [] }
 			for column in prediction:
 				dataRow[column] = prediction[ column ]['percent']
 				if( prediction[ column ]['winner'] ):
