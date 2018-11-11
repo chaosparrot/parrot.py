@@ -123,8 +123,14 @@ def audio_analysis( available_models ):
 					print("Could not delete " + wav_file)
 		
 		print( "-------------------------" )
+		seconds = input("How many seconds of audio should we record? ( default is 15 )" )
+		if( seconds == "" ):
+			seconds = 15
+		else:
+			seconds = int( seconds )
 		print( "Recording new audio files" )
-		replay_file = start_listen_loop( classifier, False, True, True, 15 )
+		replay_file = start_listen_loop( classifier, False, True, True, seconds )
+		classifier = None
 		print( "-------------------------" )
 		print( "Analyzing file " + replay_file )
 		plot_replay( pd.read_csv( replay_file, skiprows=0, header=0) )
@@ -160,6 +166,8 @@ def audio_analysis( available_models ):
 					dataRow['intensity'] = prediction[column]['intensity']					
 
 			dataRows.append( dataRow )
+
+		classifier = None
 		print( "-------------------------" )
 		print( "Analyzing replay!" )
 		plot_replay( pd.DataFrame(data=dataRows) )

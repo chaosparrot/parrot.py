@@ -58,14 +58,16 @@ def learn_data():
 	print( "- Predicting label speed %0.4f ms" % prediction_speed_ms )
 	print( "- Recording length %0.4f ms" % ( RECORD_SECONDS * 1000 ) )
 	
-	print( "Predicting recognition accuracy using cross validation...", end="\r" )
-	scores = cross_validation( get_classifier(), dataX, dataY )
-	print( "Accuracy: %0.4f (+/- %0.4f)                               " % (scores.mean(), scores.std() * 2))
-	
 	print( "Saving the model to " + CLASSIFIER_FOLDER + "/" + clf_filename )
 	joblib.dump( classifier, CLASSIFIER_FOLDER + "/" + clf_filename )
 	print( "--------------------------" )
 
+	accuracy_analysis = input("Should we analyze the accuracy of the model? Y/n" ).lower() == 'y'	
+	if( accuracy_analysis ):
+		print( "Predicting recognition accuracy using cross validation...", end="\r" )
+		scores = cross_validation( get_classifier(), dataX, dataY )
+		print( "Accuracy: %0.4f (+/- %0.4f)                               " % (scores.mean(), scores.std() * 2))
+	
 	detailed_analysis = input("Should we do a detailed analysis of the model? Y/n" ).lower() == 'y'
 	if( detailed_analysis ):
 		create_confusion_matrix( get_classifier(), dataX, dataY, directory_names )
