@@ -8,8 +8,7 @@ from lib.system_toggles import toggle_speechrec
 
 class ModeSwitcher(object):
 	__instance = None
-	__currentMode = None
-	
+	__currentMode = None	
 	__modes = {}
 	
 	def __new__(cls):
@@ -34,14 +33,14 @@ class ModeSwitcher(object):
 		
 	def turnOnModeSwitch(self):
 		self.switchMode( 'switch' )
-		
+				
 	def switchMode( self, nextMode ):
 		print( "Switching to " + nextMode )
-		if( ModeSwitcher.__currentMode is None ):
-			ModeSwitcher.__currentMode = self.__modes[nextMode]
-			ModeSwitcher.__currentMode.start()
-		else:
+		if( ModeSwitcher.__currentMode is not None ):
 			ModeSwitcher.__currentMode.exit()
-			ModeSwitcher.__currentMode = self.__modes[nextMode]
-			ModeSwitcher.__currentMode.start()
 			
+		ModeSwitcher.__currentMode = self.__modes[nextMode]
+		ModeSwitcher.__currentMode.start()
+			
+	def exit(self):
+		ModeSwitcher.__currentMode.exit()

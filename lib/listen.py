@@ -66,7 +66,7 @@ def start_listen_loop( classifier, mode_switcher = False, persist_replay = False
 	else:
 		print ( "Listening for " + str( amount_of_seconds ) + " seconds..." )
 	print ( "" )
-			
+	
 	if( persist_replay ):
 		with open(replay_file, 'a', newline='') as csvfile:
 			headers = ['time', 'winner', 'intensity', 'frequency', 'actions']
@@ -75,7 +75,7 @@ def start_listen_loop( classifier, mode_switcher = False, persist_replay = False
 			writer.writeheader()
 			
 			starttime = int(time.time())
-			while( continue_loop ):
+			while( continue_loop ):			
 				seconds_playing = time.time() - starttime			
 			
 				probabilityDict, predicted, audio_frames, intensity, frequency = listen_loop( audio, stream, classifier, dataDicts, audio_frames )
@@ -119,14 +119,12 @@ def start_listen_loop( classifier, mode_switcher = False, persist_replay = False
 				continue_loop = False
 
 			if( mode_switcher ):
-				mode_switcher.getMode().handle_input( dataDicts )		
+				mode_switcher.getMode().handle_input( dataDicts )
 			
 			if( persist_files ):
 				seconds = int(seconds_playing )
 				milliseconds = int( seconds_playing * 1000 ) % 1000
 				os.rename( TEMP_FILE_NAME, REPLAYS_AUDIO_FOLDER + '/' + str(seconds) + "." + str(milliseconds) + ".wav")
-			
-			
 			
 		stream.close()
 		

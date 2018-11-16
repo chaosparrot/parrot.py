@@ -2,6 +2,7 @@ from config.config import *
 from lib.record_data import record_sound
 from lib.learn_data import learn_data
 from lib.test_data import test_data
+from lib.setup_config import setup_config
 
 def root_navigation( first):
 	if( first ):
@@ -11,7 +12,7 @@ def root_navigation( first):
 	print( " - [R] for recording" )
 	print( " - [L] for learning the data" )
 	print( " - [A] for analyzing the performance of the models" )
-	print( " - [C] for general configuration" )
+	print( " - [S] for changing settings" )
 	print( " - [X] for exiting setup" )
 	
 	select_mode()
@@ -26,9 +27,9 @@ def select_mode():
 		root_navigation( False )
 	elif( setup_mode.lower() == 'a' ):
 		test_data( True )
-		root_navigation( False )		
-	elif( setup_mode.lower() == 'c' ):
-		print( "TODO CONFIG!" )
+		root_navigation( False )
+	elif( setup_mode.lower() == 's' ):
+		setup_config( True )
 		root_navigation( False )
 	elif( setup_mode.lower() == 'x' ):
 		print( "Goodbye." )
