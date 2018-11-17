@@ -1,6 +1,6 @@
 import numpy as np
 from config.config import *
-from lib.machinelearning import feature_engineering, get_label_for_directory, get_highest_intensity_of_wav_file
+from lib.machinelearning import feature_engineering, feature_engineering_raw, get_label_for_directory, get_highest_intensity_of_wav_file
 import pyaudio
 import wave
 import time
@@ -78,13 +78,15 @@ def start_listen_loop( classifier, mode_switcher = False, persist_replay = False
 			while( continue_loop ):			
 				seconds_playing = time.time() - starttime			
 			
-				probabilityDict, predicted, audio_frames, intensity, frequency = listen_loop( audio, stream, classifier, dataDicts, audio_frames )
+				probabilityDict, predicted, audio_frames, intensity, frequency, wavData = listen_loop( audio, stream, classifier, dataDicts, audio_frames )
 				winner = classifier.classes_[ predicted ]
 				dataDicts.append( probabilityDict )
 				if( len(dataDicts) > PREDICTION_LENGTH ):
 					dataDicts.pop(0)
+					
+				prediction_time = time.time() - starttime - seconds_playing
 				
-				print( "Time: %0.2f - Winner: %s - Percentage: %0d - Frequency %0d                                        " % (seconds_playing, winner, probabilityDict[winner]['percent'], probabilityDict[winner]['frequency']), end="\r" )				
+				print( "Time: %0.2f - Prediction in: %0.2f - Winner: %s - Percentage: %0d - Frequency %0d                                        " % (seconds_playing, prediction_time, winner, probabilityDict[winner]['percent'], probabilityDict[winner]['frequency']), end="\r" )				
 				if( ( infinite_duration == False and seconds_playing > amount_of_seconds ) or break_loop_controls() == False ):
 					continue_loop = False
 
@@ -101,7 +103,12 @@ def start_listen_loop( classifier, mode_switcher = False, persist_replay = False
 				csvfile.flush()					
 					
 				if( persist_files ):
-					os.rename( TEMP_FILE_NAME, REPLAYS_AUDIO_FOLDER + "/%0.3f.wav" % (seconds_playing))
+					audioFile = wave.open(REPLAYS_AUDIO_FOLDER + "/%0.3f.wav" % (seconds_playing), 'wb')
+					audioFile.setnchannels(CHANNELS)
+					audioFile.setsampwidth(audio.get_sample_size(FORMAT))
+					audioFile.setframerate(RATE)
+					audioFile.writeframes(wavData)
+					audioFile.close()
 					
 			print("Finished listening!                                                                                   ")
 			stream.close()
@@ -109,7 +116,7 @@ def start_listen_loop( classifier, mode_switcher = False, persist_replay = False
 		starttime = int(time.time())
 
 		while( continue_loop ):
-			probabilityDict, predicted, audio_frames, intensity, frequency = listen_loop( audio, stream, classifier, dataDicts, audio_frames )
+			probabilityDict, predicted, audio_frames, intensity, frequency, wavData = listen_loop( audio, stream, classifier, dataDicts, audio_frames )
 			dataDicts.append( probabilityDict )
 			if( len(dataDicts) > PREDICTION_LENGTH ):
 				dataDicts.pop(0)
@@ -122,26 +129,23 @@ def start_listen_loop( classifier, mode_switcher = False, persist_replay = False
 				mode_switcher.getMode().handle_input( dataDicts )
 			
 			if( persist_files ):
-				seconds = int(seconds_playing )
-				milliseconds = int( seconds_playing * 1000 ) % 1000
-				os.rename( TEMP_FILE_NAME, REPLAYS_AUDIO_FOLDER + '/' + str(seconds) + "." + str(milliseconds) + ".wav")
+				audioFile = wave.open(REPLAYS_AUDIO_FOLDER + "/%0.3f.wav" % (seconds_playing), 'wb')
+				audioFile.setnchannels(CHANNELS)
+				audioFile.setsampwidth(audio.get_sample_size(FORMAT))
+				audioFile.setframerate(RATE)
+				audioFile.writeframes(wavData)
+				audioFile.close()
 			
 		stream.close()
 		
 	return replay_file
 
 def listen_loop( audio, stream, classifier, dataDicts, audio_frames ):
-	audio_frames, intensity = get_stream_wav_segment( stream, audio_frames )
-
-	tempFile = wave.open(TEMP_FILE_NAME, 'wb')
-	tempFile.setnchannels(CHANNELS)
-	tempFile.setsampwidth(audio.get_sample_size(FORMAT))
-	tempFile.setframerate(RATE)
-	tempFile.writeframes(b''.join(audio_frames))
-	tempFile.close()
+	audio_frames, intensity = get_stream_wav_segment( stream, audio_frames )	
+	wavData = b''.join(audio_frames)
 	
-	probabilityDict, predicted, frequency = predict_wav_file( TEMP_FILE_NAME, classifier, intensity )
-	return probabilityDict, predicted, audio_frames, intensity, frequency
+	probabilityDict, predicted, frequency = predict_raw_data( wavData, classifier, intensity )
+	return probabilityDict, predicted, audio_frames, intensity, frequency, wavData
 	
 def get_stream_wav_segment( stream, frames ):
 	stream.start_stream()
@@ -186,25 +190,51 @@ def predict_wav_files( classifier, wav_files ):
 	
 	return probabilities
 		
+def predict_raw_data( wavData, classifier, intensity ):
+	# FEATURE ENGINEERING
+	first_channel_data = np.frombuffer( wavData, dtype=np.int16 )[::2]
+	data_row, frequency = feature_engineering_raw( first_channel_data, RATE, intensity )
+	data = [ data_row ]
+
+	return create_probability_dict( classifier, data, frequency, intensity )
+		
 def predict_wav_file( wav_file, classifier, intensity ):
 	# FEATURE ENGINEERING
-	data_row, frequency = feature_engineering( wav_file )		
+	data_row, frequency = feature_engineering( wav_file )
 	data = [ data_row ]
-			
-	# Predict the outcome of the audio file
-	probabilities = classifier.predict_proba( data ) * 100
-	probabilities = probabilities.astype(int)
+	
+	return create_probability_dict( classifier, data, frequency, intensity )
+
+def create_probability_dict( classifier, data, frequency, intensity ):
+	if( intensity > 400 ):
+		# Predict the outcome of the audio file	
+		probabilities = classifier.predict_proba( data ) * 100
+		probabilities = probabilities.astype(int)
+
+		# Get the predicted winner		
+		predicted = np.argmax( probabilities[0] )
+		if( isinstance(predicted, list) ):
+			predicted = predicted[0]
 		
-	# Get the predicted winner
-	predicted = np.argmax( probabilities[0] )
-	if( isinstance(predicted, list) ):
-		predicted = predicted[0]
-		
-	probabilityDict = {}
-	for index, percent in enumerate( probabilities[0] ):
-		label = classifier.classes_[ index ]
-		probabilityDict[ label ] = { 'percent': percent, 'intensity': int(intensity), 'winner': index == predicted, 'frequency': frequency }
+		probabilityDict = {}
+		for index, percent in enumerate( probabilities[0] ):
+			label = classifier.classes_[ index ]
+			probabilityDict[ label ] = { 'percent': percent, 'intensity': int(intensity), 'winner': index == predicted, 'frequency': frequency }
+	else:
+		# SKIP PREDICTION - MOST CERTAINLY SILENCE
+		probabilityDict = {}
+		index = 0
+		for label in classifier.classes_:
+			winner = False
+			percent = 0
+			if( label == 'silence' ):
+				predicted = index
+				percent = 100
+				winner = True
 				
+			probabilityDict[ label ] = { 'percent': percent, 'intensity': int(intensity), 'winner': winner, 'frequency': frequency }
+			index += 1
+			
 	return probabilityDict, predicted, frequency
 
 	

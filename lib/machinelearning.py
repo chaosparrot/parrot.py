@@ -20,8 +20,8 @@ def feature_engineering( wavFile ):
 	
 	return feature_engineering_raw( rawWav[:,0], fs, intensity )
 	
-def feature_engineering_raw( wavData, sampleRate, intensity ):				
-	mfcc_result1 = mfcc( wavData, samplerate=sampleRate, nfft=1103, numcep=26, appendEnergy=True )
+def feature_engineering_raw( wavData, sampleRate, intensity ):
+	mfcc_result1 = mfcc( wavData, samplerate=sampleRate, nfft=1103, numcep=13, appendEnergy=True )
 	data_row = []
 	data_row.extend( mfcc_result1.ravel() )
 	freq = get_loudest_freq( wavData, RECORD_SECONDS )

@@ -93,7 +93,7 @@ def load_wav_files( directory, label, int_label, start, end ):
 
 def get_classifier():
 	#return ExtraTreesClassifier(n_estimators=500, max_depth=20, random_state=123 )
-	return RandomForestClassifier(n_estimators=500, max_depth=20, random_state=123)
+	return RandomForestClassifier(n_estimators=100, max_depth=10, random_state=123)
 		
 def load_data( max_files ):
 	# Get the full directories for the dataset

@@ -227,6 +227,6 @@ def plot_replay( replay_data ):
 	frequencyAxis = ax1.twinx()
 	frequencyAxis.plot(np.arange(replay_data['time'].size), replay_data['frequency'], '-', color='red')
 	frequencyAxis.set_ylabel('Frequency', color='red')
-	frequencyAxis.set_ylim(ymax=750)
+	frequencyAxis.set_ylim(ymax=800)
 
 	plt.show()

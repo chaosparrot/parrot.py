@@ -18,7 +18,7 @@ class BrowseMode:
 			'click': {
 				'strategy': 'single_tap',
 				'sound': 'cluck',
-				'percentage': 40,
+				'percentage': 20,
 				'intensity': 600
 			},
 			'rightclick': {
@@ -49,8 +49,8 @@ class BrowseMode:
 			},
 			'special': {
 				'strategy': 'rapid',
-				'sound': 'sound_thr',
-				'percentage': 50,
+				'sound': 'sound_uuh',
+				'percentage': 70,
 				'intensity': 1000
 			},
 			'exit': {
@@ -72,16 +72,20 @@ class BrowseMode:
 	def handle_input( self, dataDicts ):
 		self.detector.tick( dataDicts )
 		
+		# Early return for quicker detection
+		if( self.detector.detect_silence() ):
+			return self.detector.tickActions
+		
 		mouseMoving = False
-		if( self.detector.detect("moving" ) ):
+		if( self.detector.detect("click") ):
+			click()
+		elif( self.detector.detect("moving" ) ):
 			mouseMoving = True
 			if( self.mode != "precision" ):
 				if( self.mode == "regular" ):
 					press("f4")
 				self.mode = "precision"
 				self.centerXPos, self.centerYPos = pyautogui.position()
-		elif( self.detector.detect("click") ):
-			click()
 		elif( self.detector.detect("rightclick") ):
 			click(button='right')
 		elif( self.detector.detect("scroll_up") ):

@@ -41,7 +41,10 @@ class PatternDetector:
 			return False
 		else:
 			return self.detect_strategy( action, self.config[action] )
-			
+		
+	def detect_silence( self ):
+		return self.predictionDicts[-1]['silence']['intensity'] < 400
+		
 	def detect_strategy( self, action, config ):
 		if( 'throttle' in config and self.throttle_detection( action, config['throttle'] ) ):
 			return False
