@@ -16,10 +16,11 @@ class BrowseMode:
 		self.modeSwitcher = modeSwitcher
 		self.detector = PatternDetector({
 			'click': {
-				'strategy': 'single_tap',
+				'strategy': 'rapid',
 				'sound': 'cluck',
-				'percentage': 20,
-				'intensity': 600
+				'percentage': 50,
+				'intensity': 600,
+				'throttle': 0.05
 			},
 			'rightclick': {
 				'strategy': 'single_tap',

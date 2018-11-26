@@ -206,7 +206,7 @@ def predict_wav_file( wav_file, classifier, intensity ):
 	return create_probability_dict( classifier, data, frequency, intensity )
 
 def create_probability_dict( classifier, data, frequency, intensity ):
-	if( intensity > 400 ):
+	if( intensity > SILENCE_INTENSITY_THRESHOLD ):
 		# Predict the outcome of the audio file	
 		probabilities = classifier.predict_proba( data ) * 100
 		probabilities = probabilities.astype(int)

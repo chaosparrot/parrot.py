@@ -27,8 +27,11 @@ class ExcelMode:
 		self.grammar.add_rule( correctionRule )
 		copyRowRule = CopyRowRule()
 		self.grammar.add_rule( copyRowRule )
-		nextRowRule = NextRowRule()
+		nextRowRule = MoveRule()
 		self.grammar.add_rule( nextRowRule )
+		pasteRule = PasteRule()
+		self.grammar.add_rule( pasteRule )
+		self.grammar.add_rule( ShiftRule() )
 
 	def start( self ):
 		self.grammar.load()

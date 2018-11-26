@@ -6,6 +6,7 @@ from pyautogui import press, hotkey, click, scroll, typewrite, moveRel, moveTo, 
 from time import sleep
 from subprocess import call
 from lib.system_toggles import toggle_eyetracker, turn_on_sound, mute_sound, toggle_speechrec
+from lib.pattern_detector import PatternDetector
 import os
 
 class HeroesMode:
@@ -13,6 +14,77 @@ class HeroesMode:
 	def __init__(self, modeSwitcher):
 		self.mode = "regular"
 		self.modeSwitcher = modeSwitcher
+		self.detector = PatternDetector({
+			'click': {
+				'strategy': 'rapid',
+				'sound': 'cluck',
+				'percentage': 45,
+				'intensity': 600,
+				'throttle': 0.1
+			},
+			'rightclick': {
+				'strategy': 'rapid',
+				'sound': 'fingersnap',
+				'percentage': 40,
+				'intensity': 3000,
+				'throttle': 0.1
+			},
+			'q': {
+				'strategy': 'rapid',
+				'sound': 'sound_oh',
+				'percentage': 50,
+				'intensity': 500,
+				'throttle': 0.05
+			},
+			'w': {
+				'strategy': 'rapid',
+				'sound': 'sound_s',
+				'percentage': 80,
+				'intensity': 500,
+				'throttle': 0.1
+			},
+			'e': {
+				'strategy': 'rapid',
+				'sound': 'sound_f',
+				'percentage': 60,
+				'intensity': 500,
+				'throttle': 0.15
+			},
+			'heroic': {
+				'strategy': 'rapid',
+				'sound': 'hotel_bell',
+				'percentage': 60,
+				'intensity': 10000,
+				'throttle': 0.3
+			},
+			'movement': {
+				'strategy': 'rapid',
+				'sound': 'sound_ooh',
+				'percentage': 35,
+				'intensity': 2000,
+				'throttle': 0.2
+			},
+			'camera': {
+				'strategy': 'rapid',
+				'sound': 'sound_uuh',
+				'percentage': 70,
+				'intensity': 1000
+			},
+			'special': {
+				'strategy': 'rapid',
+				'sound': 'whistle',
+				'percentage': 50,
+				'intensity': 1000,
+				'throttle': 0.3
+			},
+			'exit': {
+				'strategy': 'rapid',
+				'sound': 'bell',
+				'percentage': 75,
+				'intensity': 1000
+			}
+		})
+
 		self.pressed_keys = []
 		self.should_follow = False
 		self.should_drag = False
@@ -24,37 +96,9 @@ class HeroesMode:
 		toggle_eyetracker()
 				
 	def handle_input( self, dataDicts ):
-		if( single_tap_detection(dataDicts, "sound_ie", 70, 1000 ) ):
-			quadrant = detect_mouse_quadrant( 3, 3 )
-			self.character_movement( quadrant )
-		elif( single_tap_detection(dataDicts, "sound_huu", 50, 1000 ) ):
-			quadrant = detect_mouse_quadrant( 3, 3 )
-			self.set_hold_key( quadrant )
-		elif( single_tap_detection(dataDicts, "sound_oh", 50, 1000 ) ):
-			self.press_ability( 'q' )
-		elif( single_tap_detection(dataDicts, "sound_s", 60, 1000 ) ):
-			self.press_ability( 'w' )			
-		elif( single_tap_detection(dataDicts, "sound_f", 40, 1000 ) ):
-			self.press_ability( 'e' )
-		elif( percentage_detection(dataDicts, "whistle", 70 ) ):
-			self.press_ability( 'r' )
-		elif( single_tap_detection(dataDicts, "sound_pfft", 70, 1000 ) ):
-			self.press_ability( 'z' )
-		elif( single_tap_detection(dataDicts, "sound_tschk", 50, 1000 ) ):
-			self.press_ability( 'a' )
-
-		if( percentage_detection(dataDicts, "sound_thr", 40 ) ):
-			edges = detect_screen_edge( 200 )
-
-			self.mode = "cameramovement"
-			print ( "Camera movement!" ) 
-			self.camera_movement( edges, detect_mouse_quadrant( 4, 3 ) )
-		elif( self.mode == "cameramovement" ):
-			self.camera_movement( [], -1 )
-			print( "Regular mode!" )
-			self.mode = "regular"
-					
-		if( single_tap_detection(dataDicts, "cluck", 50, 1000 ) ):
+		self.detector.tick( dataDicts )
+	
+		if( self.detector.detect( "click" ) ):
 			if( self.hold_key == ""):
 				self.follow_mouse( False )
 				click(button='right')
@@ -65,28 +109,56 @@ class HeroesMode:
 				self.press_ability( self.hold_key )
 				
 			self.hold_key = ""
-		elif( single_tap_detection(dataDicts, "fingersnap", 60, 1200 ) ):
+		elif( self.detector.detect( "q" ) ):
+			self.press_ability( 'q' )
+		elif( self.detector.detect( "w" ) ):
+			self.press_ability( 'w' )			
+		elif( self.detector.detect( "e" ) ):
+			self.press_ability( 'e' )
+		elif( self.detector.detect( "heroic" ) ):
+			self.press_ability( 'r' )
+		elif( self.detector.detect( "special" ) ):
+			quadrant = self.detector.detect_mouse_quadrant( 3, 3 )		
+			self.set_hold_key( quadrant )
+		elif( self.detector.detect( "movement" ) ):
+			quadrant = self.detector.detect_mouse_quadrant( 3, 3 )
+			self.character_movement( quadrant )
+
+		if( self.detector.detect( "camera" ) ):
+			edges = self.detector.detect_mouse_screen_edge( 200 )
+
+			self.mode = "cameramovement"
+			print ( "Camera movement!" ) 
+			self.camera_movement( edges, detect_mouse_quadrant( 4, 3 ) )
+		elif( self.mode == "cameramovement" ):
+			self.camera_movement( [], -1 )
+			print( "Regular mode!" )
+			self.mode = "regular"
+					
+		
+		if( self.detector.detect( "rightclick" ) ):
 			print( "LMB" )
 			click()
-			
-		if( percentage_detection(dataDicts, "bell", 90 ) ):
+		elif( self.detector.detect( "exit" ) ):
 			self.modeSwitcher.switchMode('browse')
+			
+		return self.detector.tickActions
 			
 	def character_movement( self, quadrant ):
 		print ( "Character movement!" ) 
 		
 		## Show tab
 		if( quadrant == 1 ):
-			self.hold_key = "d"
-			self.follow_mouse( False )			
+			self.follow_mouse( True )
 		elif( quadrant == 3 ):
-			self.press_ability('h')
+			self.press_ability( 'z' )
 			self.follow_mouse( False )
 		## Hearth home
 		elif( quadrant == 7 ):
 			self.press_ability('b')
-		elif( quadrant == 5 ):
-			self.follow_mouse( True )
+		else:
+			self.press_ability( 'a' )
+			self.follow_mouse( False )
 		
 	def set_hold_key( self, quadrant ):
 		if( quadrant == 1 ):
@@ -95,12 +167,18 @@ class HeroesMode:
 			self.hold_key = "2"
 		elif( quadrant == 3 ):
 			self.hold_key = "3"
+		elif( quadrant == 4 ):
+			self.hold_key = "d"
+		elif( quadrant == 6 ):
+			self.hold_key = "f"
 		elif( quadrant == 7 ):
 			self.press_ability("n")
 			self.hold_key = "click"
+		elif( quadrant == 8 ):
+			self.press_ability( "tab" )						
 		elif( quadrant == 9 ):
-			self.press_ability( "tab" )
-			
+			self.press_ability( "f10" )						
+
 	def press_ability( self, key ):
 		print( "pressing " + key )
 		press( key )

@@ -1,6 +1,7 @@
 import time
 import pyautogui
 from config.config import *
+import math
 pyautogui.FAILSAFE = False
 
 class PatternDetector:

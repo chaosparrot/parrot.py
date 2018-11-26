@@ -1,5 +1,6 @@
-from dragonfly import Grammar, CompoundRule, Integer, Choice, Repetition
+from dragonfly import Grammar, CompoundRule, Integer, Choice, Repetition, Optional
 from pyautogui import press, hotkey, click, scroll, typewrite, moveRel, moveTo, position, keyUp, keyDown, mouseUp, mouseDown
+import pyperclip
 
 natoAlphabet = Choice("alphabet", {
 				"Alpha": 1,
@@ -40,23 +41,48 @@ class CopyRowRule(CompoundRule):
 	spec = "Do you copy over"
 
 	def _process_recognition(self, node, extras):
-		hotkey('shift', 'space')
 		hotkey('ctrl', 'c')
 
+class ShiftRule(CompoundRule):
+	spec = "<shifttype>"
+	extras = [Choice("shifttype", {'Engage': 'Engage', 'Disengage': 'Disengage'})]	
+	
+	def _process_recognition(self, node, extras):
+	
+		if( extras['shifttype'] == "Engage" ):
+			keyDown('shift')
+		else:
+			keyUp("shift")		
+		
 class PasteRule(CompoundRule):
 	spec = "Roger that"
 
 	def _process_recognition(self, node, extras):
-		keyDown('ctrl')
-		press('v')
-		keyUp('ctrl')
+		hotkey('ctrl', 'v', interval = 0.15)
 
-class NextRowRule(CompoundRule):
-	spec = "Break break"
+class MoveRule(CompoundRule):
+	spec = "<type> <direction> <n>"
+	extras = [Choice("type", {'Break': 'Break', 'Move': 'Move'}), Optional(Choice("direction", {'left': 'left', 'up': 'up', 'down': 'down', 'right': 'right'}), "direction"), Optional( Repetition(Integer("n", 0, 10), 0, 10, "n"), "n")]
 
 	def _process_recognition(self, node, extras):
-		press('down')
-		press('home')
+		numbers = extras["n"]
+		direction = extras["direction"]
+		if( direction == None ):
+			direction = 'down'
+		
+		total = "".join( str(x) for x in numbers )
+		if( total == "" ):
+			total = "1"
+		total = int( total )
+
+		presses = []
+		if( type == "Break" ):
+			presses.append( 'home' )
+
+		for i in range(total):
+			presses.append( direction )
+			
+		press(presses)
 		
 class CorrectionRule(CompoundRule):
 	spec = "correction"
