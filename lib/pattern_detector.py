@@ -65,7 +65,7 @@ class PatternDetector:
 				self.above_intensity( lastDict, config['intensity'] ) )
 				
 		elif( strategy == 'continuous' ):
-			if( self.throttle_detection( action, RECORD_SECONDS * 2 ) == False ):
+			if( self.throttle_detection( action, RECORD_SECONDS * 4 ) == True ):
 				detected = ( self.above_percentage( lastDict, label, config['lowest_percentage'] ) and
 					self.above_intensity( lastDict, config['lowest_intensity'] ) )
 			else:
@@ -159,3 +159,14 @@ class PatternDetector:
 			edges.append( "right" )
 			
 		return edges
+
+	# Detects the X and Y position on the minimap
+	# By taking the screen dimensions as the size for the minimap as if it were enlarged
+	# For extra accuracy using eyetracking
+	def detect_minimap_position( self, minimap_x, minimap_y, minimap_width, minimap_height ):
+		ratioX = self.mouseX / self.screenWidth;
+		ratioY = self.mouseY / self.screenHeight;
+		
+		minimapX = ( ratioX * minimap_width ) + minimap_x
+		minimapY = ( ratioY * minimap_height ) + minimap_y
+		return minimapX, minimapY

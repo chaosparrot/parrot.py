@@ -11,6 +11,22 @@ import os
 
 class HeroesMode:
 
+	minimaps = {
+		'default': [1600, 800, 300, 250],
+		'warhead': [1532, 712, 400, 300],
+		'braxis': [1570, 750, 250, 200],		
+		'towers': [1600, 789, 300, 300]
+	}
+	
+	heroes = {
+		'default': {'aim': {'1': False, '2': False, '3': False, 'd': True, 'f': True, 'z': False}},
+		'Kerrigan': {'aim': {'1': False, '2': False, '3': False, 'd': False, 'f': True, 'z': False}},
+		'Dehaka': {'aim': {'1': False, '2': False, '3': False, 'd': False, 'f': True, 'z': True}}		
+	}
+	
+	current_map = 'braxis'
+	current_hero = 'default'
+		
 	def __init__(self, modeSwitcher):
 		self.mode = "regular"
 		self.modeSwitcher = modeSwitcher
@@ -27,7 +43,7 @@ class HeroesMode:
 				'sound': 'fingersnap',
 				'percentage': 40,
 				'intensity': 3000,
-				'throttle': 0.1
+				'throttle': 0.5
 			},
 			'q': {
 				'strategy': 'rapid',
@@ -65,10 +81,12 @@ class HeroesMode:
 				'throttle': 0.2
 			},
 			'camera': {
-				'strategy': 'rapid',
+				'strategy': 'continuous',
 				'sound': 'sound_uuh',
-				'percentage': 70,
-				'intensity': 1000
+				'percentage': 50,
+				'intensity': 1000,
+				'lowest_percentage': 15,
+				'lowest_intensity': 400
 			},
 			'special': {
 				'strategy': 'rapid',
@@ -94,6 +112,8 @@ class HeroesMode:
 	def start( self ):
 		mute_sound()
 		toggle_eyetracker()
+		
+		
 				
 	def handle_input( self, dataDicts ):
 		self.detector.tick( dataDicts )
@@ -118,11 +138,14 @@ class HeroesMode:
 		elif( self.detector.detect( "heroic" ) ):
 			self.press_ability( 'r' )
 		elif( self.detector.detect( "special" ) ):
-			quadrant = self.detector.detect_mouse_quadrant( 3, 3 )		
+			quadrant = self.detector.detect_mouse_quadrant( 3, 3 )
 			self.set_hold_key( quadrant )
 		elif( self.detector.detect( "movement" ) ):
-			quadrant = self.detector.detect_mouse_quadrant( 3, 3 )
-			self.character_movement( quadrant )
+			if( self.mode == "minimap" ):
+				self.click_on_minimap()
+			else:	
+				quadrant = self.detector.detect_mouse_quadrant( 3, 3 )
+				self.character_movement( quadrant )
 
 		if( self.detector.detect( "camera" ) ):
 			edges = self.detector.detect_mouse_screen_edge( 200 )
@@ -139,7 +162,8 @@ class HeroesMode:
 		if( self.detector.detect( "rightclick" ) ):
 			print( "LMB" )
 			click()
-		elif( self.detector.detect( "exit" ) ):
+		
+		if( self.detector.detect( "exit" ) ):
 			self.modeSwitcher.switchMode('browse')
 			
 		return self.detector.tickActions
@@ -151,7 +175,10 @@ class HeroesMode:
 		if( quadrant == 1 ):
 			self.follow_mouse( True )
 		elif( quadrant == 3 ):
-			self.press_ability( 'z' )
+			if( self.heroes[ self.current_hero ]['aim']['z'] == False ):
+				self.press_ability("z")
+			else:
+				self.hold_key = "z"
 			self.follow_mouse( False )
 		## Hearth home
 		elif( quadrant == 7 ):
@@ -162,15 +189,32 @@ class HeroesMode:
 		
 	def set_hold_key( self, quadrant ):
 		if( quadrant == 1 ):
-			self.hold_key = "1"
+			if( self.heroes[ self.current_hero ]['aim']['1'] == False ):
+				self.press_ability("1")
+			else:
+				self.hold_key = "1"
+				
 		elif( quadrant == 2 ):
-			self.hold_key = "2"
+			if( self.heroes[ self.current_hero ]['aim']['2'] == False ):
+				self.press_ability("2")
+			else:
+				self.hold_key = "2"
 		elif( quadrant == 3 ):
-			self.hold_key = "3"
+			if( self.heroes[ self.current_hero ]['aim']['3'] == False ):
+				self.press_ability("3")
+			else:
+				self.hold_key = "3"
 		elif( quadrant == 4 ):
-			self.hold_key = "d"
+			if( self.heroes[ self.current_hero ]['aim']['d'] == False ):
+				self.press_ability("d")
+			else:
+				self.hold_key = "d"
 		elif( quadrant == 6 ):
 			self.hold_key = "f"
+			if( self.heroes[ self.current_hero ]['aim']['f'] == False ):
+				self.press_ability("f")
+			else:
+				self.hold_key = "f"
 		elif( quadrant == 7 ):
 			self.press_ability("n")
 			self.hold_key = "click"
@@ -187,10 +231,9 @@ class HeroesMode:
 		self.follow_mouse( False )
 		detected = edges
 		
-		if( quadrant == 12 ):
-			self.drag_mouse( True )
+		if( self.mode != "minimap" and quadrant == 12 ):
+			self.mode = "minimap"
 		else:
-			self.drag_mouse( False )		
 			# Release all the keys that it doesnt have anymore
 			for held in self.pressed_keys:
 				if( held not in detected ):
@@ -206,8 +249,17 @@ class HeroesMode:
 			if( quadrant == 6 or quadrant == 7 ):
 				press('space')
 
-
 		self.pressed_keys = detected
+		
+	def click_on_minimap( self ):
+		minimap = self.minimaps[ self.current_map ]
+		minimapX, minimapY = self.detector.detect_minimap_position( minimap[0], minimap[1], minimap[2], minimap[3] )
+		
+		toggle_eyetracker()
+		moveTo( minimapX, minimapY )
+		click()
+		toggle_eyetracker()
+		self.mode = "regular"
 
 	def drag_mouse( self, should_drag ):
 		if( self.should_drag != should_drag ):

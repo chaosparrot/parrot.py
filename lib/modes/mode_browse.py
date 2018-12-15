@@ -76,7 +76,7 @@ class BrowseMode:
 		# Early return for quicker detection
 		if( self.detector.detect_silence() ):
 			return self.detector.tickActions
-		
+				
 		mouseMoving = False
 		if( self.detector.detect("click") ):
 			click()
