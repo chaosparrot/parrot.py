@@ -170,3 +170,6 @@ class PatternDetector:
 		minimapX = ( ratioX * minimap_width ) + minimap_x
 		minimapY = ( ratioY * minimap_height ) + minimap_y
 		return minimapX, minimapY
+		
+	def detect_inside_minimap( self, minimap_x, minimap_y, minimap_width, minimap_height ):
+		return self.mouseX >= minimap_x and self.mouseY >= minimap_y and self.mouseX < minimap_x + minimap_width and self.mouseY < minimap_y + minimap_height

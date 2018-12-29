@@ -7,27 +7,33 @@ from time import sleep
 from subprocess import call
 from lib.system_toggles import toggle_eyetracker, turn_on_sound, mute_sound, toggle_speechrec
 from lib.pattern_detector import PatternDetector
+from lib.heroes_grammar import *
 import os
+import pythoncom
 
 class HeroesMode:
 
 	minimaps = {
-		'default': [1600, 800, 300, 250],
-		'warhead': [1532, 712, 400, 300],
-		'braxis': [1570, 750, 250, 200],		
-		'towers': [1600, 789, 300, 300]
+		'default': [1600, 800, 500, 400],
+		'Warhead Junction': [1532, 712, 400, 300],
+		'Braxis': [1570, 750, 250, 200],		
+		'Towers of Doom': [1600, 789, 300, 300]
 	}
 	
 	heroes = {
-		'default': {'aim': {'1': False, '2': False, '3': False, 'd': True, 'f': True, 'z': False}},
-		'Kerrigan': {'aim': {'1': False, '2': False, '3': False, 'd': False, 'f': True, 'z': False}},
+		'default': {'aim': {'1': False, '2': False, '3': False, 'd': False, 'f': True, 'z': False}},
+		'Auriel': {'aim': {'1': False, '2': False, '3': False, 'd': True, 'f': True, 'z': False}},
 		'Dehaka': {'aim': {'1': False, '2': False, '3': False, 'd': False, 'f': True, 'z': True}}		
 	}
 	
-	current_map = 'braxis'
+	current_map = 'default'
 	current_hero = 'default'
 		
 	def __init__(self, modeSwitcher):
+		self.grammar = Grammar("Heroes")
+		self.selectHeroRule = SelectHeroRule()
+		self.grammar.add_rule( self.selectHeroRule )
+	
 		self.mode = "regular"
 		self.modeSwitcher = modeSwitcher
 		self.detector = PatternDetector({
@@ -37,6 +43,13 @@ class HeroesMode:
 				'percentage': 45,
 				'intensity': 600,
 				'throttle': 0.1
+			},
+			'minimap-click': {
+				'strategy': 'rapid',
+				'sound': 'cluck',
+				'percentage': 45,
+				'intensity': 600,
+				'throttle': 0.5
 			},
 			'rightclick': {
 				'strategy': 'rapid',
@@ -48,8 +61,8 @@ class HeroesMode:
 			'q': {
 				'strategy': 'rapid',
 				'sound': 'sound_oh',
-				'percentage': 50,
-				'intensity': 500,
+				'percentage': 43,
+				'intensity': 1000,
 				'throttle': 0.05
 			},
 			'w': {
@@ -99,7 +112,8 @@ class HeroesMode:
 				'strategy': 'rapid',
 				'sound': 'bell',
 				'percentage': 75,
-				'intensity': 1000
+				'intensity': 1000,
+				'throttle': 0.5
 			}
 		})
 
@@ -112,59 +126,71 @@ class HeroesMode:
 	def start( self ):
 		mute_sound()
 		toggle_eyetracker()
-		
-		
 				
 	def handle_input( self, dataDicts ):
 		self.detector.tick( dataDicts )
 	
-		if( self.detector.detect( "click" ) ):
-			if( self.hold_key == ""):
-				self.follow_mouse( False )
-				click(button='right')
-				print( "RMB" )
-			elif( self.hold_key == "click"):
-				click()
-			else:
-				self.press_ability( self.hold_key )
-				
-			self.hold_key = ""
-		elif( self.detector.detect( "q" ) ):
-			self.press_ability( 'q' )
-		elif( self.detector.detect( "w" ) ):
-			self.press_ability( 'w' )			
-		elif( self.detector.detect( "e" ) ):
-			self.press_ability( 'e' )
-		elif( self.detector.detect( "heroic" ) ):
-			self.press_ability( 'r' )
-		elif( self.detector.detect( "special" ) ):
-			quadrant = self.detector.detect_mouse_quadrant( 3, 3 )
-			self.set_hold_key( quadrant )
-		elif( self.detector.detect( "movement" ) ):
-			if( self.mode == "minimap" ):
-				self.click_on_minimap()
-			else:	
+		if( self.mode != "speech" ):
+			if( self.detector.detect( "click" ) ):
+				if( self.hold_key == ""):
+					self.follow_mouse( False )
+					
+					minimap = self.minimaps[ self.current_map ]				
+					if( self.detector.detect_inside_minimap( minimap[0], minimap[1], minimap[2], minimap[3] ) and self.detector.detect("minimap-click") ):
+						click()
+					else:
+						click(button='right')
+				elif( self.hold_key == "click"):
+					click()
+				else:
+					self.press_ability( self.hold_key )
+					
+				self.hold_key = ""
+			elif( self.detector.detect( "q" ) ):
+				self.press_ability( 'q' )
+			elif( self.detector.detect( "w" ) ):
+				self.press_ability( 'w' )			
+			elif( self.detector.detect( "e" ) ):
+				self.press_ability( 'e' )
+			elif( self.detector.detect( "heroic" ) ):
+				self.press_ability( 'r' )
+			elif( self.detector.detect( "special" ) ):
+				quadrant = self.detector.detect_mouse_quadrant( 3, 3 )
+				self.set_hold_key( quadrant )
+			elif( self.detector.detect( "movement" ) ):
 				quadrant = self.detector.detect_mouse_quadrant( 3, 3 )
 				self.character_movement( quadrant )
 
-		if( self.detector.detect( "camera" ) ):
-			edges = self.detector.detect_mouse_screen_edge( 200 )
+			if( self.detector.detect( "camera" ) ):
+				edges = self.detector.detect_mouse_screen_edge( 200 )
 
-			self.mode = "cameramovement"
-			print ( "Camera movement!" ) 
-			self.camera_movement( edges, detect_mouse_quadrant( 4, 3 ) )
-		elif( self.mode == "cameramovement" ):
-			self.camera_movement( [], -1 )
-			print( "Regular mode!" )
-			self.mode = "regular"
-					
-		
-		if( self.detector.detect( "rightclick" ) ):
-			print( "LMB" )
-			click()
+				self.mode = "cameramovement"
+				print ( "Camera movement!" ) 
+				self.camera_movement( edges, detect_mouse_quadrant( 4, 3 ) )
+			elif( self.mode == "cameramovement" ):
+				self.camera_movement( [], -1 )
+				print( "Regular mode!" )
+				self.mode = "regular"
+						
+			
+			if( self.detector.detect( "rightclick" ) ):
+				print( "LMB" )
+				click()
+		elif( self.mode == "speech" ):
+			pythoncom.PumpWaitingMessages()
+			time.sleep(.1)
 		
 		if( self.detector.detect( "exit" ) ):
-			self.modeSwitcher.switchMode('browse')
+			quadrant = self.detector.detect_mouse_quadrant( 3, 3 )
+
+			if( quadrant == 9 ):
+				self.mode = "speech"
+				print( self.select_hero )
+				self.selectHeroRule.set_callback( self.select_hero )
+				self.grammar.load()				
+				toggle_speechrec()
+			else:
+				self.modeSwitcher.switchMode('browse')
 			
 		return self.detector.tickActions
 			
@@ -283,7 +309,50 @@ class HeroesMode:
 			
 		self.should_follow = should_follow
 		
+	def select_hero_keys( self, hero ):
+		if( hero in self.heroes ):
+			self.current_hero = hero
+		else:
+			self.current_hero = 'default'
+		
+	def exit_speech_mode( self ):
+		self.grammar.unload()
+		toggle_speechrec()
+		self.mode = "regular"
+		
+	def queue_up( self ):
+		moveTo( 950, 1000 )
+		click()
+		
+	def select_hero( self, hero ):
+		toggle_eyetracker()
+	
+		# Click on the hero
+		moveTo(950, 700)
+		click()
+		sleep(0.1)
+		# Type the hero name in the select box
+		moveTo( 1490, 165 )
+		click()
+		typewrite( hero )
+		time.sleep( 0.1 )
+		# Click on the hero in the top left
+		moveTo( 350, 250 )
+		click()
+		time.sleep( 0.1 )
+		# Click outside
+		moveTo(10,10)
+		click()
+		
+		toggle_eyetracker()
+		self.exit_speech_mode()
+
+		
 	def exit( self ):
+		if( self.mode == "speech" ):
+			self.grammar.unload()
+			toggle_speechrec()
 		self.mode = "regular"
 		turn_on_sound()
 		toggle_eyetracker()
+		
