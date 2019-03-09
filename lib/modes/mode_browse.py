@@ -52,7 +52,8 @@ class BrowseMode:
 				'strategy': 'rapid',
 				'sound': 'sound_uuh',
 				'percentage': 70,
-				'intensity': 1000
+				'intensity': 1000,
+				'throttle': 0.3
 			},
 			'exit': {
 				'strategy': 'rapid',

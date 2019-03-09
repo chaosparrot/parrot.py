@@ -1,6 +1,5 @@
 from dragonfly import Grammar, CompoundRule, Integer, Choice, Repetition, Optional
 from pyautogui import press, hotkey, click, scroll, typewrite, moveRel, moveTo, position, keyUp, keyDown, mouseUp, mouseDown
-import pyperclip
 
 natoAlphabet = Choice("alphabet", {
 				"Alpha": 1,
