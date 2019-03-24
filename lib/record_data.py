@@ -60,8 +60,18 @@ def record_sound():
 	directory = input("Whats the name of the sound are you recording? ")
 	if not os.path.exists(RECORDINGS_FOLDER + "/" + directory):
 		os.makedirs(RECORDINGS_FOLDER + "/"  + directory)
-	threshold = int( input("What loudness threshold do you need? " ) )
-	frequency_threshold = int( input("What frequency threshold do you need? " ) )
+
+	threshold = input("What loudness threshold do you need? " )
+	if( threshold == "" ):
+		threshold = 0
+	else:
+		threshold = int(threshold)
+	frequency_threshold = input("What frequency threshold do you need? " )
+	if( frequency_threshold == "" ):
+		frequency_threshold = 0
+	else:
+		frequency_threshold = int( frequency_threshold )
+		
 	print("")
 	print("You can pause/resume the recording session using the [SPACE] key, and stop the recording using the [ESC] key" )
 

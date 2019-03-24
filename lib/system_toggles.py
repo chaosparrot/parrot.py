@@ -6,10 +6,12 @@ def toggle_sound():
 	call(["nircmd.exe", "mutesysvolume", "2"])
 	
 def mute_sound():
-	call(["nircmd.exe", "mutesysvolume", "1"])
+	print("")
+	#call(["nircmd.exe", "mutesysvolume", "1"])
 	
 def turn_on_sound():
-	call(["nircmd.exe", "mutesysvolume", "0"])
+	print("")
+	#call(["nircmd.exe", "mutesysvolume", "0"])
 
 def toggle_eyetracker():
 	press('f4')

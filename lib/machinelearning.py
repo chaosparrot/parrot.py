@@ -90,7 +90,7 @@ def get_highest_intensity_of_wav_file( wav_file ):
 			intensity.append( peak )
 	
 	return np.amax( intensity )
-	
+		
 def get_loudest_freq( fftData, recordLength ):
 	fft_result = fft( fftData )
 	positiveFreqs = np.abs( fft_result[ 0:round( len(fft_result)/2 ) ] )

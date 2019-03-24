@@ -49,7 +49,7 @@ heroObject["Cigar boie"] = "Tychus"
 heroObject["There is always hope"] = "Auriel"
 heroObject["I bring life and "] = "Alexstrasza"
 heroObject["Proxy stargate"] = "Probius"
-heroObject["Ha ha ha"] = "Lunara"
+heroObject["Nature calls"] = "Lunara"
 heroChoice = Choice( "hero", heroObject)
 		
 class SelectHeroRule(CompoundRule):
@@ -65,3 +65,13 @@ class SelectHeroRule(CompoundRule):
 		if( self.callback ):
 			self.callback( hero )
 		
+class QueueUpRule(CompoundRule):
+	spec = "Play the game"
+	callback = False
+	
+	def set_callback( self, callback ):
+		self.callback = callback
+
+	def _process_recognition(self, node, extras):
+		if( self.callback ):
+			self.callback()

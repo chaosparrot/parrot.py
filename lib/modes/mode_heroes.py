@@ -32,6 +32,9 @@ class HeroesMode:
 	def __init__(self, modeSwitcher):
 		self.grammar = Grammar("Heroes")
 		self.selectHeroRule = SelectHeroRule()
+		self.queueUpRule = QueueUpRule()
+		self.queueUpRule.set_callback( self.queue_up )
+		self.grammar.add_rule( self.queueUpRule )		
 		self.grammar.add_rule( self.selectHeroRule )
 	
 		self.mode = "regular"
@@ -65,11 +68,18 @@ class HeroesMode:
 				'intensity': 1000,
 				'throttle': 0.05
 			},
+			'q2': {
+				'strategy': 'rapid',
+				'sound': 'harmonica_blow_3',
+				'percentage': 43,
+				'intensity': 1000,
+				'throttle': 0.05
+			},			
 			'w': {
 				'strategy': 'rapid',
 				'sound': 'sound_s',
-				'percentage': 80,
-				'intensity': 500,
+				'percentage': 90,
+				'intensity': 1000,
 				'throttle': 0.1
 			},
 			'e': {
@@ -82,9 +92,9 @@ class HeroesMode:
 			'heroic': {
 				'strategy': 'rapid',
 				'sound': 'hotel_bell',
-				'percentage': 60,
-				'intensity': 10000,
-				'throttle': 0.3
+				'percentage': 80,
+				'intensity': 1500,
+				'throttle': 0.2
 			},
 			'movement': {
 				'strategy': 'rapid',
@@ -112,6 +122,13 @@ class HeroesMode:
 				'strategy': 'rapid',
 				'sound': 'bell',
 				'percentage': 75,
+				'intensity': 1000,
+				'throttle': 0.5
+			},
+			'speech': {
+				'strategy': 'rapid',
+				'sound': 'harmonica_draw_10',
+				'percentage': 40,
 				'intensity': 1000,
 				'throttle': 0.5
 			}
@@ -146,7 +163,7 @@ class HeroesMode:
 					self.press_ability( self.hold_key )
 					
 				self.hold_key = ""
-			elif( self.detector.detect( "q" ) ):
+			elif( self.detector.detect( "q" ) or self.detector.detect( "q2" ) ):
 				self.press_ability( 'q' )
 			elif( self.detector.detect( "w" ) ):
 				self.press_ability( 'w' )			
@@ -161,9 +178,8 @@ class HeroesMode:
 				quadrant = self.detector.detect_mouse_quadrant( 3, 3 )
 				self.character_movement( quadrant )
 
-			if( self.detector.detect( "camera" ) ):
-				edges = self.detector.detect_mouse_screen_edge( 200 )
-
+			edges = self.detector.detect_mouse_screen_edge( 10 )
+			if( len( edges ) > 0 or self.detector.detect("camera") ):
 				self.mode = "cameramovement"
 				print ( "Camera movement!" ) 
 				self.camera_movement( edges, detect_mouse_quadrant( 4, 3 ) )
@@ -180,7 +196,13 @@ class HeroesMode:
 			pythoncom.PumpWaitingMessages()
 			time.sleep(.1)
 		
-		if( self.detector.detect( "exit" ) ):
+		if( self.detector.detect( "speech" ) ):
+			self.mode = "speech"
+			print( "SELECTING HERO MODE" )
+			self.selectHeroRule.set_callback( self.select_hero )
+			self.grammar.load()				
+			toggle_speechrec()
+		elif( self.detector.detect( "exit" ) ):
 			quadrant = self.detector.detect_mouse_quadrant( 3, 3 )
 
 			if( quadrant == 9 ):
@@ -321,14 +343,20 @@ class HeroesMode:
 		self.mode = "regular"
 		
 	def queue_up( self ):
+		toggle_eyetracker()
+		
+		print( "QUEUEING UP" )
 		moveTo( 950, 1000 )
 		click()
+		
+		toggle_eyetracker()
+		self.exit_speech_mode()
 		
 	def select_hero( self, hero ):
 		toggle_eyetracker()
 	
 		# Click on the hero
-		moveTo(950, 700)
+		moveTo(950, 533)
 		click()
 		sleep(0.1)
 		# Type the hero name in the select box

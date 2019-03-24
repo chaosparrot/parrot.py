@@ -128,6 +128,12 @@ def audio_analysis( available_models ):
 			seconds = 15
 		else:
 			seconds = int( seconds )
+			
+		# Give the user a delay of 5 seconds before audio recording begins
+		for i in range( -5, 0 ):
+			print("Recording in... " + str(abs(i)), end="\r")
+			sleep( 1 )
+			
 		print( "Recording new audio files" )
 		replay_file = start_listen_loop( classifier, False, True, True, seconds )
 		classifier = None

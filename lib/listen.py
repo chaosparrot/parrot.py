@@ -54,6 +54,7 @@ def start_listen_loop( classifier, mode_switcher = False, persist_replay = False
 	audio = pyaudio.PyAudio()
 	stream = audio.open(format=FORMAT, channels=CHANNELS,
 		rate=RATE, input=True,
+		input_device_index=1,
 		frames_per_buffer=CHUNK)
 		
 	continue_loop = True
