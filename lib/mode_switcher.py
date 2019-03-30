@@ -21,6 +21,7 @@ class ModeSwitcher(object):
 				'twitch': TwitchMode(ModeSwitcher.__instance),
 				'switch': SwitchMode(ModeSwitcher.__instance),
 				'heroes': HeroesMode(ModeSwitcher.__instance),
+				'starcraft': StarcraftMode(ModeSwitcher.__instance),				
 				'testing': TestMode(ModeSwitcher.__instance),
 				'worklog': ExcelMode(ModeSwitcher.__instance, 'C:/Users/anonymous/Documents/Recognize/werktijden3.ods'),
 				'excel': ExcelMode(ModeSwitcher.__instance, ''),
