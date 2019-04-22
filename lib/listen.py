@@ -54,7 +54,7 @@ def start_listen_loop( classifier, mode_switcher = False, persist_replay = False
 	audio = pyaudio.PyAudio()
 	stream = audio.open(format=FORMAT, channels=CHANNELS,
 		rate=RATE, input=True,
-		input_device_index=1,
+		input_device_index=INPUT_DEVICE_INDEX,
 		frames_per_buffer=CHUNK)
 		
 	continue_loop = True
@@ -87,7 +87,9 @@ def start_listen_loop( classifier, mode_switcher = False, persist_replay = False
 					
 				prediction_time = time.time() - starttime - seconds_playing
 				
-				print( "Time: %0.2f - Prediction in: %0.2f - Winner: %s - Percentage: %0d - Frequency %0d                                        " % (seconds_playing, prediction_time, winner, probabilityDict[winner]['percent'], probabilityDict[winner]['frequency']), end="\r" )				
+				long_comment = "Time: %0.2f - Prediction in: %0.2f - Winner: %s - Percentage: %0d - Frequency %0d                                        " % (seconds_playing, prediction_time, winner, probabilityDict[winner]['percent'], probabilityDict[winner]['frequency'])
+				short_comment = "T: %0.2f - %0d%s - %s " % (seconds_playing, probabilityDict[winner]['percent'], '%', winner)
+				print( short_comment )
 				if( ( infinite_duration == False and seconds_playing > amount_of_seconds ) or break_loop_controls() == False ):
 					continue_loop = False
 
@@ -142,7 +144,7 @@ def start_listen_loop( classifier, mode_switcher = False, persist_replay = False
 	return replay_file
 
 def listen_loop( audio, stream, classifier, dataDicts, audio_frames ):
-	audio_frames, intensity = get_stream_wav_segment( stream, audio_frames )	
+	audio_frames, intensity = get_stream_wav_segment( stream, [] )	
 	wavData = b''.join(audio_frames)
 	
 	probabilityDict, predicted, frequency = predict_raw_data( wavData, classifier, intensity )

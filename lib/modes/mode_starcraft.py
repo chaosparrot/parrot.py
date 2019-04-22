@@ -21,8 +21,8 @@ class StarcraftMode:
 			'select': {
 				'strategy': 'rapid',
 				'sound': 'sound_s',
-				'percentage': 90,
-				'intensity': 600,
+				'percentage': 70,
+				'intensity': 800,
 				'throttle': 0.01
 			},
 			'rightclick': {
@@ -32,27 +32,75 @@ class StarcraftMode:
 				'intensity': 1000,
 				'throttle': 0.1
 			},
+			'attack': {
+				'strategy': 'rapid',
+				'sound': 'whistle',
+				'percentage': 70,
+				'intensity': 1000,
+				'throttle': 0.1
+			},
+			'control': {
+				'strategy': 'rapid',
+				'sound': 'sound_oh',
+				'percentage': 43,
+				'intensity': 5000,
+				'throttle': 0.1
+			},
+			'shift': {
+				'strategy': 'rapid',
+				'sound': '????',
+				'percentage': 43,
+				'intensity': 5000,
+				'throttle': 0.1
+			},
 			'camera': {
-				'strategy': 'continuous',
+				'strategy': 'rapid',
 				'sound': 'sound_uuh',
 				'percentage': 50,
 				'intensity': 1000,
-				'lowest_percentage': 15,
-				'lowest_intensity': 400
+				'throttle': 0.1
 			},
-			'control_group': {
+			'q': {
 				'strategy': 'rapid',
 				'sound': 'sound_ooh',
-				'percentage': 35,
-				'intensity': 1500,
-				'throttle': 0.3
+				'percentage': 60,
+				'intensity': 2000,
+				'throttle': 0.1
 			},
-			'building': {
+			'w': {
 				'strategy': 'rapid',
-				'sound': 'whistle',
-				'percentage': 50,
+				'sound': 'sound_f',
+				'percentage': 70,
+				'intensity': 1500,
+				'throttle': 0.1
+			},
+			'grid_ability': {
+				'strategy': 'rapid',
+				'sound': 'sound_ah',
+				'percentage': 60,
+				'intensity': 3000,
+				'throttle': 0.05
+			},
+			'r': {
+				'strategy': 'rapid',
+				'sound': 'sound_sh',
+				'percentage': 35,
+				'intensity': 4000,
+				'throttle': 0.1
+			},
+			'numbers': {
+				'strategy': 'rapid',
+				'sound': 'sound_ie',
+				'percentage': 70,
 				'intensity': 1000,
 				'throttle': 0.1
+			},
+			'skip_cutscenes': {
+				'strategy': 'rapid',
+				'sound': 'hotel_bell',
+				'percentage': 60,
+				'intensity': 500,
+				'throttle': 0.3
 			}
 		})
 
@@ -60,34 +108,103 @@ class StarcraftMode:
 		self.should_follow = False
 		self.should_drag = False
 		self.last_control_group = -1
+		self.ability_selected = False
+		self.ctrlKey = False
+		self.shiftKey = False
 		
 		self.hold_key = ""
 
 	def start( self ):
 		mute_sound()
 		toggle_eyetracker()
+		
+	def cast_ability( self, ability ):
+		self.press_ability( ability )
+		self.ability_selected = True
+	
+	def hold_shift( self, shift ):
+		if( self.shiftKey != shift ):
+			if( shift == True ):
+				keyDown('shift')
+				print( 'Holding SHIFT' )
+			else:
+				keyUp('shift')
+				print( 'Releasing SHIFT' )
 				
+		self.shiftKey = shift	
+	
+	def hold_control( self, ctrlKey ):
+		if( self.ctrlKey != ctrlKey ):
+			if( ctrlKey == True ):
+				keyDown('ctrl')
+				print( 'Holding CTRL' )
+			else:
+				keyUp('ctrl')
+				print( 'Releasing CTRL' )
+				
+		self.ctrlKey = ctrlKey
+	
+	def release_hold_keys( self ):
+		self.ability_selected = False	
+		self.hold_control( False )
+		self.hold_shift( False )
+	
 	def handle_input( self, dataDicts ):
 		self.detector.tick( dataDicts )
 		
-		## Select units
-		self.drag_mouse( self.detector.detect( "select" ) )
+		## Mouse actions
+		# Selecting units
+		selecting = self.detector.detect( "select" )
+		self.drag_mouse( selecting )
+		if( selecting ):
+			self.release_hold_keys()
+		elif( self.detector.detect( "rightclick" ) ):
+		
+			# Cast selected ability or Ctrl+click
+			if( self.detect_command_area() or self.ability_selected == True or self.ctrlKey == True  ):
+				click(button='left')
+			else:
+				click(button='right')
+				
+			self.release_hold_keys()
 			
-		## Detect mouse position
-		quadrant3x3 = self.detector.detect_mouse_quadrant( 3, 3 )
+		# CTRL KEY holding
+		elif( self.detector.detect( "control" ) ):
+			self.hold_control( True )
+
+		## Attack move / Patrol move
+		quadrant3x3 = self.detector.detect_mouse_quadrant( 3, 3 )		
+		if( self.detector.detect( "attack" ) ):
+			if( quadrant3x3 <= 3 ):
+				self.cast_ability( 'p' )
+			else:
+				self.cast_ability( 'a' )
+		## Press Q
+		elif( self.detector.detect( "q" ) ):
+			self.cast_ability( 'q' )
+		## Press W
+		elif( self.detector.detect( "w") ):
+			self.cast_ability( 'w' )
+		## Press R ( Burrow )
+		elif( self.detector.detect( "r") ):
+			self.press_ability( 'r' )
+		elif( self.detector.detect( "skip_cutscenes" ) ):
+			self.press_ability( 'esc' )
 			
-		## Movement
-		if( self.detector.detect( "rightclick" ) ):
-			click(button='right')
-			
-		## Grid detections	
+		## Move the camera
 		if( self.detector.detect( "camera" ) ):
 			self.camera_movement( quadrant3x3 )
-		elif( self.detector.detect( "building" ) ):
+			
+		## Press Grid ability
+		elif( self.detector.detect("grid_ability") ):
 			quadrant4x3 = self.detector.detect_mouse_quadrant( 4, 3 )
 			self.use_ability( quadrant4x3 )
-		elif( self.detector.detect( "control_group" ) ):
+			self.release_hold_keys()
+			
+		## Press control group
+		elif( self.detector.detect( "numbers" ) ):
 			self.use_control_group( quadrant3x3 )
+			self.release_hold_keys()
 			
 		return self.detector.tickActions
 		
@@ -142,26 +259,29 @@ class StarcraftMode:
 	def press_ability( self, key ):
 		print( "pressing " + key )
 		press( key )
+		self.hold_control( False )
 		
-	def camera_movement( self, quadrant ):	
-					
-		## Move camera to danger
-		if( quadrant == 7 ):
-			self.press_ability( "space" )
+	def camera_movement( self, quadrant ):
+		## Move camera to kerrigan when looking above the UI
+		if( quadrant < 4 ):
+			self.press_ability( "f1" )
 		
-		## Move back through bases		
-		elif( quadrant == 8 ):
+		elif( quadrant > 3 and quadrant < 7 ):
 			self.press_ability( "backspace" )
-			
-		## Open the menu
-		elif( quadrant == 9 ):
-			self.press_ability( "f10" )
 		
-		# Attack move
-		else:
-			self.press_ability('a')
+		## Move camera to danger when when looking at the minimap or unit selection
+		elif( quadrant == 7 or quadrant == 8 ):
+			self.press_ability( "space" )
+			
+		## Follow the unit when looking near the command card
+		elif( quadrant == 9 ):
+			self.press_ability( "." )
 				
-	# Drag mouse for seleciton purposes
+	# Detect when the cursor is inside the command area
+	def detect_command_area( self ):
+		return self.detector.detect_inside_minimap( 1521, 815, 396, 266 )
+				
+	# Drag mouse for selection purposes
 	def drag_mouse( self, should_drag ):
 		if( self.should_drag != should_drag ):
 			if( should_drag == True ):

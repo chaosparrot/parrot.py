@@ -88,6 +88,7 @@ def record_sound():
 		# start listening
 		stream = audio.open(format=FORMAT, channels=CHANNELS,
 						rate=RATE, input=True,
+						input_device_index=INPUT_DEVICE_INDEX,
 						frames_per_buffer=CHUNK)
 		frames = []
 		intensity = []

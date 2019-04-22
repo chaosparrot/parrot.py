@@ -75,7 +75,7 @@ class PatternDetector:
 		if( detected == True ):
 			self.tickActions.append( action )
 			self.timestamps[action] = self.currentTime
-			print( "Detected " + action + " at " + str(self.currentTime) + "                                                           " )
+			print( "Detected " + action )
 			
 		return detected
 		
@@ -171,5 +171,6 @@ class PatternDetector:
 		minimapY = ( ratioY * minimap_height ) + minimap_y
 		return minimapX, minimapY
 		
+	## Detect whether or not we are inside an area with our cursor
 	def detect_inside_minimap( self, minimap_x, minimap_y, minimap_width, minimap_height ):
 		return self.mouseX >= minimap_x and self.mouseY >= minimap_y and self.mouseX < minimap_x + minimap_width and self.mouseY < minimap_y + minimap_height
