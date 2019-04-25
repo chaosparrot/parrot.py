@@ -1,4 +1,5 @@
 from lib.detection_strategies import *
+from config.config import *
 import threading
 import numpy as np
 import pyautogui
@@ -7,9 +8,11 @@ from time import sleep
 from subprocess import call
 from lib.system_toggles import toggle_eyetracker, turn_on_sound, mute_sound, toggle_speechrec
 from lib.pattern_detector import PatternDetector
-from lib.heroes_grammar import *
 import os
-import pythoncom
+
+if( SPEECHREC_ENABLED == True ):
+	from lib.heroes_grammar import *
+	import pythoncom
 
 class HeroesMode:
 
@@ -30,12 +33,14 @@ class HeroesMode:
 	current_hero = 'default'
 		
 	def __init__(self, modeSwitcher):
-		self.grammar = Grammar("Heroes")
-		self.selectHeroRule = SelectHeroRule()
-		self.queueUpRule = QueueUpRule()
-		self.queueUpRule.set_callback( self.queue_up )
-		self.grammar.add_rule( self.queueUpRule )		
-		self.grammar.add_rule( self.selectHeroRule )
+	
+		if( SPEECHREC_ENABLED == True ):
+			self.grammar = Grammar("Heroes")
+			self.selectHeroRule = SelectHeroRule()
+			self.queueUpRule = QueueUpRule()
+			self.queueUpRule.set_callback( self.queue_up )
+			self.grammar.add_rule( self.queueUpRule )		
+			self.grammar.add_rule( self.selectHeroRule )
 	
 		self.mode = "regular"
 		self.modeSwitcher = modeSwitcher
@@ -187,7 +192,6 @@ class HeroesMode:
 				self.camera_movement( [], -1 )
 				print( "Regular mode!" )
 				self.mode = "regular"
-						
 			
 			if( self.detector.detect( "rightclick" ) ):
 				print( "LMB" )
@@ -196,7 +200,7 @@ class HeroesMode:
 			pythoncom.PumpWaitingMessages()
 			time.sleep(.1)
 		
-		if( self.detector.detect( "speech" ) ):
+		if( SPEECHREC_ENABLED == True and self.detector.detect( "speech" ) ):
 			self.mode = "speech"
 			print( "SELECTING HERO MODE" )
 			self.selectHeroRule.set_callback( self.select_hero )

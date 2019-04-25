@@ -1,3 +1,4 @@
+from config.config import *
 from subprocess import call
 from pyautogui import press, hotkey, scroll, typewrite, moveRel, moveTo, position, mouseDown, mouseUp
 from time import sleep
@@ -17,4 +18,5 @@ def toggle_eyetracker():
 	press('f4')
 	
 def toggle_speechrec():
-	hotkey('ctrl','win')
+	if( SPEECHREC_ENABLED == True ):
+		hotkey('ctrl','win')

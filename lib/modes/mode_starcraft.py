@@ -41,17 +41,17 @@ class StarcraftMode:
 			},
 			'control': {
 				'strategy': 'rapid',
-				'sound': 'sound_oh',
-				'percentage': 43,
-				'intensity': 5000,
-				'throttle': 0.1
+				'sound': 'sound_table_tap',
+				'percentage': 60,
+				'intensity': 1500,
+				'throttle': 0.3
 			},
 			'shift': {
 				'strategy': 'rapid',
-				'sound': '????',
-				'percentage': 43,
-				'intensity': 5000,
-				'throttle': 0.1
+				'sound': 'sound_marbles',
+				'percentage': 85,
+				'intensity': 2500,
+				'throttle': 0.2
 			},
 			'camera': {
 				'strategy': 'rapid',
@@ -75,31 +75,33 @@ class StarcraftMode:
 				'throttle': 0.1
 			},
 			'grid_ability': {
-				'strategy': 'rapid',
+				'strategy': 'continuous',
 				'sound': 'sound_ah',
 				'percentage': 60,
 				'intensity': 3000,
+				'lowest_percentage': 40,
+				'lowest_intensity': 2000,
 				'throttle': 0.05
 			},
 			'r': {
 				'strategy': 'rapid',
 				'sound': 'sound_sh',
-				'percentage': 35,
-				'intensity': 4000,
+				'percentage': 40,
+				'intensity': 3500,
 				'throttle': 0.1
 			},
 			'numbers': {
 				'strategy': 'rapid',
 				'sound': 'sound_ie',
-				'percentage': 70,
+				'percentage': 60,
 				'intensity': 1000,
 				'throttle': 0.1
 			},
-			'skip_cutscenes': {
+			'menu': {
 				'strategy': 'rapid',
 				'sound': 'hotel_bell',
 				'percentage': 60,
-				'intensity': 500,
+				'intensity': 2000,
 				'throttle': 0.3
 			}
 		})
@@ -157,7 +159,8 @@ class StarcraftMode:
 		selecting = self.detector.detect( "select" )
 		self.drag_mouse( selecting )
 		if( selecting ):
-			self.release_hold_keys()
+			self.ability_selected = False	
+			self.hold_control( False )
 		elif( self.detector.detect( "rightclick" ) ):
 		
 			# Cast selected ability or Ctrl+click
@@ -171,12 +174,19 @@ class StarcraftMode:
 		# CTRL KEY holding
 		elif( self.detector.detect( "control" ) ):
 			self.hold_control( True )
+			
+		# SHIFT KEY holding / toggling
+		elif( self.detector.detect( "shift" ) ):
+			self.hold_shift( not self.shiftKey )
+			
 
-		## Attack move / Patrol move
-		quadrant3x3 = self.detector.detect_mouse_quadrant( 3, 3 )		
+		## Attack move / Control key / Patrol move
 		if( self.detector.detect( "attack" ) ):
+			quadrant3x3 = self.detector.detect_mouse_quadrant( 3, 3 )
 			if( quadrant3x3 <= 3 ):
 				self.cast_ability( 'p' )
+			elif( quadrant3x3 >= 6 ):
+				self.hold_control( True )
 			else:
 				self.cast_ability( 'a' )
 		## Press Q
@@ -188,11 +198,18 @@ class StarcraftMode:
 		## Press R ( Burrow )
 		elif( self.detector.detect( "r") ):
 			self.press_ability( 'r' )
-		elif( self.detector.detect( "skip_cutscenes" ) ):
-			self.press_ability( 'esc' )
+		elif( self.detector.detect( "menu" ) ):
+			self.release_hold_keys()
+			
+			quadrant3x3 = self.detector.detect_mouse_quadrant( 3, 3 )
+			if( quadrant3x3 == 9 ):
+				self.press_ability( 'f10' )
+			else:
+				self.press_ability( 'esc' )
 			
 		## Move the camera
 		if( self.detector.detect( "camera" ) ):
+			quadrant3x3 = self.detector.detect_mouse_quadrant( 3, 3 )
 			self.camera_movement( quadrant3x3 )
 			
 		## Press Grid ability
@@ -203,6 +220,7 @@ class StarcraftMode:
 			
 		## Press control group
 		elif( self.detector.detect( "numbers" ) ):
+			quadrant3x3 = self.detector.detect_mouse_quadrant( 3, 3 )
 			self.use_control_group( quadrant3x3 )
 			self.release_hold_keys()
 			
@@ -259,7 +277,7 @@ class StarcraftMode:
 	def press_ability( self, key ):
 		print( "pressing " + key )
 		press( key )
-		self.hold_control( False )
+		self.release_hold_keys()
 		
 	def camera_movement( self, quadrant ):
 		## Move camera to kerrigan when looking above the UI

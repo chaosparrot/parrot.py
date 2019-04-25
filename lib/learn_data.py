@@ -57,7 +57,7 @@ def learn_data():
 	print( "- Recording length %0.4f ms" % ( RECORD_SECONDS * 1000 ) )
 	
 	print( "Saving the model to " + CLASSIFIER_FOLDER + "/" + clf_filename )
-	joblib.dump( classifier, CLASSIFIER_FOLDER + "/" + clf_filename )
+	joblib.dump( classifier, CLASSIFIER_FOLDER + "/" + clf_filename )	
 	print( "--------------------------" )
 
 	accuracy_analysis = input("Should we analyze the accuracy of the model? Y/n" ).lower() == 'y'	

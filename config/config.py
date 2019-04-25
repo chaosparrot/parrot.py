@@ -18,9 +18,11 @@ REPLAYS_FOLDER = "data/replays"
 REPLAYS_AUDIO_FOLDER = "data/replays/audio"
 REPLAYS_FILE = REPLAYS_FOLDER + "/run.csv"
 CLASSIFIER_FOLDER = "data/models"
-DEFAULT_CLF_FILE = "train_zerus"
+DEFAULT_CLF_FILE = "train_narud"
 
 STARTING_MODE = "starcraft"
 
 SAVE_REPLAY_DURING_PLAY = True
 SAVE_FILES_DURING_PLAY = False
+
+SPEECHREC_ENABLED = True
