@@ -227,6 +227,8 @@ def create_probability_dict( classifier, data, frequency, intensity ):
 		# SKIP PREDICTION - MOST CERTAINLY SILENCE
 		probabilityDict = {}
 		index = 0
+		predicted = -1
+		
 		for label in classifier.classes_:
 			winner = False
 			percent = 0

@@ -99,7 +99,7 @@ def audio_analysis( available_models ):
 	classifier_file = CLASSIFIER_FOLDER + "/" + available_models[ classifier_file_index ]
 	print( "Loading model " + classifier_file )
 	classifier = joblib.load( classifier_file )
-	
+		
 	if not os.path.exists(REPLAYS_AUDIO_FOLDER ):
 		os.makedirs(REPLAYS_AUDIO_FOLDER)	
 
