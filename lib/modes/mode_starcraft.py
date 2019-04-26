@@ -28,49 +28,49 @@ class StarcraftMode:
 			'rightclick': {
 				'strategy': 'rapid',
 				'sound': 'cluck',
-				'percentage': 50,
+				'percentage': 70,
 				'intensity': 1000,
 				'throttle': 0.1
 			},
 			'attack': {
 				'strategy': 'rapid',
 				'sound': 'whistle',
-				'percentage': 70,
+				'percentage': 60,
 				'intensity': 1000,
 				'throttle': 0.1
 			},
 			'control': {
 				'strategy': 'rapid',
-				'sound': 'sound_table_tap',
-				'percentage': 60,
-				'intensity': 1500,
-				'throttle': 0.3
+				'sound': 'sound_oh',
+				'percentage': 52,
+				'intensity': 1000,
+				'throttle': 0.2
 			},
 			'shift': {
 				'strategy': 'rapid',
-				'sound': 'sound_marbles',
-				'percentage': 85,
-				'intensity': 2500,
+				'sound': 'sound_tsk',
+				'percentage': 70,
+				'intensity': 1500,
 				'throttle': 0.2
 			},
 			'camera': {
 				'strategy': 'rapid',
 				'sound': 'sound_uuh',
-				'percentage': 50,
+				'percentage': 70,
 				'intensity': 1000,
 				'throttle': 0.1
 			},
 			'q': {
 				'strategy': 'rapid',
 				'sound': 'sound_ooh',
-				'percentage': 60,
-				'intensity': 2000,
+				'percentage': 55,
+				'intensity': 1500,
 				'throttle': 0.1
 			},
 			'w': {
 				'strategy': 'rapid',
 				'sound': 'sound_f',
-				'percentage': 70,
+				'percentage': 80,
 				'intensity': 1500,
 				'throttle': 0.1
 			},
@@ -78,17 +78,17 @@ class StarcraftMode:
 				'strategy': 'continuous',
 				'sound': 'sound_ah',
 				'percentage': 60,
-				'intensity': 3000,
+				'intensity': 2000,
 				'lowest_percentage': 40,
-				'lowest_intensity': 2000,
+				'lowest_intensity': 1000,
 				'throttle': 0.05
 			},
 			'r': {
 				'strategy': 'rapid',
-				'sound': 'sound_sh',
-				'percentage': 40,
-				'intensity': 3500,
-				'throttle': 0.1
+				'sound': 'sound_marbles',
+				'percentage': 85,
+				'intensity': 2500,
+				'throttle': 0.2
 			},
 			'numbers': {
 				'strategy': 'rapid',
@@ -177,16 +177,13 @@ class StarcraftMode:
 			
 		# SHIFT KEY holding / toggling
 		elif( self.detector.detect( "shift" ) ):
-			self.hold_shift( not self.shiftKey )
-			
+			self.hold_shift( True )
 
 		## Attack move / Control key / Patrol move
 		if( self.detector.detect( "attack" ) ):
 			quadrant3x3 = self.detector.detect_mouse_quadrant( 3, 3 )
 			if( quadrant3x3 <= 3 ):
 				self.cast_ability( 'p' )
-			elif( quadrant3x3 >= 6 ):
-				self.hold_control( True )
 			else:
 				self.cast_ability( 'a' )
 		## Press Q

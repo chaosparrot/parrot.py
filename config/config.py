@@ -18,7 +18,7 @@ REPLAYS_FOLDER = "data/replays"
 REPLAYS_AUDIO_FOLDER = "data/replays/audio"
 REPLAYS_FILE = REPLAYS_FOLDER + "/run.csv"
 CLASSIFIER_FOLDER = "data/models"
-DEFAULT_CLF_FILE = "train_narud"
+DEFAULT_CLF_FILE = "train_narud_complete"
 
 STARTING_MODE = "starcraft"
 
