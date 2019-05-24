@@ -71,7 +71,13 @@ class PatternDetector:
 			else:
 				detected = ( self.above_percentage( lastDict, label, config['percentage'] ) and
 					self.above_intensity( lastDict, config['intensity'] ) )
-			
+		elif( strategy == 'combined' ):
+			secondary_label = config['secondary_sound']
+		
+			detected = ( self.above_intensity( lastDict, config['intensity'] ) and
+				self.combined_above_percentage( lastDict, label, secondary_label, config['percentage'] ) and
+				self.above_ratio( lastDict, label, secondary_label, config['ratio'] ) )
+		
 		if( detected == True ):
 			self.tickActions.append( action )
 			self.timestamps[action] = self.currentTime
@@ -86,6 +92,14 @@ class PatternDetector:
 	# Detects if a label has a probability above the given percentage
 	def above_percentage( self, probabilityData, label, percentage ):
 		return probabilityData[label]['percent'] >= percentage
+		
+	# Detects if two labels have a combined probability above the given percentage
+	def combined_above_percentage( self, probabilityData, label, secondary_label, percentage ):
+		return ( probabilityData[label]['percent'] + probabilityData[secondary_label]['percent'] ) >= percentage
+		
+	# Detects if two labels have a combined probability above the given percentage
+	def above_ratio( self, probabilityData, label, secondary_label, ratio ):
+		return ( probabilityData[label]['percent'] / probabilityData[secondary_label]['percent'] ) >= ratio		
 		
 	# Detects if a label has a probability above the given percentage
 	def above_intensity( self, probabilityData, requiredIntensity ):

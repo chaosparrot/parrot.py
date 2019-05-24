@@ -41,9 +41,11 @@ class StarcraftMode:
 				'throttle': 0.1
 			},
 			'control': {
-				'strategy': 'rapid',
+				'strategy': 'combined',
 				'sound': 'sound_oh',
-				'percentage': 52,
+				'secondary_sound': 'sound_ooh',
+				'ratio': 0.2,
+				'percentage': 72,
 				'intensity': 1000,
 				'throttle': 0.2
 			},
@@ -64,7 +66,7 @@ class StarcraftMode:
 			'q': {
 				'strategy': 'rapid',
 				'sound': 'sound_ooh',
-				'percentage': 55,
+				'percentage': 70,
 				'intensity': 1500,
 				'throttle': 0.1
 			},
@@ -187,7 +189,7 @@ class StarcraftMode:
 			self.hold_shift( True )
 
 		## Attack move / Control key / Patrol move
-		if( self.detector.detect( "attack" ) ):
+		elif( self.detector.detect( "attack" ) ):
 			quadrant3x3 = self.detector.detect_mouse_quadrant( 3, 3 )
 			if( quadrant3x3 <= 3 ):
 				self.cast_ability( 'p' )
