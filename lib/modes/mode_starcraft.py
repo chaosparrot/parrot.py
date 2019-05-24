@@ -10,6 +10,7 @@ from lib.pattern_detector import PatternDetector
 from lib.heroes_grammar import *
 import os
 import pythoncom
+from lib.overlay_manipulation import update_overlay_image
 
 class StarcraftMode:
 			
@@ -119,6 +120,7 @@ class StarcraftMode:
 	def start( self ):
 		mute_sound()
 		toggle_eyetracker()
+		update_overlay_image( "default" )
 		
 	def cast_ability( self, ability ):
 		self.press_ability( ability )
@@ -128,28 +130,33 @@ class StarcraftMode:
 		if( self.shiftKey != shift ):
 			if( shift == True ):
 				keyDown('shift')
+				self.shiftKey = shift			
 				print( 'Holding SHIFT' )
+				self.update_overlay()				
 			else:
 				keyUp('shift')
-				print( 'Releasing SHIFT' )
-				
-		self.shiftKey = shift	
+				self.shiftKey = shift
+				print( 'Releasing SHIFT' )				
+				self.update_overlay()
 	
 	def hold_control( self, ctrlKey ):
 		if( self.ctrlKey != ctrlKey ):
 			if( ctrlKey == True ):
 				keyDown('ctrl')
 				print( 'Holding CTRL' )
+				self.ctrlKey = ctrlKey
+				self.update_overlay()				
 			else:
 				keyUp('ctrl')
 				print( 'Releasing CTRL' )
-				
-		self.ctrlKey = ctrlKey
-	
+				self.ctrlKey = ctrlKey
+				self.update_overlay()
+		
 	def release_hold_keys( self ):
 		self.ability_selected = False	
 		self.hold_control( False )
 		self.hold_shift( False )
+		update_overlay_image( "default" )		
 	
 	def handle_input( self, dataDicts ):
 		self.detector.tick( dataDicts )
@@ -306,8 +313,20 @@ class StarcraftMode:
 				
 		self.should_drag = should_drag
 
+	def update_overlay( self ):
+		if( self.ctrlKey and self.shiftKey ):
+			update_overlay_image( "mode-starcraft-ctrl-shift" )
+		elif( self.ctrlKey ):
+			update_overlay_image( "mode-starcraft-ctrl" )
+		elif( self.shiftKey ):
+			update_overlay_image( "mode-starcraft-shift" )
+		else:
+			update_overlay_image( "default" )
+
+		
 	def exit( self ):
 		self.mode = "regular"
 		turn_on_sound()
+		update_overlay_image( "default" )
 		toggle_eyetracker()
 		
