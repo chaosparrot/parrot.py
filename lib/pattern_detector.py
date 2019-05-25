@@ -99,7 +99,7 @@ class PatternDetector:
 		
 	# Detects if two labels have a combined probability above the given percentage
 	def above_ratio( self, probabilityData, label, secondary_label, ratio ):
-		return ( probabilityData[label]['percent'] / probabilityData[secondary_label]['percent'] ) >= ratio		
+		return ( probabilityData[label]['percent'] / max( 1, probabilityData[secondary_label]['percent'] ) ) >= ratio		
 		
 	# Detects if a label has a probability above the given percentage
 	def above_intensity( self, probabilityData, requiredIntensity ):

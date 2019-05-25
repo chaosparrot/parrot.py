@@ -56,10 +56,19 @@ class StarcraftMode:
 				'intensity': 1500,
 				'throttle': 0.2
 			},
+			'alt': {
+				'strategy': 'combined',
+				'sound': 'sound_eh',
+				'secondary_sound': 'sound_uuh',				
+				'percentage': 70,
+				'ratio': 0.7,
+				'intensity': 1000,
+				'throttle': 0.2
+			},			
 			'camera': {
 				'strategy': 'rapid',
 				'sound': 'sound_uuh',
-				'percentage': 70,
+				'percentage': 60,
 				'intensity': 1000,
 				'throttle': 0.1
 			},
@@ -116,6 +125,7 @@ class StarcraftMode:
 		self.ability_selected = False
 		self.ctrlKey = False
 		self.shiftKey = False
+		self.altKey = False
 		
 		self.hold_key = ""
 
@@ -141,6 +151,19 @@ class StarcraftMode:
 				print( 'Releasing SHIFT' )				
 				self.update_overlay()
 	
+	def hold_alt( self, alt ):
+		if( self.altKey != alt ):
+			if( alt == True ):
+				keyDown('alt')
+				self.altKey = alt			
+				print( 'Holding ALT' )
+				self.update_overlay()				
+			else:
+				keyUp('alt')
+				self.altKey = alt
+				print( 'Releasing ALT' )				
+				self.update_overlay()
+	
 	def hold_control( self, ctrlKey ):
 		if( self.ctrlKey != ctrlKey ):
 			if( ctrlKey == True ):
@@ -157,8 +180,10 @@ class StarcraftMode:
 	def release_hold_keys( self ):
 		self.ability_selected = False	
 		self.hold_control( False )
-		self.hold_shift( False )
-		update_overlay_image( "default" )		
+		if( self.shiftKey and self.altKey ):
+			self.hold_shift( False )
+		self.hold_alt( False )
+		self.update_overlay()
 	
 	def handle_input( self, dataDicts ):
 		self.detector.tick( dataDicts )
@@ -173,12 +198,14 @@ class StarcraftMode:
 		elif( self.detector.detect( "rightclick" ) ):
 		
 			# Cast selected ability or Ctrl+click
-			if( self.detect_command_area() or self.ability_selected == True or self.ctrlKey == True  ):
+			if( self.detect_command_area() or self.ability_selected == True or self.ctrlKey == True or self.altKey == True ):
 				click(button='left')
 			else:
 				click(button='right')
 				
-			self.release_hold_keys()
+			# Release the held keys - except when shift-alt clicking units in the selection tray ( for easy removing from the unit group )
+			if( not( self.shiftKey and self.altKey and self.detect_selection_tray() ) ):
+				self.release_hold_keys()
 			
 		# CTRL KEY holding
 		elif( self.detector.detect( "control" ) ):
@@ -186,9 +213,13 @@ class StarcraftMode:
 			
 		# SHIFT KEY holding / toggling
 		elif( self.detector.detect( "shift" ) ):
-			self.hold_shift( True )
+			self.hold_shift( not self.shiftKey )
+	
+		# ALT KEY holding / toggling
+		elif( self.detector.detect( "alt" ) ):
+			self.hold_alt( not self.altKey )
 
-		## Attack move / Control key / Patrol move
+		## Attack move / Patrol move
 		elif( self.detector.detect( "attack" ) ):
 			quadrant3x3 = self.detector.detect_mouse_quadrant( 3, 3 )
 			if( quadrant3x3 <= 3 ):
@@ -217,18 +248,21 @@ class StarcraftMode:
 		if( self.detector.detect( "camera" ) ):
 			quadrant3x3 = self.detector.detect_mouse_quadrant( 3, 3 )
 			self.camera_movement( quadrant3x3 )
+			self.hold_shift( False )			
 			
 		## Press Grid ability
 		elif( self.detector.detect("grid_ability") ):
 			quadrant4x3 = self.detector.detect_mouse_quadrant( 4, 3 )
 			self.use_ability( quadrant4x3 )
 			self.release_hold_keys()
+			self.hold_shift( False )
 			
 		## Press control group
 		elif( self.detector.detect( "numbers" ) ):
 			quadrant3x3 = self.detector.detect_mouse_quadrant( 3, 3 )
 			self.use_control_group( quadrant3x3 )
 			self.release_hold_keys()
+			self.hold_shift( False )
 			
 		return self.detector.tickActions
 		
@@ -304,6 +338,10 @@ class StarcraftMode:
 	# Detect when the cursor is inside the command area
 	def detect_command_area( self ):
 		return self.detector.detect_inside_minimap( 1521, 815, 396, 266 )
+
+	# Detect when the cursor is inside the command area
+	def detect_selection_tray( self ):
+		return self.detector.detect_inside_minimap( 360, 865, 1000, 215 )		
 				
 	# Drag mouse for selection purposes
 	def drag_mouse( self, should_drag ):
@@ -316,16 +354,19 @@ class StarcraftMode:
 		self.should_drag = should_drag
 
 	def update_overlay( self ):
-		if( self.ctrlKey and self.shiftKey ):
-			update_overlay_image( "mode-starcraft-ctrl-shift" )
-		elif( self.ctrlKey ):
-			update_overlay_image( "mode-starcraft-ctrl" )
-		elif( self.shiftKey ):
-			update_overlay_image( "mode-starcraft-shift" )
-		else:
+		if( not( self.ctrlKey or self.shiftKey or self.altKey ) ):
 			update_overlay_image( "default" )
+		else:
+			modes = []
+			if( self.ctrlKey ):
+				modes.append( "ctrl" )
+			if( self.shiftKey ):
+				modes.append( "shift" )
+			if( self.altKey ):
+				modes.append( "alt" )
+				
+			update_overlay_image( "mode-starcraft-%s" % ( "-".join( modes ) ) )
 
-		
 	def exit( self ):
 		self.mode = "regular"
 		turn_on_sound()

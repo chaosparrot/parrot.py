@@ -27,7 +27,7 @@ def loop_overlay():
 	current_overlay_status = ""
 	while True:
 		mouseX, mouseY = pyautogui.position()
-		window.geometry("+" + str( mouseX + 40 ) + "+" + str( mouseY + 40 ))
+		window.geometry("+" + str( mouseX + 20 ) + "+" + str( mouseY + 20 ))
 		filepath = OVERLAY_FILE
 		
 		with open(filepath) as fp:  

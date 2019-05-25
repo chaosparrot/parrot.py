@@ -20,7 +20,7 @@ REPLAYS_FILE = REPLAYS_FOLDER + "/run.csv"
 CLASSIFIER_FOLDER = "data/models"
 OVERLAY_FOLDER = "data/overlays"
 OVERLAY_FILE = "config/current-overlay-image.txt"
-DEFAULT_CLF_FILE = "train_narud_complete"
+DEFAULT_CLF_FILE = "train_narud_complete2"
 
 STARTING_MODE = "starcraft"
 
