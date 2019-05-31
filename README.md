@@ -37,9 +37,9 @@ This repository contains a settings.py file for recording, training and analytic
 This will allow you to tweak and improve the recognition of sounds and activation accuracy and speed of keys.
 
 In order to map a sound to a key, you will have to go through a certain process:
-Step 1 - [Recording the sound](docs/RECORDING.md)
-Step 2 - [Training a model on the sound for recognition](docs/TRAINING.md)
-Step 3 - [Analyse whether or not the sound is properly recognized](docs/ANALYSING.md)
+* Step 1 - [Recording the sound](docs/RECORDING.md)
+* Step 2 - [Training a model on the sound for recognition](docs/TRAINING.md)
+* Step 3 - [Analyse whether or not the sound is properly recognized](docs/ANALYSING.md)
 
 # Tweaking the interaction modes
 
