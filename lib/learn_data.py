@@ -6,7 +6,7 @@ from sklearn import metrics
 from sklearn.metrics import confusion_matrix
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import cross_val_score, train_test_split
-from sklearn.externals import joblib
+import joblib
 import time
 import warnings
 import itertools
@@ -28,7 +28,7 @@ def learn_data():
 	print( "And attempt to learn the sounds to their folder names" )
 	print( "-------------------------" )
 
-	clf_filename = input("Insert the model name ( empty is 'train' ) ")
+	clf_filename = input("Insert the model name ( empty is '" + DEFAULT_CLF_FILE + "' ) ")
 	if( clf_filename == "" ):
 		clf_filename = DEFAULT_CLF_FILE
 	clf_filename += '.pkl'

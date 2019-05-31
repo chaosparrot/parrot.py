@@ -7,7 +7,6 @@ It's name is inspired by the way parrots and parakeets communicate, using chirps
 * Windows version 7 and up.
 * Project IRIS ( used for turning the eyetracker into a mouse cursor )
 * Python 3.6 (32 bit)
-* nircmd.exe ( used for toggling system volume )
 
 Python packages such as
 * numpy
@@ -15,12 +14,10 @@ Python packages such as
 * matplotlib *( for the graphing of test results )*
 * scikit-learn *( for the machine learning bits )*
 * pyaudio *( audio recording and playing )*
-* audioop *( audio manipulation )*
 * python_speech_features *( for audio manipulation, specifically the MFCC algorithm )*
 * pyautogui *( for mouse and keyboard simulation )*
-* dragonfly *( installation for Python 3 is rather iffy, will add a link to the version I used to get up and running later )*
+* dragonfly *( For speech recognition purposes )*
 * pythoncom *( for listening to speech recognition commands )*
-* msvcrt *( for the configuration command line interface niceties )*
 
 # Hardware requirements
 * A decent computer to run machine learning training on
@@ -30,13 +27,7 @@ Python packages such as
 
 # Installation
 
-TODO - Fill this up so the installation isn't a pain to go through
-
-Download the nircmd program and place it in the root folder of this project, in order to allow it to enable and disable the system volume.
-
-In order to make use of the speech recognition part, you will have to enable the Windows Speech Recognition feature on your computer and train it to properly recognize your voice. 
-
-In order to use an eye tracker, you will have to configure and train it to recognize your eyes. As well as install Project IRIS to easily toggle the mouse movement using eye tracking on and off, and it configure the smoothness of the movement.
+Follow the instructions in the [Installation guide for this project](docs/INSTALLATION.md)
 
 # Configuration
 
@@ -76,15 +67,14 @@ Most of this tweaking will include changing the pattern detector configuration i
 
 There keys should not be changed, however, inside its contents, you can tweak the following elements:
 Sound - This is the name of the sound you wish to use when this key should be activated
-Strategy - You can choose between
+Strategy - You can choose between.. TODO
 
 # Running the program
 
-You can run the program by executing play.py . This process might crash if you haven't properly installed certain packages or configurated your models.
+You can run the program by executing `py play.py`. This process might crash if you haven't properly installed certain packages or configurated your models.
 
 ### Todos
 
- - Write the full installation part, if other people want to fool around with this prototype
  - Add examples of how to use the program
  - Seperate out the eyetracker and speech recognition parts, in order to allow the users not to have to install and configure all the different parts in order to get set up properly. 
 

@@ -23,7 +23,7 @@ class ModeSwitcher(object):
 				'heroes': HeroesMode(ModeSwitcher.__instance),
 				'starcraft': StarcraftMode(ModeSwitcher.__instance),				
 				'testing': TestMode(ModeSwitcher.__instance),
-				'worklog': ExcelMode(ModeSwitcher.__instance, 'C:/Users/anonymous/Documents/Recognize/werktijden3.ods'),
+				'worklog': ExcelMode(ModeSwitcher.__instance, ''),
 				'excel': ExcelMode(ModeSwitcher.__instance, ''),
 			}
 			

@@ -1,5 +1,5 @@
 from config.config import *
-from sklearn.externals import joblib
+import joblib
 from lib.hierarchial_classifier import *
 import os
 

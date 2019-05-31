@@ -1,11 +1,9 @@
-replays/*.csv
-!replays
-recordings/*
-!recordings/.gitkeep
-!recordings
-dataset/*
-!dataset
-!dataset/.gitkeep
+data/replays/*.csv
+!data/replays/.gitkeep
+data/recordings/*
+!data/recordings/.gitkeep
+data/models/*
+!data/models/.gitkeep
 lib/__pycache__/*
 lib/modes/__pycache__/*
 config/__pycache__/*
