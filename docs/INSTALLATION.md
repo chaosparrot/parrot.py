@@ -1,5 +1,5 @@
 # Installation guide
-==================
+-----------
 
 For this program to work, you must atleast have access to a microphone and a Windows machine that can run Python 3.6 32 bit.
 
@@ -25,7 +25,8 @@ This can be done by typing 'python -v', this will display the version of your cu
 
 If all else is well, install the packages below by running the following lines of code in your command line program: 
 
-```pip3 install numpy;
+```bash
+pip3 install numpy;
 pip3 install scipy;
 pip3 install pandas;
 pip3 install matplotlib;
@@ -35,7 +36,8 @@ pip3 install python_speech_features;
 pip3 install pythoncom;
 pip3 install joblib;
 pip3 install scikit-learn;
-pip3 install pywin32;```
+pip3 install pywin32;
+```
 
 Step three - Download and extract the zipfile from this github repository
 ---------------
@@ -51,9 +53,7 @@ Step four - Installing the speech recognition package
 ---------------
 
 In order to make use of the speech recognition capabilities of the program, you need to install one more package called dragonfly. Unfortunately, this package can't be installed from the command line ( to my knowledge ).
-So what you're going to have to do is download the zipfile from the link below and extract it somewhere on your computer.
-
-https://github.com/sathishkottravel/dragonfly
+So what you're going to have to do is download the zipfile from the [this Dragonfly fork](https://github.com/sathishkottravel/dragonfly) and extract it somewhere on your computer.
 
 Then open up that directory in your command line program and run the installer using `py setup.py install` . This will install all the required packages and should set you up properly
 
