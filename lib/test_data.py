@@ -10,7 +10,7 @@ import numpy as np
 from numpy.fft import rfft
 from scipy.signal import blackmanharris
 import os
-from sklearn.externals import joblib
+import joblib
 import pandas as pd
 import matplotlib.pyplot as plt
 from lib.listen import start_listen_loop, predict_wav_files

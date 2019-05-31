@@ -106,7 +106,7 @@ def load_data( max_files ):
 	filtered_data_directory_names = []
 	for directory_name in data_directory_names:
 		add = input(" - " + directory_name)
-		if( add == "" or add.lower() == "y" ):
+		if( add == "" or add.strip().lower() == "y" ):
 			filtered_data_directory_names.append( directory_name )
 		else:
 			print( "Disabled " + directory_name )

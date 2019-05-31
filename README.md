@@ -31,34 +31,17 @@ Follow the instructions in the [Installation guide for this project](docs/INSTAL
 
 # Configuration
 
+![Settings example](docs/media/settings-main.png)
+
 This repository contains a settings.py file for recording, training and analytical purposes. 
+This will allow you to tweak and improve the recognition of sounds and activation accuracy and speed of keys.
 
-Step 1 - Recording data
+In order to map a sound to a key, you will have to go through a certain process:
+Step 1 - [Recording the sound](docs/RECORDING.md)
+Step 2 - [Training a model on the sound for recognition](docs/TRAINING.md)
+Step 3 - [Analyse whether or not the sound is properly recognized](docs/ANALYSING.md)
 
-In order to train a model, you need to record sounds first. You can do this by running settings.py and pressing the [R] key, this will lead you through the steps neccesary for recording.
-All the recorded files are saved on your computer in seperate folders, designated with the names of your choosing in the recording process. Recording can be paused and exited using the space and escape key respectively.
-
-It is recommended to record around 1000 samples per sound, this is what I found to be the best middle ground for good detection.
-
-Make sure to also record background noise under the folder 'silence'. The models require this directory to be available.
-
-Step 2 - Training the model
-
-Training the model involves going through the [L] menu when running settings.py . Here you will choose the model name and which sounds you want to recognize.
-Going through this menu will automatically generate a trained model, with accuracy predictions for the specific sounds.
-
-Step 3 - Analyzing performance of the model
-
-You can analyze the model performance when you go through the [A] menu when running settings.py. This will generate graphs which can be used to see how well a certain sound is being detected.
-
-There are two ways to analyze performance. 
-1. Generating a graph of the detected sounds using the replay files ( located in data/replays ).
-2. Choosing a model and recording a brief segment of sound files to see if the model holds up to your expectations. 
-This option is prefered when you have just generated a model and want to see how well it detects sounds outside of the sample set of the prerecorded sounds.
-
-With this option, you can also choose to use the previously recorded files, in order to see how other models match up against the same set of sounds.
-
-Step 4 - Tweaking modes
+# Tweaking the interaction modes
 
 As it stands right now, there is no easy way to do the configuration of the given interaction modes. You will have to edit the code yourself.
 The modes can be found in the lib/modes/ directory.
