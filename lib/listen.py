@@ -41,7 +41,7 @@ def break_loop_controls():
 			return False			
 	return True	
 
-def start_listen_loop( classifier, mode_switcher = False, persist_replay = False, persist_files = False, amount_of_seconds=-1 ):
+def start_listen_loop( classifier, mode_switcher = False, persist_replay = False, persist_files = False, amount_of_seconds=-1, high_speed=False ):
 	# Get a minimum of these elements of data dictionaries
 	dataDicts = []
 	audio_frames = []
@@ -51,12 +51,6 @@ def start_listen_loop( classifier, mode_switcher = False, persist_replay = False
 			dataDict[ directoryname ] = {'percent': 0, 'intensity': 0, 'frequency': 0, 'winner': False}
 		dataDicts.append( dataDict )
 	
-	audio = pyaudio.PyAudio()
-	stream = audio.open(format=FORMAT, channels=CHANNELS,
-		rate=RATE, input=True,
-		input_device_index=INPUT_DEVICE_INDEX,
-		frames_per_buffer=CHUNK)
-		
 	continue_loop = True
 	starttime = int(time.time())
 	replay_file = REPLAYS_FOLDER + "/replay_" + str(starttime) + ".csv"
@@ -68,6 +62,12 @@ def start_listen_loop( classifier, mode_switcher = False, persist_replay = False
 		print ( "Listening for " + str( amount_of_seconds ) + " seconds..." )
 	print ( "" )
 	
+	audio = pyaudio.PyAudio()
+	stream = audio.open(format=FORMAT, channels=CHANNELS,
+		rate=RATE, input=True,
+		input_device_index=INPUT_DEVICE_INDEX,
+		frames_per_buffer=CHUNK)
+	
 	if( persist_replay ):
 		with open(replay_file, 'a', newline='') as csvfile:
 			headers = ['time', 'winner', 'intensity', 'frequency', 'actions']
@@ -76,10 +76,10 @@ def start_listen_loop( classifier, mode_switcher = False, persist_replay = False
 			writer.writeheader()
 			
 			starttime = int(time.time())
-			while( continue_loop ):			
+			while( continue_loop ):	
 				seconds_playing = time.time() - starttime			
 			
-				probabilityDict, predicted, audio_frames, intensity, frequency, wavData = listen_loop( audio, stream, classifier, dataDicts, audio_frames )
+				probabilityDict, predicted, audio_frames, intensity, frequency, wavData = listen_loop( audio, stream, classifier, dataDicts, audio_frames, high_speed )
 				winner = classifier.classes_[ predicted ]
 				dataDicts.append( probabilityDict )
 				if( len(dataDicts) > PREDICTION_LENGTH ):
@@ -119,7 +119,7 @@ def start_listen_loop( classifier, mode_switcher = False, persist_replay = False
 		starttime = int(time.time())
 
 		while( continue_loop ):
-			probabilityDict, predicted, audio_frames, intensity, frequency, wavData = listen_loop( audio, stream, classifier, dataDicts, audio_frames )
+			probabilityDict, predicted, audio_frames, intensity, frequency, wavData = listen_loop( audio, stream, classifier, dataDicts, audio_frames, high_speed )
 			dataDicts.append( probabilityDict )
 			if( len(dataDicts) > PREDICTION_LENGTH ):
 				dataDicts.pop(0)
@@ -143,12 +143,18 @@ def start_listen_loop( classifier, mode_switcher = False, persist_replay = False
 		
 	return replay_file
 
-def listen_loop( audio, stream, classifier, dataDicts, audio_frames ):
+def listen_loop( audio, stream, classifier, dataDicts, audio_frames, high_speed=False ):
 	audio_frames, intensity = get_stream_wav_segment( stream, [] )	
 	wavData = b''.join(audio_frames)
 	
-	probabilityDict, predicted, frequency = predict_raw_data( wavData, classifier, intensity )
+	# SKIP FEATURE ENGINEERING COMPLETELY WHEN DEALING WITH SILENCE
+	if( high_speed == True and intensity < SILENCE_INTENSITY_THRESHOLD ):
+		probabilityDict, predicted, frequency = create_probability_dict( classifier, {}, 0, intensity )
+	else:
+		probabilityDict, predicted, frequency = predict_raw_data( wavData, classifier, intensity )
+	
 	return probabilityDict, predicted, audio_frames, intensity, frequency, wavData
+		
 	
 def get_stream_wav_segment( stream, frames ):
 	stream.start_stream()

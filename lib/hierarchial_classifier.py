@@ -3,7 +3,7 @@ import pyautogui
 from config.config import *
 import math
 pyautogui.FAILSAFE = False
-from sklearn.externals import joblib
+import joblib
 import numpy as np
 import copy
 

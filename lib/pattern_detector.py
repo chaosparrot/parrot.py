@@ -3,6 +3,7 @@ import pyautogui
 from config.config import *
 import math
 pyautogui.FAILSAFE = False
+pyautogui.PAUSE = 0.0
 
 class PatternDetector:
 	currentTime = time.time()
@@ -44,7 +45,7 @@ class PatternDetector:
 			return self.detect_strategy( action, self.config[action] )
 		
 	def detect_silence( self ):
-		return self.predictionDicts[-1]['silence']['intensity'] < 400
+		return self.predictionDicts[-1]['silence']['intensity'] < SILENCE_INTENSITY_THRESHOLD
 		
 	def detect_strategy( self, action, config ):
 		if( 'throttle' in config and self.throttle_detection( action, config['throttle'] ) ):
@@ -71,6 +72,9 @@ class PatternDetector:
 			else:
 				detected = ( self.above_percentage( lastDict, label, config['percentage'] ) and
 					self.above_intensity( lastDict, config['intensity'] ) )
+				if( detected == True ):
+					self.timestamps[ action + "_start" ] = self.currentTime
+					
 		elif( strategy == 'combined' ):
 			secondary_label = config['secondary_sound']
 		

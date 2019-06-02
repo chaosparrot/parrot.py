@@ -77,21 +77,21 @@ class StarcraftMode:
 				'sound': 'sound_ooh',
 				'percentage': 70,
 				'intensity': 1500,
-				'throttle': 0.1
+				'throttle': 0.15
 			},
 			'w': {
 				'strategy': 'rapid',
 				'sound': 'sound_f',
-				'percentage': 80,
-				'intensity': 1500,
-				'throttle': 0.1
+				'percentage': 70,
+				'intensity': 1100,
+				'throttle': 0.15
 			},
 			'grid_ability': {
 				'strategy': 'continuous',
 				'sound': 'sound_ah',
 				'percentage': 60,
 				'intensity': 2000,
-				'lowest_percentage': 40,
+				'lowest_percentage': 20,
 				'lowest_intensity': 1000,
 				'throttle': 0.05
 			},
@@ -178,7 +178,7 @@ class StarcraftMode:
 				self.update_overlay()
 		
 	def release_hold_keys( self ):
-		self.ability_selected = False	
+		self.ability_selected = False
 		self.hold_control( False )
 		if( self.shiftKey and self.altKey ):
 			self.hold_shift( False )
@@ -187,6 +187,10 @@ class StarcraftMode:
 	
 	def handle_input( self, dataDicts ):
 		self.detector.tick( dataDicts )
+
+		if( self.detector.detect_silence() ):
+			self.drag_mouse( False )
+			return self.detector.tickActions
 		
 		## Mouse actions
 		# Selecting units
@@ -206,6 +210,13 @@ class StarcraftMode:
 			# Release the held keys - except when shift-alt clicking units in the selection tray ( for easy removing from the unit group )
 			if( not( self.shiftKey and self.altKey and self.detect_selection_tray() ) ):
 				self.release_hold_keys()
+
+		## Press Grid ability
+		elif( self.detector.detect("grid_ability") ):
+			quadrant4x3 = self.detector.detect_mouse_quadrant( 4, 3 )
+			self.use_ability( quadrant4x3 )
+			self.release_hold_keys()
+			self.hold_shift( False )	
 			
 		# CTRL KEY holding
 		elif( self.detector.detect( "control" ) ):
@@ -245,18 +256,11 @@ class StarcraftMode:
 				self.press_ability( 'esc' )
 			
 		## Move the camera
-		if( self.detector.detect( "camera" ) ):
+		elif( self.detector.detect( "camera" ) ):
 			quadrant3x3 = self.detector.detect_mouse_quadrant( 3, 3 )
 			self.camera_movement( quadrant3x3 )
 			self.hold_shift( False )			
-			
-		## Press Grid ability
-		elif( self.detector.detect("grid_ability") ):
-			quadrant4x3 = self.detector.detect_mouse_quadrant( 4, 3 )
-			self.use_ability( quadrant4x3 )
-			self.release_hold_keys()
-			self.hold_shift( False )
-			
+						
 		## Press control group
 		elif( self.detector.detect( "numbers" ) ):
 			quadrant3x3 = self.detector.detect_mouse_quadrant( 3, 3 )

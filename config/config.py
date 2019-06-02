@@ -20,12 +20,12 @@ REPLAYS_FILE = REPLAYS_FOLDER + "/run.csv"
 CLASSIFIER_FOLDER = "data/models"
 OVERLAY_FOLDER = "data/overlays"
 OVERLAY_FILE = "config/current-overlay-image.txt"
-DEFAULT_CLF_FILE = "train_narud_complete2"
+DEFAULT_CLF_FILE = "train_ladder"
 
 STARTING_MODE = "starcraft"
 
 SAVE_REPLAY_DURING_PLAY = True
 SAVE_FILES_DURING_PLAY = False
-EYETRACKING_TOGGLE = "F4"
+EYETRACKING_TOGGLE = "f4"
 SPEECHREC_ENABLED = True
 OVERLAY_ENABLED = True
