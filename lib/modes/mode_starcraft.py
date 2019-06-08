@@ -20,20 +20,22 @@ class StarcraftMode:
 		self.modeSwitcher = modeSwitcher
 		self.detector = PatternDetector({
 			'select': {
-				'strategy': 'rapid',
+				'strategy': 'continuous',
 				'sound': 'sound_s',
 				'percentage': 70,
 				'intensity': 800,
-				'throttle': 0.01
+				'lowest_percentage': 40,
+				'lowest_intensity': 800,
+				'throttle': 0.01				
 			},
 			'rightclick': {
 				'strategy': 'rapid',
 				'sound': 'cluck',
 				'percentage': 70,
 				'intensity': 1000,
-				'throttle': 0.1
+				'throttle': 0.2
 			},
-			'attack': {
+			'movement': {
 				'strategy': 'rapid',
 				'sound': 'whistle',
 				'percentage': 60,
@@ -50,9 +52,11 @@ class StarcraftMode:
 				'throttle': 0.2
 			},
 			'shift': {
-				'strategy': 'rapid',
+				'strategy': 'combined',
 				'sound': 'sound_tsk',
+				'secondary_sound': 'sound_marbles',				
 				'percentage': 70,
+				'ratio': 2,
 				'intensity': 1500,
 				'throttle': 0.2
 			},
@@ -70,7 +74,7 @@ class StarcraftMode:
 				'sound': 'sound_uuh',
 				'percentage': 60,
 				'intensity': 1000,
-				'throttle': 0.1
+				'throttle': 0.18
 			},
 			'q': {
 				'strategy': 'rapid',
@@ -113,7 +117,7 @@ class StarcraftMode:
 				'strategy': 'rapid',
 				'sound': 'hotel_bell',
 				'percentage': 60,
-				'intensity': 2000,
+				'intensity': 1500,
 				'throttle': 0.3
 			}
 		})
@@ -188,6 +192,7 @@ class StarcraftMode:
 	def handle_input( self, dataDicts ):
 		self.detector.tick( dataDicts )
 
+		# Early escape for performance
 		if( self.detector.detect_silence() ):
 			self.drag_mouse( False )
 			return self.detector.tickActions
@@ -230,13 +235,17 @@ class StarcraftMode:
 		elif( self.detector.detect( "alt" ) ):
 			self.hold_alt( not self.altKey )
 
-		## Attack move / Patrol move
-		elif( self.detector.detect( "attack" ) ):
+		## Movement options
+		elif( self.detector.detect( "movement" ) ):
 			quadrant3x3 = self.detector.detect_mouse_quadrant( 3, 3 )
-			if( quadrant3x3 <= 3 ):
-				self.cast_ability( 'p' )
-			else:
+			if( quadrant3x3 <= 6 ):
 				self.cast_ability( 'a' )
+			elif( quadrant3x3 == 7 ):
+				self.press_ability( 'h' )
+			elif( quadrant3x3 == 8 ):
+				self.press_ability( 's' )
+			elif( quadrant3x3 == 9 ):
+				self.cast_ability( 'p' )				
 		## Press Q
 		elif( self.detector.detect( "q" ) ):
 			self.cast_ability( 'q' )
