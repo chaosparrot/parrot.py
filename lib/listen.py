@@ -16,8 +16,12 @@ import csv
 from scipy.fftpack import fft
 from scipy.fftpack import fftfreq
 import msvcrt
+from queue import *
+import threading
+import traceback
+import sys
 
-def break_loop_controls():
+def break_loop_controls(audioQueue=None):
 	ESCAPEKEY = b'\x1b'
 	SPACEBAR = b' '
 	
@@ -28,6 +32,10 @@ def break_loop_controls():
 			
 			# Pause the recording by looping until we get a new keypress
 			while( True ):
+				## If the audio queue exists - make sure to clear it continuously
+				if( audioQueue != None ):
+					audioQueue.queue.clear()
+			
 				if( msvcrt.kbhit() ):
 					character = msvcrt.getch()
 					if( character == SPACEBAR ):
@@ -40,7 +48,194 @@ def break_loop_controls():
 			print( "Listening stopped                                                         " )
 			return False			
 	return True	
+	
+def classify_audioframes( audioQueue, audio_frames, classifier, high_speed ):
+	if( not audioQueue.empty() ):
+		audio_frames.append( audioQueue.get() )
+		if( len( audio_frames ) >= 2 ):
+			audio_frames = audio_frames[-2:]
+	
+			intensity = [
+				audioop.maxpp( audio_frames[0], 4 ) / 32767,
+				audioop.maxpp( audio_frames[1], 4 ) / 32767
+			]
+			highestintensity = np.amax( intensity )	
+			wavData = b''.join(audio_frames)
+	
+			# SKIP FEATURE ENGINEERING COMPLETELY WHEN DEALING WITH SILENCE
+			if( high_speed == True and highestintensity < SILENCE_INTENSITY_THRESHOLD ):
+				probabilityDict, predicted, frequency = create_probability_dict( classifier, {}, 0, highestintensity )
+			else:
+				probabilityDict, predicted, frequency = predict_raw_data( wavData, classifier, highestintensity )
+			
+			return probabilityDict, predicted, audio_frames, highestintensity, frequency, wavData
+			
+	return False, False, audio_frames, False, False, False
+	
+def action_consumer( stream, classifier, dataDicts, persist_replay, replay_file, mode_switcher=False ):
+	actions = []
+	global classifierQueue
+	
+	starttime = time.time()
+	try:
+		if( persist_replay ):
+			with open(replay_file, 'a', newline='') as csvfile:	
+				headers = ['time', 'winner', 'intensity', 'frequency', 'actions']
+				headers.extend( classifier.classes_ )
+				writer = csv.DictWriter(csvfile, fieldnames=headers, delimiter=',')
+				writer.writeheader()
+			
+				while( stream.is_active() ):
+					if( not classifierQueue.empty() ):
+						seconds_playing = time.time() - starttime
+					
+						probabilityDict = classifierQueue.get()
+						dataDicts.append( probabilityDict )
+						if( len(dataDicts) > PREDICTION_LENGTH ):
+							dataDicts.pop(0)
+				
+						if( mode_switcher ):
+							actions = mode_switcher.getMode().handle_input( dataDicts )
+							if( isinstance( actions, list ) == False ):
+								actions = []
+							
+						replay_row = { 'time': int(seconds_playing * 1000) / 1000, 'actions': ':'.join(actions) }
+						for label, labelDict in probabilityDict.items():
+							replay_row[ label ] = labelDict['percent']
+							if( labelDict['winner'] ):
+								replay_row['winner'] = label
+							replay_row['intensity'] = int(labelDict['intensity'])
+							replay_row['frequency'] = labelDict['frequency']						
+						writer.writerow( replay_row )
+						csvfile.flush()
+							
+		else:
+			while( stream.is_active() ):
+				if( not classifierQueue.empty() ):
+					dataDicts.append( classifierQueue.get() )
+					if( len(dataDicts) > PREDICTION_LENGTH ):
+						dataDicts.pop(0)
+			
+					if( mode_switcher ):
+						actions = mode_switcher.getMode().handle_input( dataDicts )
+						if( isinstance( actions, list ) == False ):
+							actions = []
+	except Exception as e:
+		print( "----------- ERROR DURING CONSUMING ACTIONS -------------- " )
+		exc_type, exc_value, exc_tb = sys.exc_info()
+		traceback.print_exception(exc_type, exc_value, exc_tb)
+		stream.stop_stream()
 
+	
+def classification_consumer( audio, stream, classifier, persist_files, high_speed ):
+	audio_frames = []
+	dataDicts = []
+	for i in range( 0, PREDICTION_LENGTH ):
+		dataDict = {}
+		for directoryname in classifier.classes_:
+			dataDict[ directoryname ] = {'percent': 0, 'intensity': 0, 'frequency': 0, 'winner': False}
+		dataDicts.append( dataDict )
+
+	starttime = time.time()
+	global audioQueue
+	global classifierQueue
+	
+	try:	
+		while( stream.is_active() ):
+			probabilityDict, predicted, audio_frames, highestintensity, frequency, wavData  = classify_audioframes( audioQueue, audio_frames, classifier, high_speed )
+			
+			# Skip if a prediction could not be made
+			if( probabilityDict == False ):
+				continue
+				
+			seconds_playing = time.time() - starttime
+				
+			winner = classifier.classes_[ predicted ]				
+			prediction_time = time.time() - starttime - seconds_playing
+			
+			long_comment = "Time: %0.2f - Prediction in: %0.2f - Winner: %s - Percentage: %0d - Frequency %0d                                        " % (seconds_playing, prediction_time, winner, probabilityDict[winner]['percent'], probabilityDict[winner]['frequency'])
+			short_comment = "T: %0.2f - %0d%s - %s " % (seconds_playing, probabilityDict[winner]['percent'], '%', winner)
+			print( short_comment )
+			
+			classifierQueue.put( probabilityDict )
+			if( persist_files ):		
+				audioFile = wave.open(REPLAYS_AUDIO_FOLDER + "/%0.3f.wav" % (seconds_playing), 'wb')
+				audioFile.setnchannels(CHANNELS)
+				audioFile.setsampwidth(audio.get_sample_size(FORMAT))
+				audioFile.setframerate(RATE)
+				audioFile.writeframes(wavData)
+				audioFile.close()
+	except Exception as e:
+		print( "----------- ERROR DURING AUDIO CLASSIFICATION -------------- " )
+		exc_type, exc_value, exc_tb = sys.exc_info()
+		traceback.print_exception(exc_type, exc_value, exc_tb)
+		stream.stop_stream()
+	
+	
+def nonblocking_record( in_data, frame_count, time_info, status ):
+	global audioQueue
+	audioQueue.put( in_data )
+	
+	return in_data, pyaudio.paContinue
+	
+def start_nonblocking_listen_loop( classifier, mode_switcher = False, persist_replay = False, persist_files = False, amount_of_seconds=-1, high_speed=False ):
+	global audioQueue
+	audioQueue = Queue(maxsize=0)
+	global classifierQueue
+	classifierQueue = Queue(maxsize=0)
+	
+	# Get a minimum of these elements of data dictionaries
+	dataDicts = []
+	audio_frames = []
+	for i in range( 0, PREDICTION_LENGTH ):
+		dataDict = {}
+		for directoryname in classifier.classes_:
+			dataDict[ directoryname ] = {'percent': 0, 'intensity': 0, 'frequency': 0, 'winner': False}
+		dataDicts.append( dataDict )
+	
+	continue_loop = True
+	starttime = int(time.time())
+	replay_file = REPLAYS_FOLDER + "/replay_" + str(starttime) + ".csv"
+	
+	infinite_duration = amount_of_seconds == -1
+	if( infinite_duration ):
+		print( "Listening..." )
+	else:
+		print ( "Listening for " + str( amount_of_seconds ) + " seconds..." )
+	print ( "" )
+	
+	audio = pyaudio.PyAudio()
+	stream = audio.open(format=FORMAT, channels=CHANNELS,
+		rate=RATE, input=True,
+		input_device_index=INPUT_DEVICE_INDEX,
+		frames_per_buffer=CHUNK,
+		stream_callback=nonblocking_record)
+				
+	classificationConsumer = threading.Thread(name='classification_consumer', target=classification_consumer, args=(audio, stream, classifier, persist_files, high_speed) )
+	classificationConsumer.setDaemon( True )
+	classificationConsumer.start()
+	
+	actionConsumer = threading.Thread(name='action_consumer', target=action_consumer, args=(stream, classifier, dataDicts, persist_replay, replay_file, mode_switcher) )
+	actionConsumer.setDaemon( True )
+	actionConsumer.start()	
+				
+	stream.start_stream()
+
+	while stream.is_active():
+		currenttime = int(time.time())	
+		if( not infinite_duration and currenttime - starttime > amount_of_seconds or break_loop_controls( audioQueue ) == False ):
+			stream.stop_stream()
+		time.sleep(0.1)
+
+	# Stop all the streams and different threads
+	stream.stop_stream()
+	stream.close()
+	audio.terminate()
+	audioQueue.queue.clear()
+	classifierQueue.queue.clear()
+	
+	return replay_file
+	
 def start_listen_loop( classifier, mode_switcher = False, persist_replay = False, persist_files = False, amount_of_seconds=-1, high_speed=False ):
 	# Get a minimum of these elements of data dictionaries
 	dataDicts = []

@@ -13,7 +13,7 @@ import os
 import joblib
 import pandas as pd
 import matplotlib.pyplot as plt
-from lib.listen import start_listen_loop, predict_wav_files
+from lib.listen import start_nonblocking_listen_loop, predict_wav_files
 
 def test_data( with_intro ):
 	available_models = []
@@ -136,7 +136,7 @@ def audio_analysis( available_models ):
 			sleep( 1 )
 			
 		print( "Recording new audio files" )
-		replay_file = start_listen_loop( classifier, False, True, True, seconds )
+		replay_file = start_nonblocking_listen_loop( classifier, False, True, True, seconds )
 		classifier = None
 		print( "-------------------------" )
 		print( "Analyzing file " + replay_file )

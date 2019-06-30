@@ -101,40 +101,39 @@ def record_consumer(threshold, frequency_threshold, WAVE_OUTPUT_FILENAME, WAVE_O
 	audioFrames = []
 	try:
 		while( True ):
-			audioFrames.append( recordQueue.get() )		
-			if( len( audioFrames ) >= 2 ):
-				j+=1
-				if( len( audioFrames ) > 2 ):
-					audioFrames = audioFrames[1:]
+			if( not recordQueue.empty() ):
+				audioFrames.append( recordQueue.get() )		
+				if( len( audioFrames ) >= 2 ):
+					j+=1
+					audioFrames = audioFrames[-2:]
+						
+					intensity = [
+						audioop.maxpp( audioFrames[0], 4 ) / 32767,
+						audioop.maxpp( audioFrames[1], 4 ) / 32767
+					]
+					highestintensity = np.amax( intensity )
 					
-				intensity = [
-					audioop.maxpp( audioFrames[0], 4 ) / 32767,
-					audioop.maxpp( audioFrames[1], 4 ) / 32767
-				]
-				highestintensity = np.amax( intensity )
+					byteString = b''.join(audioFrames)
+					fftData = np.frombuffer( byteString, dtype=np.int16 )
+					frequency = get_loudest_freq( fftData, RECORD_SECONDS )
+					
+					fileid = "%0.2f" % ((j) * RECORD_SECONDS )
 				
-				byteString = b''.join(audioFrames)
-				fftData = np.frombuffer( byteString, dtype=np.int16 )
-				frequency = get_loudest_freq( fftData, RECORD_SECONDS )
-				
-				fileid = "%0.2f" % ((j) * RECORD_SECONDS )
-			
-				if( record_controls( recordQueue ) == False ):
-					stream.stop_stream()
-					break;
-					 
-				if( frequency > frequency_threshold and highestintensity > threshold ):
-					files_recorded += 1
-					print( "Files recorded: %0d - Intensity: %0d - Freq: %0d - Saving %s" % ( files_recorded, highestintensity, frequency, fileid ) )
-					waveFile = wave.open(WAVE_OUTPUT_FILENAME + fileid + WAVE_OUTPUT_FILE_EXTENSION, 'wb')
-					waveFile.setnchannels(CHANNELS)
-					waveFile.setsampwidth(audio.get_sample_size(FORMAT))
-					waveFile.setframerate(RATE)
-					waveFile.writeframes(byteString)
-					waveFile.close()
-					waveFile.aliaaa()
-				else:
-					print( "Files recorded: %0d - Intensity: %0d - Freq: %0d" % ( files_recorded, highestintensity, frequency ) )
+					if( record_controls( recordQueue ) == False ):
+						stream.stop_stream()
+						break;
+						 
+					if( frequency > frequency_threshold and highestintensity > threshold ):
+						files_recorded += 1
+						print( "Files recorded: %0d - Intensity: %0d - Freq: %0d - Saving %s" % ( files_recorded, highestintensity, frequency, fileid ) )
+						waveFile = wave.open(WAVE_OUTPUT_FILENAME + fileid + WAVE_OUTPUT_FILE_EXTENSION, 'wb')
+						waveFile.setnchannels(CHANNELS)
+						waveFile.setsampwidth(audio.get_sample_size(FORMAT))
+						waveFile.setframerate(RATE)
+						waveFile.writeframes(byteString)
+						waveFile.close()
+					else:
+						print( "Files recorded: %0d - Intensity: %0d - Freq: %0d" % ( files_recorded, highestintensity, frequency ) )
 	except Exception as e:
 		print( "----------- ERROR DURING RECORDING -------------- " )
 		exc_type, exc_value, exc_tb = sys.exc_info()
