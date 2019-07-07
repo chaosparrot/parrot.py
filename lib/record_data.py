@@ -80,6 +80,19 @@ def record_sound():
 		frequency_threshold = 0
 	else:
 		frequency_threshold = int( frequency_threshold )
+	print( "During a wave of recognized sounds... " )
+	begin_threshold = input("After how many saved files should we stop assuming the sound is being made? " )
+	if( begin_threshold == "" ):
+		begin_threshold = 1000
+	else:
+		begin_threshold = int( begin_threshold )
+
+	if( begin_threshold == 1000 ):
+		begin_threshold = input("After how many positive recognitions should we save the files? " )
+		if( begin_threshold == "" ):
+			begin_threshold = 1000
+		else:
+			begin_threshold = 0 - int( begin_threshold )
 		
 	print("")
 	print("You can pause/resume the recording session using the [SPACE] key, and stop the recording using the [ESC] key" )
@@ -90,15 +103,23 @@ def record_sound():
 	if( countdown( 5 ) == False ):
 		return;
 		
-	non_blocking_record(threshold, frequency_threshold, WAVE_OUTPUT_FILENAME, WAVE_OUTPUT_FILE_EXTENSION)
+	non_blocking_record(threshold, frequency_threshold, begin_threshold, WAVE_OUTPUT_FILENAME, WAVE_OUTPUT_FILE_EXTENSION)
 	
 # Consumes the recordings in a sliding window fashion - Always combining the two latest chunks together	
-def record_consumer(threshold, frequency_threshold, WAVE_OUTPUT_FILENAME, WAVE_OUTPUT_FILE_EXTENSION, audio, stream):
+def record_consumer(threshold, frequency_threshold, begin_threshold, WAVE_OUTPUT_FILENAME, WAVE_OUTPUT_FILE_EXTENSION, audio, stream):
 	global recordQueue
 
 	files_recorded = 0
 	j = 0
+	record_wave_file_count = 0
 	audioFrames = []
+	
+	# Set the proper thresholds for starting recordings
+	delay_threshold = 0
+	if( begin_threshold < 0 ):
+		delay_threshold = begin_threshold * -1
+		begin_threshold = 1000
+	
 	try:
 		while( True ):
 			if( not recordQueue.empty() ):
@@ -124,15 +145,20 @@ def record_consumer(threshold, frequency_threshold, WAVE_OUTPUT_FILENAME, WAVE_O
 						break;
 						 
 					if( frequency > frequency_threshold and highestintensity > threshold ):
-						files_recorded += 1
-						print( "Files recorded: %0d - Intensity: %0d - Freq: %0d - Saving %s" % ( files_recorded, highestintensity, frequency, fileid ) )
-						waveFile = wave.open(WAVE_OUTPUT_FILENAME + fileid + WAVE_OUTPUT_FILE_EXTENSION, 'wb')
-						waveFile.setnchannels(CHANNELS)
-						waveFile.setsampwidth(audio.get_sample_size(FORMAT))
-						waveFile.setframerate(RATE)
-						waveFile.writeframes(byteString)
-						waveFile.close()
+						record_wave_file_count += 1
+						if( record_wave_file_count <= begin_threshold and record_wave_file_count > delay_threshold ):
+							files_recorded += 1
+							print( "Files recorded: %0d - Intensity: %0d - Freq: %0d - Saving %s" % ( files_recorded, highestintensity, frequency, fileid ) )
+							waveFile = wave.open(WAVE_OUTPUT_FILENAME + fileid + WAVE_OUTPUT_FILE_EXTENSION, 'wb')
+							waveFile.setnchannels(CHANNELS)
+							waveFile.setsampwidth(audio.get_sample_size(FORMAT))
+							waveFile.setframerate(RATE)
+							waveFile.writeframes(byteString)
+							waveFile.close()
+						else:
+							print( "Files recorded: %0d - Intensity: %0d - Freq: %0d" % ( files_recorded, highestintensity, frequency ) )							
 					else:
+						record_wave_file_count = 0
 						print( "Files recorded: %0d - Intensity: %0d - Freq: %0d" % ( files_recorded, highestintensity, frequency ) )
 	except Exception as e:
 		print( "----------- ERROR DURING RECORDING -------------- " )
@@ -148,7 +174,7 @@ def multithreaded_record( in_data, frame_count, time_info, status ):
 				
 # Records a non blocking audio stream and saves the chunks onto a queue
 # The queue will be used as a sliding window over the audio, where two chunks are combined into one audio file
-def non_blocking_record(threshold, frequency_threshold, WAVE_OUTPUT_FILENAME, WAVE_OUTPUT_FILE_EXTENSION):
+def non_blocking_record(threshold, frequency_threshold, begin_threshold, WAVE_OUTPUT_FILENAME, WAVE_OUTPUT_FILE_EXTENSION):
 	global recordQueue
 	recordQueue = Queue(maxsize=0)
 
@@ -159,7 +185,7 @@ def non_blocking_record(threshold, frequency_threshold, WAVE_OUTPUT_FILENAME, WA
 		frames_per_buffer=CHUNK,
 		stream_callback=multithreaded_record)
 		
-	consumer = threading.Thread(name='consumer', target=record_consumer, args=(threshold, frequency_threshold, WAVE_OUTPUT_FILENAME, WAVE_OUTPUT_FILE_EXTENSION, audio, stream))
+	consumer = threading.Thread(name='consumer', target=record_consumer, args=(threshold, frequency_threshold, begin_threshold, WAVE_OUTPUT_FILENAME, WAVE_OUTPUT_FILE_EXTENSION, audio, stream))
 	consumer.setDaemon( True )
 	consumer.start()
 	stream.start_stream()

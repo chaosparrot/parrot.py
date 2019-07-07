@@ -60,11 +60,9 @@ def learn_data():
 	joblib.dump( classifier, CLASSIFIER_FOLDER + "/" + clf_filename )	
 	print( "--------------------------" )
 
-	accuracy_analysis = input("Should we analyze the accuracy of the model? Y/n" ).lower() == 'y'	
-	if( accuracy_analysis ):
-		print( "Predicting recognition accuracy using cross validation...", end="\r" )
-		scores = cross_validation( get_classifier(), dataX, dataY )
-		print( "Accuracy: %0.4f (+/- %0.4f)                               " % (scores.mean(), scores.std() * 2))
+	print( "Predicting recognition accuracy using cross validation...", end="\r" )
+	scores = cross_validation( get_classifier(), dataX, dataY )
+	print( "Accuracy: %0.4f (+/- %0.4f)                               " % (scores.mean(), scores.std() * 2))
 	
 	detailed_analysis = input("Should we do a detailed analysis of the model? Y/n" ).lower() == 'y'
 	if( detailed_analysis ):
@@ -95,19 +93,21 @@ def load_wav_files( directory, label, int_label, start, end ):
 
 def get_classifier():
 	#return ExtraTreesClassifier(n_estimators=500, max_depth=20, random_state=123 )
-	return RandomForestClassifier(n_estimators=100, max_depth=10, random_state=123)
+	return RandomForestClassifier(n_estimators=150, max_depth=20, random_state=123)
 		
 def load_data( max_files ):
 	# Get the full directories for the dataset
 	dir_path = os.path.join( os.path.dirname( os.path.dirname( os.path.realpath(__file__)) ), DATASET_FOLDER)
 	data_directory_names =  [directory for directory in os.listdir( dir_path ) if directory != ".gitkeep"]
 	
-	print( "Selecting categories to train on... ( Y / N )" )
+	print( "Selecting categories to train on... ( [Y]es / [N]o / [S]kip )" )
 	filtered_data_directory_names = []
 	for directory_name in data_directory_names:
 		add = input(" - " + directory_name)
 		if( add == "" or add.strip().lower() == "y" ):
 			filtered_data_directory_names.append( directory_name )
+		elif( add.strip().lower() == "s" ):
+			break
 		else:
 			print( "Disabled " + directory_name )
 

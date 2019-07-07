@@ -164,7 +164,7 @@ def audio_analysis( available_models ):
 		dataRows = []
 		for index, prediction in enumerate( predictions ):
 			timeString = full_wav_files[ index ].replace( REPLAYS_AUDIO_FOLDER + os.sep, "" ).replace( ".wav", "" )
-			dataRow = {'time': int(float(timeString) * 1000) / 1000, 'intensity': 0, 'actions': [] }
+			dataRow = {'time': int(float(timeString) * 1000) / 1000, 'intensity': 0, 'actions': [], 'buffer': 0 }
 			for column in prediction:
 				dataRow[column] = prediction[ column ]['percent']
 				if( prediction[ column ]['winner'] ):
@@ -212,7 +212,7 @@ def plot_replay( replay_data ):
 	plt.title("Percentage distribution of predicted sounds", loc='left', fontsize=12, fontweight=0, color='black')
 	plt.ylabel("Percentage")
 
-	for column in replay_data.drop(['winner', 'intensity', 'time', 'frequency', 'actions'], axis=1):
+	for column in replay_data.drop(['winner', 'intensity', 'time', 'frequency', 'actions', 'buffer'], axis=1):
 		if( column != "silence" ):
 			color = colors[num]		
 			num+=1
