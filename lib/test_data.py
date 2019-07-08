@@ -136,7 +136,7 @@ def audio_analysis( available_models ):
 			sleep( 1 )
 			
 		print( "Recording new audio files" )
-		replay_file = start_nonblocking_listen_loop( classifier, False, True, True, seconds )
+		replay_file = start_nonblocking_listen_loop( classifier, False, True, True, seconds, True )
 		classifier = None
 		print( "-------------------------" )
 		print( "Analyzing file " + replay_file )

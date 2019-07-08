@@ -64,7 +64,7 @@ def classify_audioframes( audioQueue, audio_frames, classifier, high_speed ):
 	
 			# SKIP FEATURE ENGINEERING COMPLETELY WHEN DEALING WITH SILENCE
 			if( high_speed == True and highestintensity < SILENCE_INTENSITY_THRESHOLD ):
-				probabilityDict, predicted, frequency = create_probability_dict( classifier, {}, 0, highestintensity )
+				probabilityDict, predicted, frequency = create_empty_probability_dict( classifier, {}, 0, highestintensity )
 			else:
 				probabilityDict, predicted, frequency = predict_raw_data( wavData, classifier, highestintensity )
 			
@@ -385,7 +385,7 @@ def predict_wav_files( classifier, wav_files ):
 	for index, wav_file in enumerate( wav_files ):
 		highestintensity = get_highest_intensity_of_wav_file( wav_file )
 		probabilityDict, predicted, frequency = predict_wav_file( wav_file, classifier, highestintensity )
-		
+				
 		winner = classifier.classes_[predicted]
 		print( "Analyzing file " + str( index + 1 ) + " - Winner: %s - Percentage: %0d - Frequency: %0d           " % (winner, probabilityDict[winner]['percent'], probabilityDict[winner]['frequency']) , end="\r")
 		probabilities.append( probabilityDict )
@@ -407,40 +407,42 @@ def predict_wav_file( wav_file, classifier, intensity ):
 	data_row, frequency = feature_engineering( wav_file )
 	data = [ data_row ]
 	
-	return create_probability_dict( classifier, data, frequency, intensity )
-
-def create_probability_dict( classifier, data, frequency, intensity ):
-	if( intensity > SILENCE_INTENSITY_THRESHOLD ):
-		# Predict the outcome of the audio file	
-		probabilities = classifier.predict_proba( data ) * 100
-		probabilities = probabilities.astype(int)
-
-		# Get the predicted winner		
-		predicted = np.argmax( probabilities[0] )
-		if( isinstance(predicted, list) ):
-			predicted = predicted[0]
-		
-		probabilityDict = {}
-		for index, percent in enumerate( probabilities[0] ):
-			label = classifier.classes_[ index ]
-			probabilityDict[ label ] = { 'percent': percent, 'intensity': int(intensity), 'winner': index == predicted, 'frequency': frequency }
+	if( intensity < SILENCE_INTENSITY_THRESHOLD ):
+		return create_empty_probability_dict( classifier, data, frequency, intensity )
 	else:
-		# SKIP PREDICTION - MOST CERTAINLY SILENCE
-		probabilityDict = {}
-		index = 0
-		predicted = -1
-		
-		for label in classifier.classes_:
-			winner = False
-			percent = 0
-			if( label == 'silence' ):
-				predicted = index
-				percent = 100
-				winner = True
-				
-			probabilityDict[ label ] = { 'percent': percent, 'intensity': int(intensity), 'winner': winner, 'frequency': frequency }
-			index += 1
+		return create_probability_dict( classifier, data, frequency, intensity )
+
+def create_empty_probability_dict( classifier, data, frequency, intensity ):
+	probabilityDict = {}
+	index = 0
+	predicted = -1
+	
+	for label in classifier.classes_:
+		winner = False
+		percent = 0
+		if( label == 'silence' ):
+			predicted = index
+			percent = 100
+			winner = True
+			
+		probabilityDict[ label ] = { 'percent': percent, 'intensity': int(intensity), 'winner': winner, 'frequency': frequency }
+		index += 1
 			
 	return probabilityDict, predicted, frequency
-
 	
+def create_probability_dict( classifier, data, frequency, intensity ):
+	# Predict the outcome of the audio file	
+	probabilities = classifier.predict_proba( data ) * 100
+	probabilities = probabilities.astype(int)
+
+	# Get the predicted winner		
+	predicted = np.argmax( probabilities[0] )
+	if( isinstance(predicted, list) ):
+		predicted = predicted[0]
+	
+	probabilityDict = {}
+	for index, percent in enumerate( probabilities[0] ):
+		label = classifier.classes_[ index ]
+		probabilityDict[ label ] = { 'percent': percent, 'intensity': int(intensity), 'winner': index == predicted, 'frequency': frequency }
+		
+	return probabilityDict, predicted, frequency	
