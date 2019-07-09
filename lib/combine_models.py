@@ -3,6 +3,7 @@ import joblib
 from lib.hierarchial_classifier import *
 from lib.markov_chain_classifier import *
 from lib.change_resistant_classifier import *
+from lib.expert_classifier import *
 import os
 
 def combine_models():
@@ -21,11 +22,18 @@ def combine_models():
 		print( "Please train an algorithm first using the [L] option in the main menu" )
 		return
 		
-	model_type = input("What kind of model do you want to make: [C]hange resistant, [H]ierarchial, [M]arkov chain")
-	if( model_type == "" or model_type.strip().lower() == "h" ):
-		model_type = "hierarchial"
-	if( model_type.strip().lower() == "c" ):
-		model_type = "change_resistant"		
+	print( "What kind of model do you want to make? " )
+	print( "[E]xpert ( default )" )
+	print( "[H]ierarchial" )
+	print( "[C]hange resistant" )
+	print( "[M]arkov chain" )
+	model_type = input("")
+	if( model_type == "" or model_type.strip().lower() == "e" ):
+		model_type = "expert"
+	elif( model_type.strip().lower() == "h" ):
+		model_type = "hierarchial"		
+	elif( model_type.strip().lower() == "c" ):
+		model_type = "change_resistant"
 	else:
 		model_type = "markov_chain"
 
@@ -35,8 +43,21 @@ def combine_models():
 		clf_filename = default_clf_filename
 	clf_filename += '.pkl'
 	
+	if( model_type == "change_resistant" ):
+		classifier_map = configure_base_model( available_models)
+	elif( model_type == "markov_chain" or model_type == "hierarchial" ):
+		classifier_map = configure_tree_model( available_models )
+	else:
+		classifier_map = configure_single_layer_model( available_models )
+			
+	connect_model( clf_filename, classifier_map, model_type )
+	
+def configure_base_model( available_models, text=None ):
+	if( text == None ):
+		text = "Type the number of the model that you want to make resistant to changes: "
+
 	print_available_models( available_models )
-	classifier_file_index = input("Type the number of the model that you want as the base model: ")
+	classifier_file_index = input(text)
 	while( int( classifier_file_index ) <= 0 ):
 		classifier_file_index = input("")
 		if( classifier_file_index.lower() == "x" ):
@@ -45,34 +66,59 @@ def combine_models():
 
 	main_classifier_file = CLASSIFIER_FOLDER + "/" + available_models[ classifier_file_index ]
 	main_classifier = joblib.load( main_classifier_file )
-	classifier_map = {
-		'main': main_classifier
-	}
+	return {'main': main_classifier}
+	
+def configure_tree_model( available_models ):
+	classifier_map = configure_base_model( available_models, "Type the number of the model that you want to use as a base decision layer: ")
 	labels = main_classifier.classes_
 	
-	if( model_type != "change_resistant" ):
-		print( "-------------------------" )
-		print( "Determining decision layers... " )
-		for index, label in enumerate( labels ):
-			answer = input( "Should '" + label + "' connect to another model? Y/N ( Empty is no ) " )
-			if( answer.lower() == "y" ):
-				print_available_models( available_models )
-				
-				leaf_index = input("Type the number of the model that you want to run when '" + label + "' is detected: ")
-				while( int( leaf_index ) <= 0 ):
-					leaf_index = input("")
-					if( leaf_index.lower() == "x" ):
-						return
-				leaf_index = int( leaf_index ) - 1
-				classifier_file = CLASSIFIER_FOLDER + "/" + available_models[ leaf_index ]
-				classifier_map[ label ] = joblib.load( classifier_file )
+	print( "-------------------------" )
+	print( "Determining decision layers... " )
+	for index, label in enumerate( labels ):
+		answer = input( "Should '" + label + "' connect to another model? Y/N ( Empty is no ) " )
+		if( answer.lower() == "y" ):
+			print_available_models( available_models )
+			
+			leaf_index = input("Type the number of the model that you want to run when '" + label + "' is detected: ")
+			while( int( leaf_index ) <= 0 ):
+				leaf_index = input("")
+				if( leaf_index.lower() == "x" ):
+					return
+			leaf_index = int( leaf_index ) - 1
+			classifier_file = CLASSIFIER_FOLDER + "/" + available_models[ leaf_index ]
+			classifier_map[ label ] = joblib.load( classifier_file )
+	
+	return classifier_map
+	
+def configure_single_layer_model( available_models ):
+	amount_of_classifiers = input("How many classifiers do you want to add to this model?")
+	while( int( amount_of_classifiers ) <= 0 ):
+		amount_of_classifiers = input("")
+		if( amount_of_classifiers.lower() == "x" ):
+			return
+	
+	classifier_map = {}
+	print_available_models( available_models )
+	for i in range( int(amount_of_classifiers) ):
+		leaf_index = input("Type the number of the model that you want to add: ")
+		while( int( leaf_index ) <= 0 ):
+			leaf_index = input("")
+			if( leaf_index.lower() == "x" ):
+				return
+		leaf_index = int( leaf_index ) - 1
+		classifier_file = CLASSIFIER_FOLDER + "/" + available_models[ leaf_index ]
+
+		classifier_map[ "classifier_" + str(i) ] = joblib.load( classifier_file )		
+		print( "Added model " + available_models[ leaf_index ] )
 		
-	connect_model( clf_filename, classifier_map, model_type )
+	return classifier_map
 	
 def determine_default_model_name( model_type ):
 	default_clf_filename = DEFAULT_CLF_FILE + "_combined"
 	if( model_type == "markov_chain" ):
 		default_clf_filename = DEFAULT_CLF_FILE + "_markov"
+	elif( model_type == "expert" ):
+		default_clf_filename = DEFAULT_CLF_FILE + "_expert"
 	elif( model_type == "change_resistant" ):
 		default_clf_filename = DEFAULT_CLF_FILE
 	
@@ -88,6 +134,8 @@ def connect_model( clf_filename, classifier_map, model_type ):
 		classifier = HierarchialClassifier( classifier_map )
 	elif( model_type == "markov_chain" ):
 		classifier = MarkovChainClassifier( classifier_map )
+	elif( model_type == "expert" ):
+		classifier = ExpertClassifier( classifier_map )		
 	else:
 		classifier = ChangeResistantClassifier( classifier_map )
 		

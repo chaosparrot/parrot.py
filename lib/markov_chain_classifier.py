@@ -36,12 +36,14 @@ class MarkovChainClassifier:
 				if( label not in self.classifiers ):
 					self.classes_.append( label )
 					
+		self.prediction = self.generate_silence_prediction()
+					
 	# Predict the probabilities of the given data array
 	def predict_proba( self, data ):
 		predictions = []
 		for data_row in data:
 			predictions.append( self.predict_single_proba(data_row) )
-		
+				
 		return np.asarray( predictions )
 		
 	# Generate a silence prediction where everything but the silence category is 0
@@ -55,9 +57,23 @@ class MarkovChainClassifier:
 	
 		return np.asarray( silence_prediction, dtype=np.float64 )
 		
+	def calculate_prediction_weights( self, intensity, frequency ):
+		weights = []
+		for type in self.classifiers['main'].classes_:
+			if( type in self.classifiers.keys() ):
+				weights.append( 1 if self.inside_state_range( type, intensity, frequency ) == True else 0 )
+			else:
+				weights.append( 1 )
+				
+		return weights
+		
 	def inside_state_range( self, classifier, intensity, frequency ):
-		if( classifier == "cat_click" and intensity < 3000 ):
+		if( classifier == "cat_semivowel" and ( frequency > 100 or intensity > 5000 ) ):
 			return False
+		#if( classifier == "cat_sibilant" and frequency < 200 ):
+		#	return False
+		elif( classifier == "cat_vowel" and ( intensity < 1000 or frequency > 100 ) ):
+			return False			
 		
 		return True
 		
@@ -82,17 +98,24 @@ class MarkovChainClassifier:
 				
 		# Determine a new state
 		if( prediction_weights != None ):
-			probabilities = self.classifiers[ self.current_classifier ].predict_proba( [data_row] )[0]
+			probabilities = self.classifiers['main'].predict_proba( [data_row] )[0]
+			
+			# Calculate and apply the probability weights
+			weights = self.calculate_prediction_weights( data_row[ len( data_row ) - 1 ], data_row[ len( data_row ) - 2 ] )
+			for index, probability in enumerate( probabilities ):
+				probabilities[ index ] = probability * weights[ index ]
 		
 			predicted = np.argmax( probabilities )
 			if( isinstance(predicted, list) ):
 				predicted = predicted[0]
-		
-			predicted_label = self.classifiers[ self.current_classifier ].classes_[ predicted ]
+			
+			predicted_label = self.classifiers['main'].classes_[ predicted ]
 		
 			# Check if the winner is actually another state
 			if( predicted_label in self.classifiers.keys() ):
-				return predicted_label			
+				return predicted_label
+			else:
+				return 'main'
 				
 		# Just return the current state if no changes were detected
 		return self.current_classifier
@@ -107,12 +130,11 @@ class MarkovChainClassifier:
 			type = self.detect_state_change( data_row )
 			
 			# Special case - Revert to main classifier and return empty prediction
-			if( type == "silence" ):
+			if( len( self.prediction ) > 0 and type == "silence" ):
 				self.current_classifier = "main"
 				return self.prediction
 			
-			# If a state change is predicted - Make sure to return the previous prediction
-			# To give the classifier time for the next state to be solidified
+			# If a state change is predicted - Make sure to se the previous prediction
 			if( type != self.current_classifier ):
 				print( "STATE CHANGE! " + self.current_classifier + " -> " + type )
 				self.current_classifier = type
@@ -120,9 +142,7 @@ class MarkovChainClassifier:
 				# Add the new state change
 				self.previous_states = self.previous_states[-2:]
 				self.previous_states.append( type )
-				
-				return self.prediction
-			
+							
 		probabilityList = []
 		probabilities = self.classifiers[ type ].predict_proba( [data_row] )[0]
 		
@@ -134,7 +154,7 @@ class MarkovChainClassifier:
 		
 		# Check if the winner is actually another category that needs to be classified
 		if( predicted_label in self.classifiers.keys() ):
-			return self.predict_single_proba( data_row, predicted_label, type )
+			return self.predict_single_proba( data_row, predicted_label )
 		
 		# Leaf node classifier
 		else:

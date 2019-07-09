@@ -54,12 +54,8 @@ def classify_audioframes( audioQueue, audio_frames, classifier, high_speed ):
 		audio_frames.append( audioQueue.get() )
 		if( len( audio_frames ) >= 2 ):
 			audio_frames = audio_frames[-2:]
-	
-			intensity = [
-				audioop.maxpp( audio_frames[0], 4 ) / 32767,
-				audioop.maxpp( audio_frames[1], 4 ) / 32767
-			]
-			highestintensity = np.amax( intensity )	
+						
+			highestintensity = np.amax( audioop.maxpp( audio_frames[1], 4 ) / 32767 )
 			wavData = b''.join(audio_frames)
 	
 			# SKIP FEATURE ENGINEERING COMPLETELY WHEN DEALING WITH SILENCE

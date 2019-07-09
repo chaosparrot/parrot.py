@@ -52,7 +52,7 @@ class PhonemesMode:
 		return self.detector.tickActions
 		
 	def label_to_phoneme( self, label ):
-		return label.replace( "vowel_", "" ).replace( "approximate_", "" ).replace( "fricative_", "").replace( "semivowel_", "" ).replace( "nasal_", "" ).replace( "stop_", "" ).replace( 
+		return label.replace( "vowel_", "" ).replace( "approximant_", "" ).replace( "fricative_", "").replace( "semivowel_", "" ).replace( "nasal_", "" ).replace( "stop_", "" ).replace( 
 			"sibilant_", "" ).replace( "click_alveolar", "*").replace( "click_lateral", "^").replace( "thrill_", "~" )
 		
 	def add_phoneme( self, label ):
