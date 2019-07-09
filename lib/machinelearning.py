@@ -13,6 +13,8 @@ import matplotlib.pyplot as plt
 from config.config import *
 import wave
 import audioop
+from librosa.onset import onset_detect
+from librosa import frames_to_time
 
 def feature_engineering( wavFile ):
 	fs, rawWav = scipy.io.wavfile.read( wavFile )
@@ -29,6 +31,7 @@ def feature_engineering_raw( wavData, sampleRate, intensity ):
 	freq = get_loudest_freq( wavData, RECORD_SECONDS )
 	data_row.append( freq )
 	data_row.append( intensity )
+		
 	return data_row, freq
 	
 def get_label_for_directory( setdir ):
@@ -103,7 +106,7 @@ def get_loudest_freq( fftData, recordLength ):
 		if( positiveFreqs[ freq ] > loudestPeak ):
 			loudestPeak = positiveFreqs[ freq ]
 			highestFreq = freq
-				
+	
 	if( loudestPeak > 1000 ):
 		frequencies.append( highestFreq )
 	

@@ -14,6 +14,7 @@ import joblib
 import pandas as pd
 import matplotlib.pyplot as plt
 from lib.listen import start_nonblocking_listen_loop, predict_wav_files
+from lib.machinelearning import feature_engineering, get_highest_intensity_of_wav_file
 
 def test_data( with_intro ):
 	available_models = []
@@ -26,6 +27,10 @@ def test_data( with_intro ):
 		if ( file.endswith(".csv") ):
 			available_replays.append( file )
 			
+	available_sounds = []
+	for fileindex, file in enumerate(os.listdir( RECORDINGS_FOLDER )):
+		available_sounds.append( file )
+			
 	if( len( available_models ) == 0 ):
 		print( "It looks like you haven't trained any models yet..." )
 		print( "Please train an algorithm first using the [L] option in the main menu" )
@@ -35,9 +40,10 @@ def test_data( with_intro ):
 		print("We can analyze our performance in two different ways")
 		print(" - [A] for analyzing an audio stream ( useful for comparing models )")
 		print(" - [R] for analyzing an existing replay file")
+		print(" - [U] for analyzing a set of recordings for statistical purposes")
 		print(" - [X] for exiting analysis mode")
 	
-	analyze_replay_or_audio( available_models, available_replays )
+	analyze_replay_or_audio( available_models, available_replays, available_sounds )
 		
 def replay( available_replays ):
 	if( len( available_replays ) == 1 ):
@@ -76,6 +82,61 @@ def replay( available_replays ):
 	
 	# Go back to main menu afterwards
 	test_data( True )
+	
+def recording_statistics( available_sounds ):
+	print( "-------------------------" )	
+	print( " - [X] exit this mode" )
+	for sound_index, available_sound in enumerate(available_sounds):
+		print( " - [" + str( sound_index + 1 ) + "] " + available_sound )
+
+	print( "Select an audio folder to analyze statistically:" )		
+	audio_folder_index = input("")
+	while( int( audio_folder_index ) <= 0 ):
+		audio_folder_index = input("")
+		if( audio_folder_index.lower() == "x" ):
+			return
+
+	audio_folder_index = int( audio_folder_index ) - 1
+					
+	audio_folder = available_sounds[ audio_folder_index ]
+	print( "Analyzing " + audio_folder )
+	plot_audio( RECORDINGS_FOLDER + "/" + audio_folder )
+	
+	# Go back to main menu afterwards
+	test_data( True )
+	
+def plot_audio( folder ):
+	wav_files = os.listdir(folder)
+
+	# First sort the wav files by time
+	full_wav_files = []
+	for wav_file in wav_files:
+		if( wav_file.endswith(".wav") ):
+			full_wav_files.append( os.path.join( folder, wav_file ) )
+			
+	intensities = []
+	frequencies = []
+			
+	for index, wav_file in enumerate( full_wav_files ):
+		features, frequency = feature_engineering( wav_file )
+		intensity = features[ len( features ) - 1 ]
+		frequency = features[ len( features ) - 2 ]
+		
+		frequencies.append( frequency )
+		intensities.append( intensity )
+		
+		print( "Analyzing file " + str( index + 1 ) + " - Intensity %0d - Frequency: %0d           " % ( intensity, frequency) , end="\r")
+
+	print( "                                                                                           ", end="\r" )	
+	
+	print( "Intensity ------- " )
+	print( "Average: " + str( np.average( intensities ) ) )
+	print( "Lowest: " + str( min( intensities ) ) )	
+	print( "Standard deviation: " + str( np.std( intensities ) ) )
+	print( "Frequency ------- " )
+	print( "Lowest: " + str( min( frequencies ) ) )	
+	print( "Average: " + str( np.average( frequencies ) ) )
+	print( "Standard deviation: " + str( np.std( frequencies ) ) )
 		
 def audio_analysis( available_models ):
 	print( "-------------------------" )
@@ -182,7 +243,7 @@ def audio_analysis( available_models ):
 	# Go back to main menu afterwards
 	test_data( True )
 
-def analyze_replay_or_audio( available_models, available_replays ):
+def analyze_replay_or_audio( available_models, available_replays, available_sounds ):
 	replay_or_audio = input( "" )
 	if( replay_or_audio.lower() == "r" ):
 		if( len(available_replays ) == 0 ):
@@ -192,6 +253,8 @@ def analyze_replay_or_audio( available_models, available_replays ):
 			replay( available_replays )
 	elif( replay_or_audio.lower() == "a" ):
 		audio_analysis( available_models )
+	elif( replay_or_audio.lower() == "u" ):
+		recording_statistics( available_sounds )		
 	elif( replay_or_audio.lower() == "x" ):
 		print("")
 		return
