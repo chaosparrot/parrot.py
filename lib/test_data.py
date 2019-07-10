@@ -248,7 +248,7 @@ def analyze_replay_or_audio( available_models, available_replays, available_soun
 	if( replay_or_audio.lower() == "r" ):
 		if( len(available_replays ) == 0 ):
 			print( "No replays to be analyzed yet - Make sure to do a practice run using the play mode first" )
-			analyze_replay_or_audio( available_models, available_replays )
+			analyze_replay_or_audio( available_models, available_replays, available_sounds )
 		else:
 			replay( available_replays )
 	elif( replay_or_audio.lower() == "a" ):
@@ -259,7 +259,7 @@ def analyze_replay_or_audio( available_models, available_replays, available_soun
 		print("")
 		return
 	else:
-		analyze_replay_or_audio( available_models, available_replays )
+		analyze_replay_or_audio( available_models, available_replays, available_sounds )
 
 def plot_replay( replay_data ):
 	plt.style.use('seaborn-darkgrid')

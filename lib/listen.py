@@ -383,7 +383,7 @@ def predict_wav_files( classifier, wav_files ):
 		probabilityDict, predicted, frequency = predict_wav_file( wav_file, classifier, highestintensity )
 				
 		winner = classifier.classes_[predicted]
-		print( "Analyzing file " + str( index + 1 ) + " - Winner: %s - Percentage: %0d - Frequency: %0d           " % (winner, probabilityDict[winner]['percent'], probabilityDict[winner]['frequency']) , end="\r")
+		#print( "Analyzing file " + str( index + 1 ) + " - Winner: %s - Percentage: %0d - Frequency: %0d           " % (winner, probabilityDict[winner]['percent'], probabilityDict[winner]['frequency']) , end="\r")
 		probabilities.append( probabilityDict )
 
 	print( "                                                                                           ", end="\r" )

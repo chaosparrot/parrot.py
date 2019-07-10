@@ -70,6 +70,7 @@ def configure_base_model( available_models, text=None ):
 	
 def configure_tree_model( available_models ):
 	classifier_map = configure_base_model( available_models, "Type the number of the model that you want to use as a base decision layer: ")
+	main_classifier = classifier_map['main']
 	labels = main_classifier.classes_
 	
 	print( "-------------------------" )
