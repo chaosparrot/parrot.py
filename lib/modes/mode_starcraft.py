@@ -27,114 +27,113 @@ class StarcraftMode:
 		self.detector = PatternDetector({
 			'select': {
 				'strategy': 'continuous',
-				'sound': 'sound_s',
+				'sound': 'sibilant_s',
 				'percentage': 70,
 				'intensity': 800,
 				'lowest_percentage': 40,
 				'lowest_intensity': 800,
-				'throttle': 0.01				
+				'throttle': 0.01
 			},
-			'rightclick': {
+			'click': {
 				'strategy': 'rapid',
-				'sound': 'cluck',
+				'sound': 'click_alveolar',
 				'percentage': 70,
-				'intensity': 1000,
-				'throttle': 0.2
+				'intensity': 2000,
+				'throttle': 0.15
 			},
+			'toggle_speech': {
+				'strategy': 'rapid',
+				'sound': 'hand_finger_snap',
+				'percentage': 80,
+				'intensity': 20000,
+				'throttle': 0.2
+			},			
 			'movement': {
 				'strategy': 'rapid',
 				'sound': 'whistle',
-				'percentage': 60,
+				'percentage': 80,
 				'intensity': 1000,
-				'throttle': 0.1
+				'throttle': 0.2
 			},
 			'control': {
-				'strategy': 'combined',
-				'sound': 'sound_oh',
-				'secondary_sound': 'sound_ooh',
-				'ratio': 0.2,
+				'strategy': 'rapid',
+				'sound': 'vowel_oh',
 				'percentage': 72,
 				'intensity': 1000,
 				'throttle': 0.2
 			},
 			'shift': {
-				'strategy': 'combined',
-				'sound': 'sound_tsk',
-				'secondary_sound': 'sound_marbles',				
+				'strategy': 'rapid',
+				'sound': 'sibilant_sh',
 				'percentage': 70,
-				'ratio': 2,
 				'intensity': 1500,
 				'throttle': 0.2
 			},
 			'alt': {
-				'strategy': 'combined',
-				'sound': 'sound_eh',
-				'secondary_sound': 'sound_uuh',				
+				'strategy': 'rapid',
+				'sound': 'fricative_f',
 				'percentage': 70,
-				'ratio': 0.7,
 				'intensity': 1000,
 				'throttle': 0.2
-			},			
+			},
 			'camera': {
 				'strategy': 'rapid',
-				'sound': 'sound_uuh',
-				'percentage': 60,
+				'sound': 'vowel_y',
+				'percentage': 90,
 				'intensity': 1000,
 				'throttle': 0.18
 			},
 			'q': {
-				'strategy': 'rapid',
-				'sound': 'sound_ooh',
-				'percentage': 70,
-				'intensity': 1500,
+				'strategy': 'combined',
+				'sound': 'vowel_ow',
+				'secondary_sound': 'vowel_aa',				
+				'percentage': 80,
+				'intensity': 1000,
+				'ratio': 3,
 				'throttle': 0.15
 			},
 			'w': {
 				'strategy': 'rapid',
-				'sound': 'sound_f',
-				'percentage': 70,
+				'sound': 'vowel_ae',
+				'percentage': 80,
 				'intensity': 1100,
 				'throttle': 0.15
 			},
 			'grid_ability': {
 				'strategy': 'continuous',
-				'sound': 'sound_ah',
+				'sound': 'vowel_aa',
 				'percentage': 60,
-				'intensity': 2000,
+				'intensity': 1500,
 				'lowest_percentage': 20,
-				'lowest_intensity': 1000,
-				'throttle': 0.05
+				'lowest_intensity': 500
 			},
 			'r': {
 				'strategy': 'rapid',
-				'sound': 'sound_marbles',
+				'sound': 'sibilant_z',
 				'percentage': 85,
-				'intensity': 2500,
+				'intensity': 1000,
 				'throttle': 0.2
 			},
 			'numbers': {
-				'strategy': 'rapid',
-				'sound': 'sound_ie',
-				'percentage': 60,
+				'strategy': 'combined',
+				'sound': 'vowel_iy',
+				'secondary_sound': 'vowel_e',				
+				'percentage': 70,
 				'intensity': 1000,
+				'ratio': 1,
 				'throttle': 0.1
-			},
-			'toggle_speech': {
-				'strategy': 'rapid',
-				'sound': 'cat_mech',
-				'percentage': 80,
-				'intensity': 10000,
-				'throttle': 0.2
 			},
 			'menu': {
 				'strategy': 'rapid',
-				'sound': 'hotel_bell',
-				'percentage': 60,
-				'intensity': 1500,
+				'sound': 'call_bell',
+				'percentage': 80,
+				'intensity': 5000,
 				'throttle': 0.3
 			}
 		})
 
+		self.KEY_DELAY_THROTTLE = 0.4
+		
 		self.pressed_keys = []
 		self.should_follow = False
 		self.should_drag = False
@@ -143,6 +142,7 @@ class StarcraftMode:
 		self.ctrlKey = False
 		self.shiftKey = False
 		self.altKey = False
+		self.hold_down_start_timer = 0
 		
 		self.hold_key = ""
 
@@ -234,39 +234,44 @@ class StarcraftMode:
 		return self.detector.tickActions
 	
 	def handle_quick_commands( self, dataDicts ):
-		return
-	
-	def handle_quick_commands2( self, dataDicts ):
 		# Early escape for performance
 		if( self.detector.detect_silence() ):
 			self.drag_mouse( False )
+			self.hold_down_start_timer = 0
 			return
-		
-		## Mouse actions
+			
 		# Selecting units
 		selecting = self.detector.detect( "select" )
 		self.drag_mouse( selecting )
+		
+		## Press Grid ability
+		if( self.detector.detect("grid_ability") ):
+			quadrant4x3 = self.detector.detect_mouse_quadrant( 4, 3 )
+			if( time.time() - self.hold_down_start_timer > self.KEY_DELAY_THROTTLE ):
+				self.use_ability( quadrant4x3 )
+				self.release_hold_keys()
+				self.hold_shift( False )
+			
+			if( self.hold_down_start_timer == 0 ):
+				self.hold_down_start_timer = time.time()
+		else:
+			self.hold_down_start_timer = 0
+		
 		if( selecting ):
 			self.ability_selected = False	
 			self.hold_control( False )
-		elif( self.detector.detect( "rightclick" ) ):
+
+		elif( self.detector.detect( "click" ) ):
 		
 			# Cast selected ability or Ctrl+click
-			if( self.detect_command_area() or self.ability_selected == True or self.ctrlKey == True or self.altKey == True ):
+			if( self.detect_command_area() or self.ability_selected == True or self.ctrlKey == True or self.altKey == True or ( self.shiftKey and self.detect_selection_tray() ) ):
 				click(button='left')
 			else:
 				click(button='right')
 				
 			# Release the held keys - except when shift-alt clicking units in the selection tray ( for easy removing from the unit group )
-			if( not( self.shiftKey and self.altKey and self.detect_selection_tray() ) ):
+			if( not( self.shiftKey and self.detect_selection_tray() ) ):
 				self.release_hold_keys()
-
-		## Press Grid ability
-		elif( self.detector.detect("grid_ability") ):
-			quadrant4x3 = self.detector.detect_mouse_quadrant( 4, 3 )
-			self.use_ability( quadrant4x3 )
-			self.release_hold_keys()
-			self.hold_shift( False )	
 			
 		# CTRL KEY holding
 		elif( self.detector.detect( "control" ) ):
@@ -290,7 +295,7 @@ class StarcraftMode:
 			elif( quadrant3x3 == 8 ):
 				self.press_ability( 's' )
 			elif( quadrant3x3 == 9 ):
-				self.cast_ability( 'p' )				
+				self.cast_ability( 'p' )
 		## Press Q
 		elif( self.detector.detect( "q" ) ):
 			self.cast_ability( 'q' )
@@ -321,7 +326,8 @@ class StarcraftMode:
 			self.use_control_group( quadrant3x3 )
 			self.release_hold_keys()
 			self.hold_shift( False )
-		
+
+		return		
 	
 	def use_control_group( self, quadrant ):
 		if( quadrant == 1 ):

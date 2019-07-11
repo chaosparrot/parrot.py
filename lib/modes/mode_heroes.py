@@ -39,7 +39,7 @@ class HeroesMode:
 			self.selectHeroRule = SelectHeroRule()
 			self.queueUpRule = QueueUpRule()
 			self.queueUpRule.set_callback( self.queue_up )
-			self.grammar.add_rule( self.queueUpRule )		
+			self.grammar.add_rule( self.queueUpRule )
 			self.grammar.add_rule( self.selectHeroRule )
 	
 		self.mode = "regular"

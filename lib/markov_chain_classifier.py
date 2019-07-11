@@ -73,14 +73,15 @@ class MarkovChainClassifier:
 				only_main_classes = True			
 		
 		for type in self.classifiers['main'].classes_:
-		
 			if( only_main_classes ):
+				print( "USING MAIN WEIGHTS! " )			
 				if( type == "silence" or type == "click_alveolar" or type == "whistle" ):
 					weights.append( 1 )
 				else:
 					weights.append( 0 )
 		
 			elif( intensity < 600 and intensity_diff < 0 ):
+				print( "USING SILENT WEIGHTS! " )
 				if( type == "silence" ):
 					weights.append( 1 )
 				else:
@@ -88,6 +89,8 @@ class MarkovChainClassifier:
 					
 			# Stops can only transition into vowels
 			elif( self.current_classifier == "cat_stop" ):
+				print( "USING STOP WEIGHTS!" )			
+			
 				if( type == "cat_vowel" and intensity_diff > 1000 and frequency < 100 ):
 					weights.append( 1 )
 				else:
@@ -95,11 +98,15 @@ class MarkovChainClassifier:
 					
 			# Sibilants can transition into all other three categories ( vowels, stops, soronants )
 			elif( self.current_classifier == "cat_sibilant" ):
+				print( "USING SIBILANT WEIGHTS!" )
+				
 				intensity_diff = intensity - self.previous_data[ len( self.previous_data ) - 1 ]
 				if( type == "cat_vowel" and frequency < 100 ):
 					weights.append( 1 )
 				elif( type == "cat_stop" and intensity_diff < -500 and intensity < 1200 and self.previous_states[ len( self.previous_states ) - 2 ] != "cat_vowel" ):
 					weights.append( 1 )
+				elif( type == "cat_mech" ):
+					weights.append( 0 )
 				elif( type == "cat_soronant" and self.inside_state_range( type, data_row, intensity, frequency ) ):
 					weights.append( 1 )					
 				else:
@@ -107,9 +114,8 @@ class MarkovChainClassifier:
 					
 			# Vowels can only be followed by sibilants, clicks, non-vocals or silence
 			elif( self.current_classifier == "cat_vowel" ):
-				if( type == "cat_sibilant" and frequency > 100 and intensity_diff > 500 ):
-					weights.append( 0 )
-				elif( type == "cat_mech" and intensity_diff > 6000 ):
+				print( "USING VOWEL WEIGHTS!" )
+				if( type == "cat_sibilant" and ( ( frequency > 100 and intensity_diff > 500 ) or self.inside_state_range( "cat_sibilant", data_row, intensity, frequency ) ) ):
 					weights.append( 1 )
 				elif( type == "click_alveolar" ):
 					weights.append( 1 )
@@ -117,21 +123,37 @@ class MarkovChainClassifier:
 					weights.append( 1 )
 				else:
 					weights.append( 0 )
-			else:			
+					
+			# Mechanical sounds can only transition into silence or other main leaf nodes
+			elif( self.current_classifier == "cat_mech" ):
+				print( "USING MECH WEIGHTS!" )
+				if( type == "cat_mech" ):
+					weights.append( 1 )
+				elif( type in self.classifiers.keys() ):
+					weights.append( 0 )
+				else:
+					weights.append( 1 )
+			else:
+				print( "USING REGULAR WEIGHTS!" )			
 				if( type in self.classifiers.keys() ):
 					weights.append( 1 if self.inside_state_range( type, data_row, intensity, frequency ) == True else 0 )
 				else:
 					weights.append( 1 )
-				
+		
+		print( self.classifiers['main'].classes_ )
+		print( weights, self.current_classifier, intensity, frequency )
+		
 		return weights
 		
 	def inside_state_range( self, classifier, data_row, intensity, frequency ):
-		if( intensity < 500 ):
+		if( intensity < 400 ):
 			return False
 		elif( classifier == "cat_mech" ):
-			if( ( self.current_classifier == "cat_mech" and intensity < 500 ) or ( self.current_classifier != "cat_mech" and intensity < 10000 ) ):
-				return False
-			return True
+			if( self.current_classifier == "main" and intensity > 10000 ):
+				return True
+			elif( self.current_classifier == "cat_mech" and intensity > 500 ):
+				return True
+			return False
 		elif( classifier == "cat_stop" ):
 			intensity_diff = intensity - self.previous_data[ len( self.previous_data ) - 1 ]
 			
@@ -142,19 +164,21 @@ class MarkovChainClassifier:
 				probabilities = self.classifiers['cat_sibilant'].predict_proba( [data_row] )[0]
 				max_sibilant_certainty = max( probabilities )
 			
-			return max_sibilant_certainty < 0.7 or ( intensity < 5000 or abs( intensity_diff ) < 500 )
+			return max_sibilant_certainty < 0.7 or ( intensity < 5000 and abs( intensity_diff ) < 500 )
 
 		elif( classifier == "cat_vowel" ):
 			previous_frequency = self.previous_data[ len( self.previous_data ) - 2 ]
 			frequency_diff = frequency - previous_frequency
-			return intensity > 1000 and ( ( frequency < 120 ) or ( self.current_classifier == "cat_vowel" and frequency_diff < 50 ) )
+			return ( self.current_classifier != "cat_vowel" and intensity > 1000 and frequency < 120 ) or ( 
+				self.current_classifier == "cat_vowel" and frequency_diff < 50 and frequency < 120 and not self.inside_state_range( "cat_sibilant", data_row, intensity, frequency ) )
 			
 		# The sibilant category is fairly accurate even with wrong inputs
 		# So it is valid if the certainty is high
 		elif( classifier == "cat_sibilant" ):
 			probabilities = self.classifiers['cat_sibilant'].predict_proba( [data_row] )[0]
+			intensity_diff = abs( intensity - self.previous_data[ len( self.previous_data ) - 1 ] )
 
-			return max( probabilities ) > 0.7
+			return ( intensity < 30000 and max( probabilities ) > 0.7 ) or ( self.current_classifier == "cat_sibilant" and frequency > 95 and intensity_diff < 5000 )
 		elif( classifier == "cat_soronant" ):
 			return frequency > 35 and frequency < 40 and intensity > 2500
 			
@@ -189,6 +213,9 @@ class MarkovChainClassifier:
 			for index, probability in enumerate( probabilities ):
 				probabilities[ index ] = probability * weights[ index ]
 		
+			if( max( probabilities ) == 0 ):
+				return "main"
+		
 			predicted = np.argmax( probabilities )
 			if( isinstance(predicted, list) ):
 				predicted = predicted[0]
@@ -221,20 +248,16 @@ class MarkovChainClassifier:
 			# Special case - Revert to main classifier and return empty prediction
 			if( len( self.prediction ) > 0 and type == "silence" ):
 				if( self.current_classifier != "main" ):
-					print( "" )
-					print( "STATE CHANGE! " + self.current_classifier + " -> main" )
-					print( "!!!!!!!!! MAIN MAIN MAIN !!!!!!!!!!!!!!!!!!!!!" )
+					print( "STATE CHANGE! " + self.current_classifier + " -> silence" )
 
 					self.current_classifier = "main"
 					self.previous_states = self.previous_states[-3:]
 					self.previous_states.append( "main" )
 					
-				
 				return self.prediction
 			
 			# If a state change is predicted - Make sure to se the previous prediction
 			if( type != self.current_classifier ):
-				print( "" )
 				print( "STATE CHANGE! " + self.current_classifier + " -> " + type )
 				self.current_classifier = type
 			
@@ -250,6 +273,8 @@ class MarkovChainClassifier:
 			predicted = predicted[0]
 		
 		predicted_label = self.classifiers[type].classes_[ predicted ]
+		
+		print( "PREDICTION!", predicted_label )
 		
 		# Check if the winner is actually another category that needs to be classified
 		if( predicted_label in self.classifiers.keys() ):
