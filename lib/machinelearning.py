@@ -100,14 +100,14 @@ def get_loudest_freq( fftData, recordLength ):
 	fft_result = fft( fftData )
 	positiveFreqs = np.abs( fft_result[ 0:round( len(fft_result)/2 ) ] )
 	highestFreq = 0
-	loudestPeak = 1000
+	loudestPeak = 500
 	frequencies = [0]
 	for freq in range( 0, len( positiveFreqs ) ):
 		if( positiveFreqs[ freq ] > loudestPeak ):
 			loudestPeak = positiveFreqs[ freq ]
 			highestFreq = freq
 	
-	if( loudestPeak > 1000 ):
+	if( loudestPeak > 500 ):
 		frequencies.append( highestFreq )
 	
 	if( recordLength < 1 ):

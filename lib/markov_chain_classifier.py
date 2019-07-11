@@ -30,7 +30,6 @@ class MarkovChainClassifier:
 	def __init__( self, classifier_map ):
 		self.classes_ = []
 		self.classifiers = classifier_map['main'].classifiers
-		self.classifiers['main']
 				
 		silence_prediction = []
 		for index,classifier_label in enumerate( self.classifiers ):
@@ -59,14 +58,29 @@ class MarkovChainClassifier:
 	
 		return np.asarray( silence_prediction, dtype=np.float64 )
 		
-	def calculate_prediction_weights( self, data_row ):
+	def calculate_prediction_weights( self, data_row, main_probabilities ):
 		intensity = data_row[ len( data_row ) - 1]
 		frequency = data_row[ len( data_row ) - 2]
 		weights = []
 		intensity_diff = intensity - self.previous_data[ len( self.previous_data ) - 1 ]
+	
+		# If whistles or tongue clicks have been detected - only allow prediction of main leafs		
+		only_main_classes = False
+		for index, probability in enumerate( main_probabilities ):
+			if( self.classifiers['main'].classes_[ index ] == "click_alveolar" and probability > 0.4 ):
+				only_main_classes = True
+			elif( self.classifiers['main'].classes_[index] == "whistle" and probability > 0.5 ):
+				only_main_classes = True			
 		
 		for type in self.classifiers['main'].classes_:
-			if( intensity < 600 and intensity_diff < 0 ):
+		
+			if( only_main_classes ):
+				if( type == "silence" or type == "click_alveolar" or type == "whistle" ):
+					weights.append( 1 )
+				else:
+					weights.append( 0 )
+		
+			elif( intensity < 600 and intensity_diff < 0 ):
 				if( type == "silence" ):
 					weights.append( 1 )
 				else:
@@ -86,13 +100,19 @@ class MarkovChainClassifier:
 					weights.append( 1 )
 				elif( type == "cat_stop" and intensity_diff < -500 and intensity < 1200 and self.previous_states[ len( self.previous_states ) - 2 ] != "cat_vowel" ):
 					weights.append( 1 )
+				elif( type == "cat_soronant" and self.inside_state_range( type, data_row, intensity, frequency ) ):
+					weights.append( 1 )					
 				else:
 					weights.append( 0 )
 					
-			# Vowels can only be followed by sibilants or silence
+			# Vowels can only be followed by sibilants, clicks, non-vocals or silence
 			elif( self.current_classifier == "cat_vowel" ):
 				if( type == "cat_sibilant" and frequency > 100 and intensity_diff > 500 ):
 					weights.append( 0 )
+				elif( type == "cat_mech" and intensity_diff > 6000 ):
+					weights.append( 1 )
+				elif( type == "click_alveolar" ):
+					weights.append( 1 )
 				elif( type == "silence" and intensity < 1000 ):
 					weights.append( 1 )
 				else:
@@ -107,7 +127,11 @@ class MarkovChainClassifier:
 		
 	def inside_state_range( self, classifier, data_row, intensity, frequency ):
 		if( intensity < 500 ):
-			return False		
+			return False
+		elif( classifier == "cat_mech" ):
+			if( ( self.current_classifier == "cat_mech" and intensity < 500 ) or ( self.current_classifier != "cat_mech" and intensity < 10000 ) ):
+				return False
+			return True
 		elif( classifier == "cat_stop" ):
 			intensity_diff = intensity - self.previous_data[ len( self.previous_data ) - 1 ]
 			
@@ -118,23 +142,21 @@ class MarkovChainClassifier:
 				probabilities = self.classifiers['cat_sibilant'].predict_proba( [data_row] )[0]
 				max_sibilant_certainty = max( probabilities )
 			
-			return max_sibilant_certainty < 0.8 or ( intensity < 5000 or abs( intensity_diff ) < 500 )
+			return max_sibilant_certainty < 0.7 or ( intensity < 5000 or abs( intensity_diff ) < 500 )
 
 		elif( classifier == "cat_vowel" ):
 			previous_frequency = self.previous_data[ len( self.previous_data ) - 2 ]
 			frequency_diff = frequency - previous_frequency
-			
-			print( "STAY IN VOWEL?", intensity, frequency, frequency_diff, )
-			return intensity > 1000 and ( ( frequency < 100 ) or ( self.current_classifier == "cat_vowel" and frequency_diff < 50 ) )
+			return intensity > 1000 and ( ( frequency < 120 ) or ( self.current_classifier == "cat_vowel" and frequency_diff < 50 ) )
 			
 		# The sibilant category is fairly accurate even with wrong inputs
 		# So it is valid if the certainty is high
 		elif( classifier == "cat_sibilant" ):
 			probabilities = self.classifiers['cat_sibilant'].predict_proba( [data_row] )[0]
 
-			return max( probabilities ) > 0.8
+			return max( probabilities ) > 0.7
 		elif( classifier == "cat_soronant" ):
-			return False
+			return frequency > 35 and frequency < 40 and intensity > 2500
 			
 		return True
 		
@@ -163,7 +185,7 @@ class MarkovChainClassifier:
 			probabilities = self.classifiers['main'].predict_proba( [data_row] )[0]
 			
 			# Calculate and apply the probability weights
-			weights = self.calculate_prediction_weights( data_row )
+			weights = self.calculate_prediction_weights( data_row, probabilities )
 			for index, probability in enumerate( probabilities ):
 				probabilities[ index ] = probability * weights[ index ]
 		
