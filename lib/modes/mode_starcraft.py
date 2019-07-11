@@ -7,14 +7,20 @@ from time import sleep
 from subprocess import call
 from lib.system_toggles import toggle_eyetracker, turn_on_sound, mute_sound, toggle_speechrec
 from lib.pattern_detector import PatternDetector
-from lib.heroes_grammar import *
+from config.config import *
 import os
 import pythoncom
 from lib.overlay_manipulation import update_overlay_image
+from lib.grammar.chat_grammar import *
 
 class StarcraftMode:
 			
 	def __init__(self, modeSwitcher):
+		if( SPEECHREC_ENABLED == True ):
+			self.grammar = Grammar("Starcraft")
+			self.chatCommandRule = ChatCommandRule()
+			self.chatCommandRule.set_callback( self.toggle_speech )
+			self.grammar.add_rule( self.chatCommandRule )		
 	
 		self.mode = "regular"
 		self.modeSwitcher = modeSwitcher
@@ -113,6 +119,13 @@ class StarcraftMode:
 				'intensity': 1000,
 				'throttle': 0.1
 			},
+			'toggle_speech': {
+				'strategy': 'rapid',
+				'sound': 'cat_mech',
+				'percentage': 80,
+				'intensity': 10000,
+				'throttle': 0.2
+			},
 			'menu': {
 				'strategy': 'rapid',
 				'sound': 'hotel_bell',
@@ -133,6 +146,16 @@ class StarcraftMode:
 		
 		self.hold_key = ""
 
+	def toggle_speech( self ):
+		if( self.mode == "regular" ):
+			self.mode = "speech"
+			self.grammar.load()
+		else:
+			self.mode = "regular"
+			self.grammar.unload()
+			
+		toggle_speechrec()
+		
 	def start( self ):
 		mute_sound()
 		toggle_eyetracker()
@@ -191,11 +214,33 @@ class StarcraftMode:
 	
 	def handle_input( self, dataDicts ):
 		self.detector.tick( dataDicts )
+		
+		# Always allow switching between speech and regular mode
+		if( self.detector.detect("toggle_speech" ) ):
+			self.release_hold_keys()
+			self.toggle_speech()
 
+			return self.detector.tickActions			
+		# Recognize speech commands in speech mode
+		elif( self.mode == "speech" ):
+			pythoncom.PumpWaitingMessages()
+			
+			return self.detector.tickActions			
+			
+		# Regular quick command mode
+		elif( self.mode == "regular" ):
+			self.handle_quick_commands( dataDicts )
+			
+		return self.detector.tickActions
+	
+	def handle_quick_commands( self, dataDicts ):
+		return
+	
+	def handle_quick_commands2( self, dataDicts ):
 		# Early escape for performance
 		if( self.detector.detect_silence() ):
 			self.drag_mouse( False )
-			return self.detector.tickActions
+			return
 		
 		## Mouse actions
 		# Selecting units
@@ -276,9 +321,8 @@ class StarcraftMode:
 			self.use_control_group( quadrant3x3 )
 			self.release_hold_keys()
 			self.hold_shift( False )
-			
-		return self.detector.tickActions
 		
+	
 	def use_control_group( self, quadrant ):
 		if( quadrant == 1 ):
 			self.press_ability('1')
@@ -381,6 +425,9 @@ class StarcraftMode:
 			update_overlay_image( "mode-starcraft-%s" % ( "-".join( modes ) ) )
 
 	def exit( self ):
+		if( self.mode == "speech" ):
+			self.toggle_speech()
+	
 		self.mode = "regular"
 		turn_on_sound()
 		update_overlay_image( "default" )
