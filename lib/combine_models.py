@@ -3,7 +3,7 @@ import joblib
 from lib.hierarchial_classifier import *
 from lib.markov_chain_classifier import *
 from lib.change_resistant_classifier import *
-from lib.expert_classifier import *
+from lib.ensemble_classifier import *
 import os
 
 def combine_models():
@@ -23,13 +23,13 @@ def combine_models():
 		return
 		
 	print( "What kind of model do you want to make? " )
-	print( "[E]xpert ( default )" )
+	print( "[E]nsemble ( default )" )
 	print( "[H]ierarchial" )
 	print( "[C]hange resistant" )
 	print( "[M]arkov chain" )
 	model_type = input("")
 	if( model_type == "" or model_type.strip().lower() == "e" ):
-		model_type = "expert"
+		model_type = "ensemble"
 	elif( model_type.strip().lower() == "h" ):
 		model_type = "hierarchial"		
 	elif( model_type.strip().lower() == "c" ):
@@ -135,8 +135,8 @@ def connect_model( clf_filename, classifier_map, model_type ):
 		classifier = HierarchialClassifier( classifier_map )
 	elif( model_type == "markov_chain" ):
 		classifier = MarkovChainClassifier( classifier_map )
-	elif( model_type == "expert" ):
-		classifier = ExpertClassifier( classifier_map )		
+	elif( model_type == "ensemble" ):
+		classifier = EnsembleClassifier( classifier_map )		
 	else:
 		classifier = ChangeResistantClassifier( classifier_map )
 		
