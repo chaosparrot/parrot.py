@@ -45,9 +45,8 @@ class ChangeResistantClassifier:
 		apply_previous_weights = prediction_time - self.latest_prediction < 0.05
 		
 		if( apply_previous_weights == True ):
-			largest_prediction = max( probabilities )
-			if( largest_prediction < max( self.previous_prediction ) ):
-				probabilities = self.previous_prediction
+			for index, previous_probability in enumerate( self.previous_prediction ):
+				probabilities[index] = ( probabilities[index] + ( previous_probability * 0.5 ) ) * 0.66666
 						
 		# Set the state for the next predictions
 		self.previous_prediction = probabilities

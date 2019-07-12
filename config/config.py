@@ -12,7 +12,7 @@ PREDICTION_LENGTH = 10
 SILENCE_INTENSITY_THRESHOLD = 400
 INPUT_DEVICE_INDEX = 1
 
-DATASET_FOLDER = "data/recordings/vocals"
+DATASET_FOLDER = "data/recordings/easily_detected"
 RECORDINGS_FOLDER = "data/recordings/vocals"
 REPLAYS_FOLDER = "data/replays"
 REPLAYS_AUDIO_FOLDER = "data/replays/audio"
@@ -20,9 +20,9 @@ REPLAYS_FILE = REPLAYS_FOLDER + "/run.csv"
 CLASSIFIER_FOLDER = "data/models"
 OVERLAY_FOLDER = "data/overlays"
 OVERLAY_FILE = "config/current-overlay-image.txt"
-DEFAULT_CLF_FILE = "train_vocals_combined"
+DEFAULT_CLF_FILE = "zasz_4"
 
-STARTING_MODE = "phonemes"
+STARTING_MODE = "starcraft"
 
 SAVE_REPLAY_DURING_PLAY = True
 SAVE_FILES_DURING_PLAY = True

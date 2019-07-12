@@ -81,6 +81,14 @@ class PatternDetector:
 			detected = ( self.above_intensity( lastDict, config['intensity'] ) and
 				self.combined_above_percentage( lastDict, label, secondary_label, config['percentage'] ) and
 				self.above_ratio( lastDict, label, secondary_label, config['ratio'] ) )
+		elif( strategy == 'combined_frequency' ):
+			secondary_label = config['secondary_sound']
+		
+			detected = ( self.above_intensity( lastDict, config['intensity'] ) and
+				( self.below_frequency( lastDict, config['frequency'] ) and
+				self.combined_above_percentage( lastDict, label, secondary_label, config['percentage'] ) and
+				self.above_ratio( lastDict, label, secondary_label, config['ratio'] ) )				
+				
 		
 		if( detected == True ):
 			self.tickActions.append( action )
@@ -120,6 +128,10 @@ class PatternDetector:
 	# Detects if a label has a higher probability than the other
 	def winner_over( self, probabilityData, labelA, labelB ):
 		return probabilityData[labelA]['percent'] > probabilityData[label]['percent']
+		
+	# Detects if a label is below a certain frequency
+	def below_frequency( self, probabilityData, label, frequency ):
+		return probabilityData[label]['frequency'] >= frequency
 		
 	# Detects if the combined given labels are above this percentage
 	def combined_percentage( self, probabilityData, labels, percentage ):

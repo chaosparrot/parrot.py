@@ -28,111 +28,121 @@ class StarcraftMode:
 			'select': {
 				'strategy': 'continuous',
 				'sound': 'sibilant_s',
-				'percentage': 70,
+				'percentage': 60,
 				'intensity': 800,
 				'lowest_percentage': 40,
 				'lowest_intensity': 800,
 				'throttle': 0.01
 			},
 			'click': {
-				'strategy': 'rapid',
+				'strategy': 'combined',
 				'sound': 'click_alveolar',
-				'percentage': 70,
-				'intensity': 2000,
+				'secondary_sound': "vowel_aa2",
+				'percentage': 80,
+				'ratio': 2,				
+				'intensity': 1700,
 				'throttle': 0.15
 			},
 			'toggle_speech': {
 				'strategy': 'rapid',
 				'sound': 'hand_finger_snap',
-				'percentage': 80,
-				'intensity': 20000,
+				'percentage': 92,
+				'intensity': 25000,
 				'throttle': 0.2
 			},			
 			'movement': {
 				'strategy': 'rapid',
 				'sound': 'whistle',
-				'percentage': 80,
+				'percentage': 90,
 				'intensity': 1000,
 				'throttle': 0.2
 			},
 			'control': {
-				'strategy': 'rapid',
+				'strategy': 'combined',
 				'sound': 'vowel_oh',
-				'percentage': 72,
+				'secondary_sound': 'vowel_ow',				
+				'percentage': 80,
+				'ratio': 1,
 				'intensity': 1000,
 				'throttle': 0.2
 			},
 			'shift': {
-				'strategy': 'rapid',
+				'strategy': 'combined_frequency',
 				'sound': 'sibilant_sh',
-				'percentage': 70,
-				'intensity': 1500,
-				'throttle': 0.2
+				'secondary_sound': 'sibilant_ch',				
+				'percentage': 90,
+				'frequency': 120,
+				'intensity': 1700,
+				'ratio': 0.1,
+				'throttle': 0.4
 			},
 			'alt': {
 				'strategy': 'rapid',
-				'sound': 'fricative_f',
-				'percentage': 70,
-				'intensity': 1000,
-				'throttle': 0.2
+				'sound': 'nasal_m',
+				'percentage': 95,
+				'intensity': 3000,
+				'throttle': 0.3
 			},
 			'camera': {
 				'strategy': 'rapid',
 				'sound': 'vowel_y',
-				'percentage': 90,
-				'intensity': 1000,
+				'percentage': 75,
+				'intensity': 5000,
 				'throttle': 0.18
 			},
 			'q': {
 				'strategy': 'combined',
 				'sound': 'vowel_ow',
-				'secondary_sound': 'vowel_aa',				
-				'percentage': 80,
+				'secondary_sound': 'vowel_u',
+				'percentage': 90,
 				'intensity': 1000,
-				'ratio': 3,
-				'throttle': 0.15
+				'ratio': 0.5,
+				'throttle': 0.3
 			},
 			'w': {
-				'strategy': 'rapid',
+				'strategy': 'combined',
 				'sound': 'vowel_ae',
+				'secondary_sound': 'vowel_y',	
 				'percentage': 80,
 				'intensity': 1100,
+				'ratio': 0.8,
 				'throttle': 0.15
-			},
-			'grid_ability': {
-				'strategy': 'continuous',
-				'sound': 'vowel_aa',
-				'percentage': 60,
-				'intensity': 1500,
-				'lowest_percentage': 20,
-				'lowest_intensity': 500
 			},
 			'r': {
 				'strategy': 'rapid',
-				'sound': 'sibilant_z',
-				'percentage': 85,
-				'intensity': 1000,
+				'sound': 'vowel_eu',
+				'percentage': 95,
+				'intensity': 10000,
 				'throttle': 0.2
+			},			
+			'grid_ability': {
+				'strategy': 'continuous',
+				'sound': 'vowel_aa2',
+				'percentage': 90,
+				'intensity': 1000,
+				'lowest_percentage': 20,
+				'lowest_intensity': 500,
+				'throttle': 0.02
 			},
 			'numbers': {
 				'strategy': 'combined',
 				'sound': 'vowel_iy',
-				'secondary_sound': 'vowel_e',				
-				'percentage': 70,
-				'intensity': 1000,
-				'ratio': 1,
+				'secondary_sound': 'vowel_y',				
+				'percentage': 80,
+				'intensity': 2500,
+				'ratio': 2,
 				'throttle': 0.1
 			},
 			'menu': {
 				'strategy': 'rapid',
 				'sound': 'call_bell',
-				'percentage': 80,
+				'percentage': 90,
 				'intensity': 5000,
 				'throttle': 0.3
 			}
 		})
 
-		self.KEY_DELAY_THROTTLE = 0.4
+		self.KEY_DELAY_THROTTLE = 0.5
 		
 		self.pressed_keys = []
 		self.should_follow = False
@@ -207,8 +217,7 @@ class StarcraftMode:
 	def release_hold_keys( self ):
 		self.ability_selected = False
 		self.hold_control( False )
-		if( self.shiftKey and self.altKey ):
-			self.hold_shift( False )
+		self.hold_shift( False )
 		self.hold_alt( False )
 		self.update_overlay()
 	
@@ -217,9 +226,12 @@ class StarcraftMode:
 		
 		# Always allow switching between speech and regular mode
 		if( self.detector.detect("toggle_speech" ) ):
-			self.release_hold_keys()
-			self.toggle_speech()
-
+			quadrant3x3 = self.detector.detect_mouse_quadrant( 3, 3 )
+			
+			if( quadrant3x3 < 6 ):
+				self.release_hold_keys()
+				self.toggle_speech()
+				
 			return self.detector.tickActions			
 		# Recognize speech commands in speech mode
 		elif( self.mode == "speech" ):
@@ -269,7 +281,7 @@ class StarcraftMode:
 			else:
 				click(button='right')
 				
-			# Release the held keys - except when shift-alt clicking units in the selection tray ( for easy removing from the unit group )
+			# Release the held keys - except when shift clicking units in the selection tray ( for easy removing from the unit group )
 			if( not( self.shiftKey and self.detect_selection_tray() ) ):
 				self.release_hold_keys()
 			
@@ -296,6 +308,8 @@ class StarcraftMode:
 				self.press_ability( 's' )
 			elif( quadrant3x3 == 9 ):
 				self.cast_ability( 'p' )
+				
+			self.hold_shift( False )				
 		## Press Q
 		elif( self.detector.detect( "q" ) ):
 			self.cast_ability( 'q' )
@@ -318,7 +332,7 @@ class StarcraftMode:
 		elif( self.detector.detect( "camera" ) ):
 			quadrant3x3 = self.detector.detect_mouse_quadrant( 3, 3 )
 			self.camera_movement( quadrant3x3 )
-			self.hold_shift( False )			
+			self.hold_shift( False )
 						
 		## Press control group
 		elif( self.detector.detect( "numbers" ) ):
@@ -434,6 +448,7 @@ class StarcraftMode:
 		if( self.mode == "speech" ):
 			self.toggle_speech()
 	
+		self.release_hold_keys()	
 		self.mode = "regular"
 		turn_on_sound()
 		update_overlay_image( "default" )
