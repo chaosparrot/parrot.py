@@ -42,7 +42,7 @@ def cross_validation( classifier, dataset, labels):
 
 def average_prediction_speed( classifier, dataset_x ):
 	start_time = time.time() * 1000
-	classifier.predict( dataset_x )
+	classifier.predict( dataset_x[-1000:] )
 	end_time = time.time() * 1000
 	return int( end_time - start_time ) / len(dataset_x)
 	

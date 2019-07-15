@@ -61,13 +61,13 @@ def learn_data():
 	joblib.dump( classifier, CLASSIFIER_FOLDER + "/" + clf_filename )	
 	print( "--------------------------" )
 
-	print( "Predicting recognition accuracy using cross validation...", end="\r" )
-	scores = cross_validation( get_classifier(), dataX, dataY )
-	print( "Accuracy: %0.4f (+/- %0.4f)                               " % (scores.mean(), scores.std() * 2))
+	#print( "Predicting recognition accuracy using cross validation...", end="\r" )
+	#scores = cross_validation( get_classifier(), dataX, dataY )
+	#print( "Accuracy: %0.4f (+/- %0.4f)                               " % (scores.mean(), scores.std() * 2))
 	
 	detailed_analysis = input("Should we do a detailed analysis of the model? Y/n" ).lower() == 'y'
 	if( detailed_analysis ):
-		create_confusion_matrix( get_classifier(), dataX, dataY, directory_names )
+		create_confusion_matrix( classifier, dataX, dataY, directory_names )
 		print( "--------------------------" )
 	
 
@@ -94,12 +94,12 @@ def load_wav_files( directory, label, int_label, start, end ):
 
 def get_classifier():
 	return MLPClassifier(activation='relu', early_stopping=True,
-              epsilon=1e-08, hidden_layer_sizes=(400, 400, 400, 100),
+              epsilon=1e-08, hidden_layer_sizes=(1024, 1024, 1024, 512),
               learning_rate='constant', learning_rate_init=0.001,
               max_iter=1000, momentum=0.9,
               nesterovs_momentum=True, power_t=0.5, random_state=1,
               shuffle=True, solver='adam', tol=0.0001,
-              validation_fraction=0.1, verbose=True, warm_start=True)
+              validation_fraction=0.1, verbose=True, warm_start=False)
 	#return ExtraTreesClassifier(n_estimators=100, max_depth=20, random_state=123 )
 	#return RandomForestClassifier(n_estimators=100, max_depth=20, random_state=123)
 		

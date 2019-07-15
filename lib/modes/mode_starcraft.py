@@ -34,19 +34,28 @@ class StarcraftMode:
 				'lowest_intensity': 800,
 				'throttle': 0.01
 			},
+			'rapidclick': {
+				'strategy': 'combined',
+				'sound': 'sibilant_ch',
+				'secondary_sound': "fricative_v",
+				'percentage': 45,
+				'ratio': 0,	
+				'intensity': 500,
+				'throttle': 0.3
+			},
 			'click': {
 				'strategy': 'combined',
 				'sound': 'click_alveolar',
 				'secondary_sound': "vowel_aa2",
-				'percentage': 80,
+				'percentage': 79,
 				'ratio': 2,				
-				'intensity': 1700,
+				'intensity': 1650,
 				'throttle': 0.15
 			},
 			'toggle_speech': {
 				'strategy': 'rapid',
 				'sound': 'hand_finger_snap',
-				'percentage': 92,
+				'percentage': 90,
 				'intensity': 25000,
 				'throttle': 0.2
 			},			
@@ -60,7 +69,7 @@ class StarcraftMode:
 			'control': {
 				'strategy': 'combined',
 				'sound': 'vowel_oh',
-				'secondary_sound': 'vowel_ow',				
+				'secondary_sound': 'vowel_u',				
 				'percentage': 80,
 				'ratio': 1,
 				'intensity': 1000,
@@ -71,9 +80,9 @@ class StarcraftMode:
 				'sound': 'sibilant_sh',
 				'secondary_sound': 'sibilant_ch',				
 				'percentage': 90,
-				'frequency': 120,
-				'intensity': 1700,
-				'ratio': 0.1,
+				'frequency': 300,
+				'intensity': 1600,
+				'ratio': 0,
 				'throttle': 0.4
 			},
 			'alt': {
@@ -84,54 +93,55 @@ class StarcraftMode:
 				'throttle': 0.3
 			},
 			'camera': {
-				'strategy': 'rapid',
+				'strategy': 'combined',
 				'sound': 'vowel_y',
+				'secondary_sound': 'vowel_eu',	
 				'percentage': 75,
+				'ratio': 1.8,
 				'intensity': 5000,
-				'throttle': 0.18
+				'throttle': 0.2
 			},
-			'q': {
+			'first_ability': {
 				'strategy': 'combined',
 				'sound': 'vowel_ow',
 				'secondary_sound': 'vowel_u',
-				'percentage': 90,
+				'percentage': 70,
 				'intensity': 1000,
-				'ratio': 0.5,
+				'ratio': 0.3,
 				'throttle': 0.3
 			},
-			'w': {
+			'second_ability': {
 				'strategy': 'combined',
 				'sound': 'vowel_ae',
 				'secondary_sound': 'vowel_y',	
-				'percentage': 80,
+				'percentage': 75,
 				'intensity': 1100,
 				'ratio': 0.8,
 				'throttle': 0.15
 			},
 			'r': {
 				'strategy': 'rapid',
-				'sound': 'vowel_eu',
-				'percentage': 95,
-				'intensity': 10000,
+				'sound': 'fricative_f',
+				'percentage': 90,
+				'intensity': 6000,
 				'throttle': 0.2
-			},			
+			},
 			'grid_ability': {
 				'strategy': 'continuous',
 				'sound': 'vowel_aa2',
 				'percentage': 90,
 				'intensity': 1000,
-				'lowest_percentage': 20,
-				'lowest_intensity': 500,
-				'throttle': 0.02
+				'lowest_percentage': 12,
+				'lowest_intensity': 500
 			},
 			'numbers': {
 				'strategy': 'combined',
 				'sound': 'vowel_iy',
 				'secondary_sound': 'vowel_y',				
-				'percentage': 80,
+				'percentage': 75,
 				'intensity': 2500,
 				'ratio': 2,
-				'throttle': 0.1
+				'throttle': 0.18
 			},
 			'menu': {
 				'strategy': 'rapid',
@@ -157,13 +167,15 @@ class StarcraftMode:
 		self.hold_key = ""
 
 	def toggle_speech( self ):
+		self.release_hold_keys()
+		
 		if( self.mode == "regular" ):
 			self.mode = "speech"
 			self.grammar.load()
+			press('enter')
 		else:
 			self.mode = "regular"
 			self.grammar.unload()
-			
 		toggle_speechrec()
 		
 	def start( self ):
@@ -253,8 +265,19 @@ class StarcraftMode:
 			return
 			
 		# Selecting units
-		selecting = self.detector.detect( "select" )
-		self.drag_mouse( selecting )
+		selecting = not self.detector.is_throttled('rapidclick') and self.detector.detect( "select" )
+		if( self.ability_selected and selecting ):
+			click(button='left')
+			self.ability_selected = False
+			
+			# Clear the throttles for abilities
+			self.detector.clear_throttle('camera')
+			self.detector.clear_throttle('first_ability')
+			self.detector.clear_throttle('second_ability')
+			
+			self.detector.throttle('rapidclick')
+		else:
+			self.drag_mouse( selecting )
 		
 		## Press Grid ability
 		if( self.detector.detect("grid_ability") ):
@@ -270,7 +293,7 @@ class StarcraftMode:
 			self.hold_down_start_timer = 0
 		
 		if( selecting ):
-			self.ability_selected = False	
+			self.ability_selected = False
 			self.hold_control( False )
 
 		elif( self.detector.detect( "click" ) ):
@@ -284,6 +307,15 @@ class StarcraftMode:
 			# Release the held keys - except when shift clicking units in the selection tray ( for easy removing from the unit group )
 			if( not( self.shiftKey and self.detect_selection_tray() ) ):
 				self.release_hold_keys()
+		elif( ( self.detector.is_throttled('camera') or self.detector.is_throttled("first_ability") or self.detector.is_throttled('second_ability') ) and self.detector.detect( "rapidclick" ) ):
+			click(button='left')
+			self.ability_selected = False
+			
+			# Clear the throttles for abilities
+			self.detector.clear_throttle('camera')
+			self.detector.clear_throttle('first_ability')
+			self.detector.clear_throttle('second_ability')
+			print( "LMB" )
 			
 		# CTRL KEY holding
 		elif( self.detector.detect( "control" ) ):
@@ -300,9 +332,9 @@ class StarcraftMode:
 		## Movement options
 		elif( self.detector.detect( "movement" ) ):
 			quadrant3x3 = self.detector.detect_mouse_quadrant( 3, 3 )
-			if( quadrant3x3 <= 6 ):
+			if( quadrant3x3 <= 5 or quadrant3x3 == 7 ):
 				self.cast_ability( 'a' )
-			elif( quadrant3x3 == 7 ):
+			elif( quadrant3x3 == 6 ):
 				self.press_ability( 'h' )
 			elif( quadrant3x3 == 8 ):
 				self.press_ability( 's' )
@@ -311,14 +343,23 @@ class StarcraftMode:
 				
 			self.hold_shift( False )				
 		## Press Q
-		elif( self.detector.detect( "q" ) ):
-			self.cast_ability( 'q' )
+		elif( self.detector.detect( "first_ability" ) ):
+			print( "pressing Q" )
+			self.ability_selected = True
+			self.detector.clear_throttle('rapidclick')
+			
+			press( 'q' )
 		## Press W
-		elif( self.detector.detect( "w") ):
-			self.cast_ability( 'w' )
+		elif( self.detector.detect( "second_ability") ):
+			print( "pressing W" )
+			self.ability_selected = True
+			self.detector.clear_throttle('rapidclick')			
+			
+			press( 'w' )
 		## Press R ( Burrow )
 		elif( self.detector.detect( "r") ):
-			self.press_ability( 'r' )
+			print( "pressing R" )
+			press( 'r' )
 		elif( self.detector.detect( "menu" ) ):
 			self.release_hold_keys()
 			
@@ -402,7 +443,8 @@ class StarcraftMode:
 			self.press_ability( "f1" )
 		
 		elif( quadrant > 3 and quadrant < 7 ):
-			self.press_ability( "backspace" )
+			press( "backspace" )
+			self.detector.clear_throttle('rapidclick')
 		
 		## Move camera to danger when when looking at the minimap or unit selection
 		elif( quadrant == 7 or quadrant == 8 ):

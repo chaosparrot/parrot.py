@@ -50,7 +50,7 @@ def break_loop_controls(audioQueue=None):
 	return True	
 	
 def classify_audioframes( audioQueue, audio_frames, classifier, high_speed ):
-	if( not audioQueue.empty() ):
+	if( not audioQueue.empty() ):	
 		audio_frames.append( audioQueue.get() )
 		if( len( audio_frames ) >= 2 ):
 			audio_frames = audio_frames[-2:]
@@ -83,6 +83,7 @@ def action_consumer( stream, classifier, dataDicts, persist_replay, replay_file,
 			
 				while( stream.is_active() ):
 					if( not classifierQueue.empty() ):
+						current_time = time.time()
 						seconds_playing = time.time() - starttime
 					
 						probabilityDict = classifierQueue.get()
@@ -103,8 +104,7 @@ def action_consumer( stream, classifier, dataDicts, persist_replay, replay_file,
 							replay_row['intensity'] = int(labelDict['intensity'])
 							replay_row['frequency'] = labelDict['frequency']				
 						writer.writerow( replay_row )
-						csvfile.flush()
-							
+						csvfile.flush()							
 		else:
 			while( stream.is_active() ):
 				if( not classifierQueue.empty() ):

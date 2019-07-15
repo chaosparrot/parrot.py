@@ -20,8 +20,7 @@ class ChatCommandRule(CompoundRule):
 		self.callback = callback
 	
 	def _process_recognition(self, node, extras):
-		press( "enter" )
-		typewrite( extras["quickcommand"] )
+		typewrite( extras["quickcommand"], interval=0.1 )
 		press( "enter" )
 		
 		if( self.callback ):

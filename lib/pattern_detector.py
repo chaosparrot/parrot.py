@@ -47,6 +47,18 @@ class PatternDetector:
 	def detect_silence( self ):
 		return self.predictionDicts[-1]['silence']['intensity'] < SILENCE_INTENSITY_THRESHOLD
 		
+	def is_throttled( self, action ):
+		if action not in self.config:
+			return False
+		else:
+			return self.throttle_detection( action, self.config[action]['throttle'] )
+			
+	def throttle( self, action ):
+		self.timestamps[action] = self.currentTime
+			
+	def clear_throttle( self, action ):
+		self.timestamps[action] = 0
+		
 	def detect_strategy( self, action, config ):
 		if( 'throttle' in config and self.throttle_detection( action, config['throttle'] ) ):
 			return False
@@ -85,10 +97,16 @@ class PatternDetector:
 			secondary_label = config['secondary_sound']
 		
 			detected = ( self.above_intensity( lastDict, config['intensity'] ) and
-				( self.below_frequency( lastDict, config['frequency'] ) and
+				self.below_frequency( lastDict, config['frequency'] ) and
 				self.combined_above_percentage( lastDict, label, secondary_label, config['percentage'] ) and
-				self.above_ratio( lastDict, label, secondary_label, config['ratio'] ) )				
-				
+				self.above_ratio( lastDict, label, secondary_label, config['ratio'] ) )
+		elif( strategy == 'combined_quiet' ):
+			secondary_label = config['secondary_sound']
+		
+			detected = ( self.below_intensity( lastDict, config['intensity'] ) and
+				self.combined_above_percentage( lastDict, label, secondary_label, config['percentage'] ) and
+				self.above_ratio( lastDict, label, secondary_label, config['ratio'] ) )
+		
 		
 		if( detected == True ):
 			self.tickActions.append( action )
@@ -116,6 +134,11 @@ class PatternDetector:
 	# Detects if a label has a probability above the given percentage
 	def above_intensity( self, probabilityData, requiredIntensity ):
 		return probabilityData['silence']['intensity'] >= requiredIntensity
+
+	# Detects if a label has a probability above the given percentage
+	def below_intensity( self, probabilityData, requiredIntensity ):
+		return probabilityData['silence']['intensity'] < requiredIntensity
+		
 		
 	# Detect whether or not the sound has gotten louder
 	def rising_intensity( self, probabilityDataB, probabilityDataA ):
@@ -130,8 +153,8 @@ class PatternDetector:
 		return probabilityData[labelA]['percent'] > probabilityData[label]['percent']
 		
 	# Detects if a label is below a certain frequency
-	def below_frequency( self, probabilityData, label, frequency ):
-		return probabilityData[label]['frequency'] >= frequency
+	def below_frequency( self, probabilityData, frequency ):
+		return probabilityData['silence']['frequency'] < frequency
 		
 	# Detects if the combined given labels are above this percentage
 	def combined_percentage( self, probabilityData, labels, percentage ):
