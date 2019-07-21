@@ -59,6 +59,9 @@ class PatternDetector:
 	def clear_throttle( self, action ):
 		self.timestamps[action] = 0
 		
+	def set_throttle( self, action, throttle ):
+		self.config[action]['throttle'] = throttle	
+		
 	def detect_strategy( self, action, config ):
 		if( 'throttle' in config and self.throttle_detection( action, config['throttle'] ) ):
 			return False
@@ -77,6 +80,15 @@ class PatternDetector:
 			detected = ( self.above_percentage( lastDict, label, config['percentage'] ) and
 				self.above_intensity( lastDict, config['intensity'] ) )
 				
+		elif( strategy == 'frequency_threshold' ):
+			detected = ( self.above_percentage( lastDict, label, config['percentage'] ) and
+				self.above_intensity( lastDict, config['intensity'] ) )
+				
+			if( detected and 'above_frequency' in config ):
+				detected = self.above_frequency( lastDict, config['above_frequency'] )
+			
+			if( detected and 'below_frequency' in config ):
+				detected = self.below_frequency( lastDict, config['below_frequency'] )
 		elif( strategy == 'continuous' ):
 			if( self.throttle_detection( action, RECORD_SECONDS * 4 ) == True ):
 				detected = ( self.above_percentage( lastDict, label, config['lowest_percentage'] ) and
@@ -111,7 +123,7 @@ class PatternDetector:
 		if( detected == True ):
 			self.tickActions.append( action )
 			self.timestamps[action] = self.currentTime
-			print( "Detected " + action )
+			#print( "Detected " + action )
 			
 		return detected
 		
@@ -151,6 +163,10 @@ class PatternDetector:
 	# Detects if a label has a higher probability than the other
 	def winner_over( self, probabilityData, labelA, labelB ):
 		return probabilityData[labelA]['percent'] > probabilityData[label]['percent']
+		
+	# Detects if a label is above a certain frequency
+	def above_frequency( self, probabilityData, frequency ):
+		return probabilityData['silence']['frequency'] >= frequency		
 		
 	# Detects if a label is below a certain frequency
 	def below_frequency( self, probabilityData, frequency ):

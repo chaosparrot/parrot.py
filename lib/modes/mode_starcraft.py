@@ -60,8 +60,9 @@ class StarcraftMode:
 				'throttle': 0.2
 			},			
 			'movement': {
-				'strategy': 'rapid',
+				'strategy': 'frequency_threshold',
 				'sound': 'whistle',
+				'below_frequency': 49,
 				'percentage': 90,
 				'intensity': 1000,
 				'throttle': 0.2
@@ -86,10 +87,11 @@ class StarcraftMode:
 				'throttle': 0.4
 			},
 			'alt': {
-				'strategy': 'rapid',
-				'sound': 'nasal_m',
-				'percentage': 95,
-				'intensity': 3000,
+				'strategy': 'frequency_threshold',
+				'sound': 'whistle',
+				'percentage': 70,
+				'intensity': 1000,
+				'above_frequency': 50,
 				'throttle': 0.3
 			},
 			'camera': {
@@ -203,15 +205,17 @@ class StarcraftMode:
 	def hold_alt( self, alt ):
 		if( self.altKey != alt ):
 			if( alt == True ):
-				keyDown('alt')
 				self.altKey = alt			
-				print( 'Holding ALT' )
-				self.update_overlay()				
-			else:
-				keyUp('alt')
-				self.altKey = alt
-				print( 'Releasing ALT' )				
+				print( 'Enabling ALT' )
 				self.update_overlay()
+				self.detector.set_throttle( 'first_ability', 0.1 )
+				self.detector.set_throttle( 'second_ability', 0.1 )
+			else:
+				self.altKey = alt
+				print( 'Disabling ALT' )
+				self.update_overlay()
+				self.detector.set_throttle( 'first_ability', 0.3 )
+				self.detector.set_throttle( 'second_ability', 0.15 )
 	
 	def hold_control( self, ctrlKey ):
 		if( self.ctrlKey != ctrlKey ):
@@ -227,7 +231,7 @@ class StarcraftMode:
 				self.update_overlay()
 		
 	def release_hold_keys( self ):
-		self.ability_selected = False
+		self.ability_selected = False 
 		self.hold_control( False )
 		self.hold_shift( False )
 		self.hold_alt( False )
@@ -268,6 +272,7 @@ class StarcraftMode:
 		selecting = not self.detector.is_throttled('rapidclick') and self.detector.detect( "select" )
 		if( self.ability_selected and selecting ):
 			click(button='left')
+			print( "LMB" )
 			self.ability_selected = False
 			
 			# Clear the throttles for abilities
@@ -301,8 +306,10 @@ class StarcraftMode:
 			# Cast selected ability or Ctrl+click
 			if( self.detect_command_area() or self.ability_selected == True or self.ctrlKey == True or self.altKey == True or ( self.shiftKey and self.detect_selection_tray() ) ):
 				click(button='left')
+				print( "LMB" )
 			else:
 				click(button='right')
+				print( "RMB" )
 				
 			# Release the held keys - except when shift clicking units in the selection tray ( for easy removing from the unit group )
 			if( not( self.shiftKey and self.detect_selection_tray() ) ):
@@ -344,22 +351,39 @@ class StarcraftMode:
 			self.hold_shift( False )				
 		## Press Q
 		elif( self.detector.detect( "first_ability" ) ):
-			print( "pressing Q" )
 			self.ability_selected = True
 			self.detector.clear_throttle('rapidclick')
 			
-			press( 'q' )
+			if( self.altKey ):
+				print( "pressing Z" )
+				press( 'z' )
+				
+			else:
+				print( "pressing Q" )
+				press( 'q' )
+			
 		## Press W
 		elif( self.detector.detect( "second_ability") ):
-			print( "pressing W" )
 			self.ability_selected = True
-			self.detector.clear_throttle('rapidclick')			
-			
-			press( 'w' )
+			self.detector.clear_throttle('rapidclick')		
+		
+			if( self.altKey ):
+				print( "pressing X" )
+				press( 'x' )
+			else:
+				print( "pressing W" )
+				press( 'w' )
+				
 		## Press R ( Burrow )
 		elif( self.detector.detect( "r") ):
-			print( "pressing R" )
-			press( 'r' )
+		
+			if( self.altKey ):
+				print( "pressing C" )
+				press( 'c' )
+			else:
+				print( "pressing R" )
+				press( 'r' )
+		
 		elif( self.detector.detect( "menu" ) ):
 			self.release_hold_keys()
 			
@@ -370,16 +394,25 @@ class StarcraftMode:
 				self.press_ability( 'esc' )
 			
 		## Move the camera
-		elif( self.detector.detect( "camera" ) ):
+		elif( not self.detector.is_throttled('second_ability') and self.detector.detect( "camera" ) ):
 			quadrant3x3 = self.detector.detect_mouse_quadrant( 3, 3 )
 			self.camera_movement( quadrant3x3 )
 			self.hold_shift( False )
+			self.hold_alt( False )
 						
-		## Press control group
+		## Press control group ( only allow CTRL and SHIFT )
 		elif( self.detector.detect( "numbers" ) ):
+			if( self.altKey ):
+				keyDown('alt')
+		
 			quadrant3x3 = self.detector.detect_mouse_quadrant( 3, 3 )
 			self.use_control_group( quadrant3x3 )
-			self.release_hold_keys()
+			
+			if( self.altKey ):
+				keyUp('alt')
+				
+			self.hold_alt( False )				
+			self.hold_control( False )
 			self.hold_shift( False )
 
 		return		
@@ -439,9 +472,10 @@ class StarcraftMode:
 		
 	def camera_movement( self, quadrant ):
 		## Move camera to kerrigan when looking above the UI
-		if( quadrant < 4 ):
+		if( quadrant < 3 ):
 			self.press_ability( "f1" )
-		
+		elif( quadrant == 2 ):			
+			press( "f2" )
 		elif( quadrant > 3 and quadrant < 7 ):
 			press( "backspace" )
 			self.detector.clear_throttle('rapidclick')
