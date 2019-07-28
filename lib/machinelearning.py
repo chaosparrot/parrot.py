@@ -120,6 +120,10 @@ def get_loudest_freq( fftData, recordLength ):
 		
 	return freqInHz
 
+def get_recording_power( fftData, recordLength ):
+	return audioop.rms( fftData, 4 ) / 1000
+	
+	
 #def generate_tnse( dataset_x, dataset_labels ):
 	#tsne = TSNE(n_components=2, verbose=1, perplexity=40, n_iter=300)
 	#tsne_results = tsne.fit_transform( dataset_x, dataset_labels )

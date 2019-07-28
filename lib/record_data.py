@@ -10,7 +10,7 @@ import numpy as np
 from scipy.fftpack import fft
 from scipy.fftpack import fftfreq
 from scipy.signal import blackmanharris
-from lib.machinelearning import get_loudest_freq
+from lib.machinelearning import get_loudest_freq, get_recording_power
 import os
 import msvcrt
 from queue import *
@@ -70,11 +70,18 @@ def record_sound():
 	if not os.path.exists(RECORDINGS_FOLDER + "/" + directory):
 		os.makedirs(RECORDINGS_FOLDER + "/"  + directory)
 
-	threshold = input("What loudness threshold do you need? " )
+	threshold = input("What intensity( loudness ) threshold do you need? " )
 	if( threshold == "" ):
 		threshold = 0
 	else:
 		threshold = int(threshold)
+		
+	power_threshold = input("What signal power threshold do you need? " )
+	if( power_threshold == "" ):
+		power_threshold = 0
+	else:
+		power_threshold = int( power_threshold )
+		
 	frequency_threshold = input("What frequency threshold do you need? " )
 	if( frequency_threshold == "" ):
 		frequency_threshold = 0
@@ -103,10 +110,10 @@ def record_sound():
 	if( countdown( 5 ) == False ):
 		return;
 		
-	non_blocking_record(threshold, frequency_threshold, begin_threshold, WAVE_OUTPUT_FILENAME, WAVE_OUTPUT_FILE_EXTENSION)
+	non_blocking_record(threshold, power_threshold, frequency_threshold, begin_threshold, WAVE_OUTPUT_FILENAME, WAVE_OUTPUT_FILE_EXTENSION)
 	
 # Consumes the recordings in a sliding window fashion - Always combining the two latest chunks together	
-def record_consumer(threshold, frequency_threshold, begin_threshold, WAVE_OUTPUT_FILENAME, WAVE_OUTPUT_FILE_EXTENSION, audio, stream):
+def record_consumer(threshold, power_threshold, frequency_threshold, begin_threshold, WAVE_OUTPUT_FILENAME, WAVE_OUTPUT_FILE_EXTENSION, audio, stream):
 	global recordQueue
 
 	files_recorded = 0
@@ -124,9 +131,9 @@ def record_consumer(threshold, frequency_threshold, begin_threshold, WAVE_OUTPUT
 		while( True ):
 			if( not recordQueue.empty() ):
 				audioFrames.append( recordQueue.get() )		
-				if( len( audioFrames ) >= 2 ):
+				if( len( audioFrames ) >= SLIDING_WINDOW_AMOUNT ):
 					j+=1
-					audioFrames = audioFrames[-2:]
+					audioFrames = audioFrames[-SLIDING_WINDOW_AMOUNT:]
 						
 					intensity = [
 						audioop.maxpp( audioFrames[0], 4 ) / 32767,
@@ -137,6 +144,7 @@ def record_consumer(threshold, frequency_threshold, begin_threshold, WAVE_OUTPUT
 					byteString = b''.join(audioFrames)
 					fftData = np.frombuffer( byteString, dtype=np.int16 )
 					frequency = get_loudest_freq( fftData, RECORD_SECONDS )
+					power = get_recording_power( fftData, RECORD_SECONDS )
 					
 					fileid = "%0.2f" % ((j) * RECORD_SECONDS )
 				
@@ -144,11 +152,11 @@ def record_consumer(threshold, frequency_threshold, begin_threshold, WAVE_OUTPUT
 						stream.stop_stream()
 						break;
 						 
-					if( frequency > frequency_threshold and highestintensity > threshold ):
+					if( frequency > frequency_threshold and highestintensity > threshold and power > power_threshold ):
 						record_wave_file_count += 1
 						if( record_wave_file_count <= begin_threshold and record_wave_file_count > delay_threshold ):
 							files_recorded += 1
-							print( "Files recorded: %0d - Intensity: %0d - Freq: %0d - Saving %s" % ( files_recorded, highestintensity, frequency, fileid ) )
+							print( "Files recorded: %0d - Intensity: %0d - Power: %0d - Freq: %0d - Saving %s" % ( files_recorded, highestintensity, power, frequency, fileid ) )
 							waveFile = wave.open(WAVE_OUTPUT_FILENAME + fileid + WAVE_OUTPUT_FILE_EXTENSION, 'wb')
 							waveFile.setnchannels(CHANNELS)
 							waveFile.setsampwidth(audio.get_sample_size(FORMAT))
@@ -156,10 +164,10 @@ def record_consumer(threshold, frequency_threshold, begin_threshold, WAVE_OUTPUT
 							waveFile.writeframes(byteString)
 							waveFile.close()
 						else:
-							print( "Files recorded: %0d - Intensity: %0d - Freq: %0d" % ( files_recorded, highestintensity, frequency ) )							
+							print( "Files recorded: %0d - Intensity: %0d - Power: %0d - Freq: %0d" % ( files_recorded, highestintensity, power, frequency ) )
 					else:
 						record_wave_file_count = 0
-						print( "Files recorded: %0d - Intensity: %0d - Freq: %0d" % ( files_recorded, highestintensity, frequency ) )
+						print( "Files recorded: %0d - Intensity: %0d - Power: %0d - Freq: %0d" % ( files_recorded, highestintensity, power, frequency ) )
 	except Exception as e:
 		print( "----------- ERROR DURING RECORDING -------------- " )
 		exc_type, exc_value, exc_tb = sys.exc_info()
@@ -174,7 +182,7 @@ def multithreaded_record( in_data, frame_count, time_info, status ):
 				
 # Records a non blocking audio stream and saves the chunks onto a queue
 # The queue will be used as a sliding window over the audio, where two chunks are combined into one audio file
-def non_blocking_record(threshold, frequency_threshold, begin_threshold, WAVE_OUTPUT_FILENAME, WAVE_OUTPUT_FILE_EXTENSION):
+def non_blocking_record(threshold, power_threshold, frequency_threshold, begin_threshold, WAVE_OUTPUT_FILENAME, WAVE_OUTPUT_FILE_EXTENSION):
 	global recordQueue
 	recordQueue = Queue(maxsize=0)
 
@@ -182,10 +190,10 @@ def non_blocking_record(threshold, frequency_threshold, begin_threshold, WAVE_OU
 	stream = audio.open(format=FORMAT, channels=CHANNELS,
 		rate=RATE, input=True,
 		input_device_index=INPUT_DEVICE_INDEX,
-		frames_per_buffer=CHUNK,
+		frames_per_buffer=round( RATE * RECORD_SECONDS / SLIDING_WINDOW_AMOUNT ),
 		stream_callback=multithreaded_record)
 		
-	consumer = threading.Thread(name='consumer', target=record_consumer, args=(threshold, frequency_threshold, begin_threshold, WAVE_OUTPUT_FILENAME, WAVE_OUTPUT_FILE_EXTENSION, audio, stream))
+	consumer = threading.Thread(name='consumer', target=record_consumer, args=(threshold, power_threshold, frequency_threshold, begin_threshold, WAVE_OUTPUT_FILENAME, WAVE_OUTPUT_FILE_EXTENSION, audio, stream))
 	consumer.setDaemon( True )
 	consumer.start()
 	stream.start_stream()
