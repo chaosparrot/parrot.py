@@ -32,6 +32,7 @@ pip3 install pandas;
 pip3 install matplotlib;
 pip3 install pyaudio;
 pip3 install pyautogui;
+pip3 install librosa;
 pip3 install python_speech_features;
 pip3 install pythoncom;
 pip3 install joblib;
