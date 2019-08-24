@@ -16,7 +16,7 @@ Python packages such as
 * pyaudio *( audio recording and playing )*
 * python_speech_features *( for audio manipulation, specifically the MFCC algorithm )*
 * pyautogui *( for mouse and keyboard simulation )*
-* dragonfly *( For speech recognition purposes )*
+* dragonfly2 *( For speech recognition purposes )*
 * pythoncom *( for listening to speech recognition commands )*'
 * librosa
 
