@@ -39,6 +39,7 @@ def select_mode():
 	elif( setup_mode.lower() == 'x' ):
 		print( "Goodbye." )
 	else:
+		import lib.neural_net
 		select_mode()
 	
 root_navigation( True )
