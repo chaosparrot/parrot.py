@@ -52,6 +52,7 @@ def break_loop_controls(audioQueue=None):
 def classify_audioframes( audioQueue, audio_frames, classifier, high_speed ):
 	if( not audioQueue.empty() ):	
 		audio_frames.append( audioQueue.get() )
+        
 		if( len( audio_frames ) >= 2 ):
 			audio_frames = audio_frames[-2:]
 						
@@ -205,7 +206,7 @@ def start_nonblocking_listen_loop( classifier, mode_switcher = False, persist_re
 	stream = audio.open(format=FORMAT, channels=CHANNELS,
 		rate=RATE, input=True,
 		input_device_index=INPUT_DEVICE_INDEX,
-		frames_per_buffer=CHUNK,
+		frames_per_buffer=round( RATE * RECORD_SECONDS / SLIDING_WINDOW_AMOUNT ),
 		stream_callback=nonblocking_record)
 				
 	classificationConsumer = threading.Thread(name='classification_consumer', target=classification_consumer, args=(audio, stream, classifier, persist_files, high_speed) )
