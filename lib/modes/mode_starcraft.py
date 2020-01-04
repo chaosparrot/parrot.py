@@ -46,7 +46,7 @@ class StarcraftMode:
 			'click': {
 				'strategy': 'combined',
 				'sound': 'click_alveolar',
-				'secondary_sound': "vowel_aa2",
+				'secondary_sound': "vowel_aa",
 				'percentage': 79,
 				'ratio': 2,				
 				'intensity': 1650,
@@ -54,14 +54,14 @@ class StarcraftMode:
 			},
 			'toggle_speech': {
 				'strategy': 'rapid',
-				'sound': 'hand_finger_snap',
+				'sound': 'sound_finger_snap',
 				'percentage': 90,
 				'intensity': 25000,
 				'throttle': 0.2
 			},			
 			'movement': {
 				'strategy': 'frequency_threshold',
-				'sound': 'whistle',
+				'sound': 'sound_whistle',
 				'below_frequency': 49,
 				'percentage': 90,
 				'intensity': 1000,
@@ -77,9 +77,8 @@ class StarcraftMode:
 				'throttle': 0.2
 			},
 			'shift': {
-				'strategy': 'combined_frequency',
+				'strategy': 'rapid',
 				'sound': 'sibilant_sh',
-				'secondary_sound': 'sibilant_ch',				
 				'percentage': 90,
 				'frequency': 300,
 				'intensity': 1600,
@@ -88,7 +87,7 @@ class StarcraftMode:
 			},
 			'alt': {
 				'strategy': 'frequency_threshold',
-				'sound': 'whistle',
+				'sound': 'sound_whistle',
 				'percentage': 70,
 				'intensity': 1000,
 				'above_frequency': 50,
@@ -130,7 +129,7 @@ class StarcraftMode:
 			},
 			'grid_ability': {
 				'strategy': 'continuous',
-				'sound': 'vowel_aa2',
+				'sound': 'vowel_aa',
 				'percentage': 90,
 				'intensity': 1000,
 				'lowest_percentage': 12,
@@ -147,7 +146,7 @@ class StarcraftMode:
 			},
 			'menu': {
 				'strategy': 'rapid',
-				'sound': 'call_bell',
+				'sound': 'sound_call_bell',
 				'percentage': 90,
 				'intensity': 5000,
 				'throttle': 0.3

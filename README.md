@@ -57,6 +57,12 @@ Strategy - You can choose between.. TODO
 
 You can run the program by executing `py play.py`. This process might crash if you haven't properly installed certain packages or configurated your models.
 
+# Errors running the program
+
+Sometimes if windows speech rec isnt started before the program, there appears to be a weird caching bug that shows the following error:
+Exception while initializing sapi5 engine: module 'win32com.gen_py' has no attribute 'CLSIDToClassMap'
+You can fix that by starting windows speech rec, going to your C:\Users\YOURUSER\AppData\Local\Temp directory and rename gen_py to gen_py2 or something. This will rebuild the cache for gen_py the next time the program is run.
+
 ### Todos
 
  - Add examples of how to use the program

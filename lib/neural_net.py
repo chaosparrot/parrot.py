@@ -67,7 +67,8 @@ class AudioDataset(Dataset):
 
 dataset = AudioDataset('C:\\Users\\anonymous\\Desktop\\Parrot.PY\\data\\recordings\\30ms', ['silence'
 ,'click_alveolar', 'fricative_f', 'fricative_v', 'sibilant_s', 'sibilant_sh', 'sibilant_z', 'sibilant_zh'
-,'vowel_aa', 'vowel_ah', 'vowel_ae', 'vowel_e', 'vowel_eu', 'vowel_ih', 'vowel_iy', 'vowel_y', 'vowel_u', 'vowel_ow', 'vowel_oh'
+,'vowel_aa', 'vowel_ah', 'vowel_ae', 'vowel_e', 'vowel_eu', 'vowel_ih', 'vowel_iy', 'vowel_y', 'vowel_u', 'vowel_ow', 'vowel_oh',
+'approximant_l', 'sound_whistle', 'sound_call_bell', 'sound_hand_bell', 'sound_finger_snap'
 #,'nasal_n', 'nasal_m', 'nasal_ng'
 ])
 x, y = dataset[0]
@@ -155,4 +156,4 @@ for epoch in range(max_epochs):
     epoch_loss = epoch_validation_loss / ( len(dataset) * validation_split )
     accuracy = correct / ( len(dataset) * validation_split )
     print('Validation loss: {:.4f} accuracy {:.3f}'.format(epoch_loss, accuracy))
-    torch.save(net.state_dict(), 'data//models//torch-8884-exnasals.pth.tar')
+    torch.save(net.state_dict(), 'data//models//torch-8884-withsounds.pth.tar')

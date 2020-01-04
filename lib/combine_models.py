@@ -151,9 +151,10 @@ def connect_model( clf_filename, classifier_map, model_type ):
         classifier = EnsembleClassifier( classifier_map )
     elif( model_type == "ensemble_torch" ):
         classifier = TorchEnsembleClassifier( classifier_map, ['silence'
-            ,'click_alveolar', 'fricative_f', 'fricative_v', 'sibilant_s', 'sibilant_sh', 'sibilant_z', 'sibilant_zh'
-            ,'vowel_aa', 'vowel_ah', 'vowel_ae', 'vowel_e', 'vowel_eu', 'vowel_ih', 'vowel_iy', 'vowel_y', 'vowel_u', 'vowel_ow', 'vowel_oh'
-            #,'nasal_n', 'nasal_m', 'nasal_ng'
+        ,'click_alveolar', 'fricative_f', 'fricative_v', 'sibilant_s', 'sibilant_sh', 'sibilant_z', 'sibilant_zh'
+        ,'vowel_aa', 'vowel_ah', 'vowel_ae', 'vowel_e', 'vowel_eu', 'vowel_ih', 'vowel_iy', 'vowel_y', 'vowel_u', 'vowel_ow', 'vowel_oh',
+        'approximant_l', 'sound_whistle', 'sound_call_bell', 'sound_hand_bell', 'sound_finger_snap'
+        #,'nasal_n', 'nasal_m', 'nasal_ng'
         ])        
     else:
         classifier = ChangeResistantClassifier( classifier_map )
