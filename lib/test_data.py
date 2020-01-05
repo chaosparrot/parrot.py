@@ -43,6 +43,10 @@ def test_data( with_intro ):
         print(" - [U] for analyzing a set of recordings for statistical purposes")
         print(" - [M] for analyzing the accuracy of recordings on a specific model")        
         print(" - [X] for exiting analysis mode")
+        
+    #learn_data = pd.read_csv( 'model_training.csv', skiprows=0, header=0)
+    #for index in range(0,199):
+    #    plot_bars( learn_data, index )
     
     analyze_replay_or_audio( available_models, available_replays, available_sounds )
         
@@ -347,3 +351,27 @@ def plot_replay( replay_data ):
     frequencyAxis.set_ylim(ymax=800)
 
     plt.show()
+    
+def plot_bars( learning_data, index ):
+    plt.style.use('seaborn-darkgrid')
+    plt.figure(num=None, figsize=(20, 10), dpi=80)
+    num = 0
+
+    colors = ['darkviolet','red', 'gold', 'green', 'deepskyblue', 'navy', 'gray', 'black', 'pink',
+        'firebrick', 'orange', 'lawngreen', 'darkturquoise', 'khaki', 'indigo', 'blue', 'teal',
+        'cyan', 'seagreen', 'silver', 'saddlebrown', 'tomato', 'steelblue', 'lavenderblush', 'orangered', 'gray', 'blue', 'red', 'gold', 'pink']
+
+    learning_row = learning_data.iloc[index]
+    validation_accuracy = str(int(learning_row['validation_accuracy'] * 1000) / 10)
+        
+    # Add percentage plot
+    string_epoch = str( int(learning_row['epoch'] + 1) )
+    plt.title( "Epoch " + string_epoch + " - Validation accuracy " + validation_accuracy + " - Percentage distribution of sounds", loc='left', fontsize=12, fontweight=0, color='black')
+    plt.ylabel("Percentage")
+    for column in learning_data.drop(['epoch', 'validation_accuracy', 'loss'], axis=1):
+        color = colors[num]        
+        num+=1
+        plt.bar(num, learning_row[column] * 100, color=color, linewidth=1, alpha=0.9, label=column)
+            
+    plt.legend(loc=1, ncol=7)
+    plt.savefig('data/evolution_images/8884-' + string_epoch + '.png')			

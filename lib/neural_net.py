@@ -7,6 +7,7 @@ import os
 from lib.machinelearning import *
 import numpy as np
 import torch.optim as optim
+import csv
 
 class AudioNet(nn.Module):
 
@@ -65,12 +66,14 @@ class AudioDataset(Dataset):
     def get_labels(self):
         return self.paths
 
-dataset = AudioDataset('C:\\Users\\anonymous\\Desktop\\Parrot.PY\\data\\recordings\\30ms', ['silence'
+dataset_labels = ['silence'
 ,'click_alveolar', 'fricative_f', 'fricative_v', 'sibilant_s', 'sibilant_sh', 'sibilant_z', 'sibilant_zh'
 ,'vowel_aa', 'vowel_ah', 'vowel_ae', 'vowel_e', 'vowel_eu', 'vowel_ih', 'vowel_iy', 'vowel_y', 'vowel_u', 'vowel_ow', 'vowel_oh',
 'approximant_l', 'sound_whistle', 'sound_call_bell', 'sound_hand_bell', 'sound_finger_snap'
 #,'nasal_n', 'nasal_m', 'nasal_ng'
-])
+]
+        
+dataset = AudioDataset('C:\\Users\\anonymous\\Desktop\\Parrot.PY\\data\\recordings\\30ms', dataset_labels)
 x, y = dataset[0]
 criterion = nn.NLLLoss()
 net = AudioNet(len(x), len(dataset.get_labels()))
@@ -101,59 +104,88 @@ print( len( x ) )
 
 # Loop over epochs
 net = net.to(device)
-for epoch in range(max_epochs):
-    # Training
-    epoch_loss = 0.0
-    running_loss = 0.0
-    i = 0
-    net.train(True)
-    with torch.set_grad_enabled(True):
-        for local_batch, local_labels in train_loader:
-            # Transfer to GPU
-            local_batch, local_labels = local_batch.to(device), local_labels.to(device)
+starttime = int(time.time())
+with open(REPLAYS_FOLDER + "/model_training_" + str(starttime) + ".csv", 'a', newline='') as csvfile:	
+    headers = ['epoch', 'loss', 'validation_accuracy']
+    headers.extend( dataset_labels )
+    writer = csv.DictWriter(csvfile, fieldnames=headers, delimiter=',')
+    writer.writeheader()
+
+    for epoch in range(max_epochs):
+        # Training
+        epoch_loss = 0.0
+        running_loss = 0.0
+        i = 0
+        net.train(True)
+        with torch.set_grad_enabled(True):
+            for local_batch, local_labels in train_loader:
+                # Transfer to GPU
+                local_batch, local_labels = local_batch.to(device), local_labels.to(device)
+                
+                # Zero the gradients for this batch
+                optimizer.zero_grad()
+                
+                # Calculating loss
+                output = net(local_batch)
+                loss = criterion(output, local_labels)
+                loss.backward()
+                            
+                # Prevent exploding weights
+                torch.nn.utils.clip_grad_norm_(net.parameters(),4)
+                optimizer.step()
+                
+                running_loss += loss.item()
+                epoch_loss += output.shape[0] * loss.item()     
+                i += 1
+                if( i % 10 == 0 ):
+                    correct_in_minibatch = ( local_labels == output.max(dim = 1)[1] ).sum()
+                    print('[%d, %5d] loss: %.3f acc: %.3f' % (epoch + 1, i + 1, (running_loss / 10), correct_in_minibatch.item()/batch_size))
+                    running_loss = 0.0
             
-            # Zero the gradients for this batch
-            optimizer.zero_grad()
-            
-            # Calculating loss
-            output = net(local_batch)
-            loss = criterion(output, local_labels)
-            loss.backward()
-            
-            # Prevent exploding weights
-            torch.nn.utils.clip_grad_norm_(net.parameters(),4)
-            optimizer.step()
-            
-            running_loss += loss.item()
-            epoch_loss += output.shape[0] * loss.item()     
-            i += 1
-            if( i % 10 == 0 ):
-                correct_in_minibatch = ( local_labels == output.max(dim = 1)[1] ).sum()
-                print('[%d, %5d] loss: %.3f acc: %.3f' % (epoch + 1, i + 1, (running_loss / 10), correct_in_minibatch.item()/batch_size))
-                running_loss = 0.0
+        epoch_loss = epoch_loss / ( len(dataset) * (1 - validation_split) )
+        print('Training loss: {:.4f}'.format(epoch_loss))
+        print( "Validating..." )
+        # Validation
+        net.train(False)
+        epoch_validation_loss = 0.0
+        correct = 0
+        with torch.set_grad_enabled(False):
+            accuracy_batch = {'total': {}, 'correct': {}, 'percent': {}}
+            for dataset_label in dataset_labels:
+                accuracy_batch['total'][dataset_label] = 0
+                accuracy_batch['correct'][dataset_label] = 0
+                accuracy_batch['percent'][dataset_label] = 0            
         
-    epoch_loss = epoch_loss / ( len(dataset) * (1 - validation_split) )
-    print('Training loss: {:.4f}'.format(epoch_loss))
-    print( "Validating..." )
-    # Validation
-    net.train(False)
-    epoch_validation_loss = 0.0
-    correct = 0
-    with torch.set_grad_enabled(False):
-        for local_batch, local_labels in validation_loader:
-            # Transfer to GPU
-            local_batch, local_labels = local_batch.to(device), local_labels.to(device)
-			
-            # Zero the gradients for this batch
-            optimizer.zero_grad()
+            for local_batch, local_labels in validation_loader:
+                # Transfer to GPU
+                local_batch, local_labels = local_batch.to(device), local_labels.to(device)
+                
+                # Zero the gradients for this batch
+                optimizer.zero_grad()
+                    
+                # Calculating loss
+                output = net(local_batch)
+                correct += ( local_labels == output.max(dim = 1)[1] ).sum().item()
+                loss = criterion(output, local_labels)
+                epoch_validation_loss += output.shape[0] * loss.item()
+                
+                # Calculate the percentages
+                for index, label in enumerate(local_labels):
+                    local_label_string = dataset_labels[label]
+                    accuracy_batch['total'][local_label_string] += 1
+                    if( output[index].argmax() == label ):
+                        accuracy_batch['correct'][local_label_string] += 1
+                    accuracy_batch['percent'][local_label_string] = accuracy_batch['correct'][local_label_string] / accuracy_batch['total'][local_label_string]            
+                
+        epoch_loss = epoch_validation_loss / ( len(dataset) * validation_split )
+        accuracy = correct / ( len(dataset) * validation_split )
+        print('Validation loss: {:.4f} accuracy {:.3f}'.format(epoch_loss, accuracy))
         
-		    # Calculating loss
-            output = net(local_batch)
-            correct += ( local_labels == output.max(dim = 1)[1] ).sum().item()
-            loss = criterion(output, local_labels)
-            epoch_validation_loss += output.shape[0] * loss.item()
-			
-    epoch_loss = epoch_validation_loss / ( len(dataset) * validation_split )
-    accuracy = correct / ( len(dataset) * validation_split )
-    print('Validation loss: {:.4f} accuracy {:.3f}'.format(epoch_loss, accuracy))
-    torch.save(net.state_dict(), 'data//models//torch-8884-withsounds.pth.tar')
+        csv_row = { 'epoch': epoch, 'loss': epoch_loss, 'validation_accuracy': accuracy }
+        for dataset_label in dataset_labels:
+            csv_row[dataset_label] = accuracy_batch['percent'][dataset_label]
+        writer.writerow( csv_row )
+        csvfile.flush()					
+        print(accuracy_batch)
+        
+        torch.save(net.state_dict(), 'data//models//torch-8884-withsounds.pth.tar')
