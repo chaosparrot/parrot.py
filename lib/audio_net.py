@@ -55,12 +55,12 @@ class AudioNetTrainer:
     
     def __init__(self, dataset):
         x, y = dataset[0]
-        self.net = AudioNet(len(x), len(dataset.get_labels()))
+        self.dataset_size = len(dataset)
+        self.net = AudioNet(len(x), self.dataset_size)
         self.optimizer = optim.SGD(self.net.parameters(), lr=0.003, momentum=0.9)
         self.dataset_labels = dataset.get_labels()
 
         # Split the dataset into validation and training data loaders
-        self.dataset_size = len(dataset)
         indices = list(range(self.dataset_size))
         split = int(np.floor(self.validation_split * self.dataset_size))
         np.random.seed(self.random_seed)
@@ -116,7 +116,7 @@ class AudioNetTrainer:
                             print('[%d, %5d] loss: %.3f acc: %.3f' % (epoch + 1, i + 1, (running_loss / 10), correct_in_minibatch.item()/self.batch_size))
                             running_loss = 0.0
                     
-                epoch_loss = epoch_loss / ( len(dataset) * (1 - validation_split) )
+                epoch_loss = epoch_loss / ( self.dataset_size * (1 - self.validation_split) )
                 print('Training loss: {:.4f}'.format(epoch_loss))
                 print( "Validating..." )
                 
@@ -146,14 +146,15 @@ class AudioNetTrainer:
                         
                         # Calculate the percentages
                         for index, label in enumerate(local_labels):
-                            local_label_string = dataset_labels[label]
+                            local_label_string = self.dataset_labels[label]
                             accuracy_batch['total'][local_label_string] += 1
                             if( output[index].argmax() == label ):
                                 accuracy_batch['correct'][local_label_string] += 1
                             accuracy_batch['percent'][local_label_string] = accuracy_batch['correct'][local_label_string] / accuracy_batch['total'][local_label_string]            
-                        
-                epoch_loss = epoch_validation_loss / ( self.dataset_size * validation_split )
-                accuracy = correct / ( self.dataset_size * validation_split )
+                     
+
+                epoch_loss = epoch_validation_loss / ( self.dataset_size * self.validation_split )
+                accuracy = correct / ( self.dataset_size * self.validation_split )
                 print('Validation loss: {:.4f} accuracy {:.3f}'.format(epoch_loss, accuracy))
                 
                 csv_row = { 'epoch': epoch, 'loss': epoch_loss, 'validation_accuracy': accuracy }

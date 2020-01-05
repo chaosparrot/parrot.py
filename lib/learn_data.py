@@ -74,7 +74,7 @@ def learn_data():
         dataset = AudioDataset(DATASET_FOLDER, dataset_labels)
         trainer = AudioNetTrainer(dataset)
         
-        print( "Learing the data..." )
+        print( "Learning the data..." )
         trainer.train( clf_filename )
 
 def fit_sklearn_classifier( classifier,  dir_path, clf_filename ):
