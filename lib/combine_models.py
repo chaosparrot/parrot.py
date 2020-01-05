@@ -4,7 +4,6 @@ from lib.hierarchial_classifier import *
 from lib.markov_chain_classifier import *
 from lib.change_resistant_classifier import *
 from lib.ensemble_classifier import *
-from lib.torch_ensemble_classifier import *
 import os
 
 def combine_models():
@@ -150,6 +149,8 @@ def connect_model( clf_filename, classifier_map, model_type ):
     elif( model_type == "ensemble" ):
         classifier = EnsembleClassifier( classifier_map )
     elif( model_type == "ensemble_torch" ):
+        from lib.torch_ensemble_classifier import TorchEnsembleClassifier    
+    
         classifier = TorchEnsembleClassifier( classifier_map, ['silence'
         ,'click_alveolar', 'fricative_f', 'fricative_v', 'sibilant_s', 'sibilant_sh', 'sibilant_z', 'sibilant_zh'
         ,'vowel_aa', 'vowel_ah', 'vowel_ae', 'vowel_e', 'vowel_eu', 'vowel_ih', 'vowel_iy', 'vowel_y', 'vowel_u', 'vowel_ow', 'vowel_oh',

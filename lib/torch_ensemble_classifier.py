@@ -26,7 +26,7 @@ class TorchEnsembleClassifier:
         device = torch.device('cpu')
         for index, key in enumerate(classifier_map):
             state_dict = torch.load(classifier_map[key], map_location=device)
-            model = AudioNet(28,19)
+            model = AudioNet(28,len(labels))
             model.load_state_dict(state_dict)
             model.eval()
             self.classifiers[key] = model        
