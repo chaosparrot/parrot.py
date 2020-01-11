@@ -56,9 +56,9 @@ class AudioNetTrainer:
     def __init__(self, dataset):
         x, y = dataset[0]
         self.dataset_size = len(dataset)
-        self.net = AudioNet(len(x), self.dataset_size)
-        self.optimizer = optim.SGD(self.net.parameters(), lr=0.003, momentum=0.9)
         self.dataset_labels = dataset.get_labels()
+        self.net = AudioNet(len(x), len(self.dataset_labels))
+        self.optimizer = optim.SGD(self.net.parameters(), lr=0.003, momentum=0.9)
 
         # Split the dataset into validation and training data loaders
         indices = list(range(self.dataset_size))
@@ -74,7 +74,7 @@ class AudioNetTrainer:
         
         
     def train(self, filename):
-        net = self.net.to(self.device)
+        self.net = self.net.to(self.device)
         starttime = int(time.time())
         
         best_accuracy = 0
@@ -90,7 +90,7 @@ class AudioNetTrainer:
                 epoch_loss = 0.0
                 running_loss = 0.0
                 i = 0
-                net.train(True)
+                self.net.train(True)
                 with torch.set_grad_enabled(True):
                     for local_batch, local_labels in self.train_loader:
                         # Transfer to GPU
@@ -100,12 +100,12 @@ class AudioNetTrainer:
                         self.optimizer.zero_grad()
                         
                         # Calculating loss
-                        output = net(local_batch)
+                        output = self.net(local_batch)
                         loss = self.criterion(output, local_labels)
                         loss.backward()
                                     
                         # Prevent exploding weights
-                        torch.nn.utils.clip_grad_norm_(net.parameters(),4)
+                        torch.nn.utils.clip_grad_norm_(self.net.parameters(),4)
                         self.optimizer.step()
                         
                         running_loss += loss.item()
@@ -121,7 +121,7 @@ class AudioNetTrainer:
                 print( "Validating..." )
                 
                 # Validation
-                net.train(False)
+                self.net.train(False)
                 epoch_validation_loss = 0.0
                 correct = 0
                 with torch.set_grad_enabled(False):
@@ -139,7 +139,7 @@ class AudioNetTrainer:
                         self.optimizer.zero_grad()
                             
                         # Calculating loss
-                        output = net(local_batch)
+                        output = self.net(local_batch)
                         correct += ( local_labels == output.max(dim = 1)[1] ).sum().item()
                         loss = self.criterion(output, local_labels)
                         epoch_validation_loss += output.shape[0] * loss.item()
@@ -168,10 +168,7 @@ class AudioNetTrainer:
                     best_accuracy = accuracy
                     current_filename = filename + '-BEST'
                     
-                torch.save({'state_dict': net.state_dict(), 
-                    'epoch': epoch, 
-                    'validation_accuracy': accuracy,
-                    'dataset_labels': self.dataset_labels
+                torch.save({'state_dict': self.net.state_dict(), 
                     }, os.path.join(CLASSIFIER_FOLDER, current_filename) + '-weights.pth.tar')    
 
         
