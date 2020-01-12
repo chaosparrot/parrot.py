@@ -12,8 +12,9 @@ import torch.optim as optim
 
 class AudioNet(nn.Module):
 
-    def __init__(self, inputsize, outputsize):
+    def __init__(self, inputsize, outputsize, only_logsoftmax=False):
         super(AudioNet, self).__init__()
+        self.only_logsoftmax = only_logsoftmax
         self.softmax = nn.Softmax(dim=-1)
         self.log_softmax = nn.LogSoftmax(dim=1)
         self.relu = nn.ReLU()
@@ -30,9 +31,10 @@ class AudioNet(nn.Module):
         x = self.relu( self.fc3(x) )
         x = self.relu( self.fc4(x) )
         x = self.fc5(x)
-        if( self.training ):
+        if( self.training or self.only_logsoftmax ):
             return self.log_softmax(x)
         else:
+            print( "SOFTMAX!" )
             return self.softmax(x)
             
             
@@ -57,7 +59,7 @@ class AudioNetTrainer:
         x, y = dataset[0]
         self.dataset_size = len(dataset)
         self.dataset_labels = dataset.get_labels()
-        self.net = AudioNet(len(x), len(self.dataset_labels))
+        self.net = AudioNet(len(x), len(self.dataset_labels), True)
         self.optimizer = optim.SGD(self.net.parameters(), lr=0.003, momentum=0.9)
 
         # Split the dataset into validation and training data loaders
@@ -169,6 +171,11 @@ class AudioNetTrainer:
                     current_filename = filename + '-BEST'
                     
                 torch.save({'state_dict': self.net.state_dict(), 
+                    'labels': self.dataset_labels,
+                    'accuracy': accuracy,
+                    'last_row': csv_row,
+                    'loss': epoch_loss,
+                    'epoch': epoch
                     }, os.path.join(CLASSIFIER_FOLDER, current_filename) + '-weights.pth.tar')    
 
         
