@@ -34,9 +34,7 @@ class AudioNet(nn.Module):
         if( self.training or self.only_logsoftmax ):
             return self.log_softmax(x)
         else:
-            print( "SOFTMAX!" )
             return self.softmax(x)
-            
             
 class AudioNetTrainer:
 

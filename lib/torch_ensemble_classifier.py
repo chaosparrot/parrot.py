@@ -20,16 +20,16 @@ class TorchEnsembleClassifier:
     classes_ = []
         
     # Initialize the classifiers and their leaf classes
-    def __init__( self, classifier_map, labels ):
-        self.classes_ = labels
+    def __init__( self, classifier_map ):
         self.classifiers = {}
         device = torch.device('cpu')
         for index, key in enumerate(classifier_map):
             state_dict = torch.load(classifier_map[key], map_location=device)
-            model = AudioNet(28,len(labels))
-            model.load_state_dict(state_dict)
+            self.classes_ = state_dict['labels']            
+            model = AudioNet(28,len(state_dict['labels']))
+            model.load_state_dict(state_dict['state_dict'])
             model.eval()
-            self.classifiers[key] = model        
+            self.classifiers[key] = model
                                     
     # Predict the probabilities of the given data array
     def predict_proba( self, data ):
