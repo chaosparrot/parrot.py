@@ -44,7 +44,7 @@ def test_data( with_intro ):
         print(" - [M] for analyzing the accuracy of recordings on a specific model")        
         print(" - [X] for exiting analysis mode")
         
-    #learn_data = pd.read_csv( 'model_training.csv', skiprows=0, header=0)
+    #learn_data = pd.read_csv( 'model_training_bronze_league_1.pkl1578823389.csv', skiprows=0, header=0)
     #for index in range(0,199):
     #    plot_bars( learn_data, index )
     
@@ -57,7 +57,7 @@ def replay( available_replays ):
         print( "-------------------------" )    
         print( "Select a replay to analyze:" )
         print( "( empty continues the list of replays, [X] exit this mode )" )
-        for index, replay in enumerate( available_replays ):
+        for index, replay in enumerate( available_replays ): 
             filesize = os.path.getsize( REPLAYS_FOLDER + "/" + replay )
 
             print( "- [" + str( index + 1 ) + "] - " + replay + " (" + str( filesize / 1000 ) + "kb)" )

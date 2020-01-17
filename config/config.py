@@ -12,6 +12,7 @@ PREDICTION_LENGTH = 10
 SILENCE_INTENSITY_THRESHOLD = 400
 INPUT_DEVICE_INDEX = 1
 SLIDING_WINDOW_AMOUNT = 2
+INPUT_TESTING_MODE = True
 
 DATASET_FOLDER = "data/recordings/30ms"
 RECORDINGS_FOLDER = "data/recordings/30ms"
@@ -21,7 +22,7 @@ REPLAYS_FILE = REPLAYS_FOLDER + "/run.csv"
 CLASSIFIER_FOLDER = "data/models"
 OVERLAY_FOLDER = "data/overlays"
 OVERLAY_FILE = "config/current-overlay-image.txt"
-DEFAULT_CLF_FILE = "bronze_league"
+DEFAULT_CLF_FILE = "bronze_league_heroes"
 
 STARTING_MODE = "starcraft"
 
