@@ -156,7 +156,7 @@ def audio_analysis( available_models ):
         os.makedirs(REPLAYS_AUDIO_FOLDER)    
 
     wav_files = os.listdir(REPLAYS_AUDIO_FOLDER)
-
+    
     print( "Should we analyse the existing audio files or record a new set?" )
     print( " - [E] for using the existing files" )
     print( " - [N] for clearing the files and recording new ones" )

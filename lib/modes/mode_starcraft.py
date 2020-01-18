@@ -29,84 +29,84 @@ class StarcraftMode:
             'select': {
                 'strategy': 'continuous',
                 'sound': 'sibilant_s',
-                'percentage': 90,
+                'percentage': 95,
                 'intensity': 1400,
                 'lowest_percentage': 40,
-                'lowest_intensity': 800,
+                'lowest_intensity': 1000,
                 'throttle': 0.01
             },
             'rapidclick': {
-                'strategy': 'rapid',
+                'strategy': 'rapid_power',
                 'sound': 'thrill_thr',
                 'percentage': 80,
                 'power': 30000,
                 'throttle': 0.3
             },
             'click': {
-                'strategy': 'rapid',
+                'strategy': 'rapid_power',
                 'sound': 'click_alveolar',
                 'percentage': 90,
                 'power': 25000,
                 'throttle': 0.2
             },
             'toggle_speech': {
-                'strategy': 'rapid',
+                'strategy': 'rapid_power',
                 'sound': 'sound_finger_snap',
                 'percentage': 90,
                 'power': 100000,
                 'throttle': 0.3
             },            
             'movement': {
-                'strategy': 'rapid',
+                'strategy': 'rapid_power',
                 'sound': 'sound_whistle',
                 'percentage': 90,
                 'power': 70000,
                 'throttle': 0.3
             },
             'control': {
-                'strategy': 'rapid',
+                'strategy': 'rapid_power',
                 'sound': 'vowel_oh',
                 'percentage': 90,
                 'power': 20000,
                 'throttle': 0.2
             },
             'shift': {
-                'strategy': 'rapid',
+                'strategy': 'rapid_power',
                 'sound': 'sibilant_sh',
                 'percentage': 90,
                 'power': 20000,
                 'throttle': 0.4
             },
             'alt': {
-                'strategy': 'rapid',
+                'strategy': 'rapid_power',
                 'sound': 'sibilant_zh',
                 'percentage': 90,
                 'power': 20000,
                 'throttle': 0.4
             },
             'camera': {
-                'strategy': 'rapid',
+                'strategy': 'rapid_power',
                 'sound': 'vowel_y',
                 'percentage': 90,
                 'power': 25000,
                 'throttle': 0.4
             },
             'first_ability': {
-                'strategy': 'rapid',
+                'strategy': 'rapid_power',
                 'sound': 'vowel_ow',
                 'percentage': 70,
                 'intensity': 1000,
                 'throttle': 0.3
             },
             'second_ability': {
-                'strategy': 'rapid',
+                'strategy': 'rapid_power',
                 'sound': 'approximant_r',
                 'percentage': 90,
                 'power': 25000,
                 'throttle': 0.4
             },
             'r': {
-                'strategy': 'rapid',
+                'strategy': 'rapid_power',
                 'sound': 'fricative_f',
                 'percentage': 90,
                 'power': 20000,

@@ -9,6 +9,9 @@ import copy
 import torch
 from lib.audio_net import AudioNet
 
+torch.backends.cudnn.benchmark = True
+torch.backends.cudnn.enabled = True
+
 # NOTE - This classifier is only meant to be used when trained
 # There is no way to 'fit' this classifier - It needs fitted classifiers to generate the state changes
 class TorchEnsembleClassifier:
@@ -46,8 +49,8 @@ class TorchEnsembleClassifier:
         data_row = torch.tensor(data_row).float()
         totalProbabilities = []
         
-        with torch.no_grad():            
-            type = None
+        with torch.no_grad():
+            type = None            
             for index in self.classifiers.keys():
                 probabilities = self.classifiers[index](data_row)
                 

@@ -77,10 +77,13 @@ class PatternDetector:
                 ( 'power' not in config or self.above_power( lastDict, config['power'] ) ) and
                 self.rising_intensity( lastDict, self.predictionDicts[-2] ) )
                 
-        elif( strategy == 'rapid' ):
+        elif( strategy == 'rapid_intensity' ):
             detected = ( self.above_percentage( lastDict, label, config['percentage'] ) and
-                ( 'intensity' not in config or self.above_intensity( lastDict, config['intensity'] ) ) and 
-                ( 'power' not in config or self.above_power( lastDict, config['power'] ) ) )
+                self.above_intensity( lastDict, config['intensity'] ) )
+                
+        elif( strategy == 'rapid_power' ):
+            detected = ( self.above_percentage( lastDict, label, config['percentage'] ) and
+                self.above_power( lastDict, config['power'] ) )
                 
         elif( strategy == 'frequency_threshold' ):
             detected = ( self.above_percentage( lastDict, label, config['percentage'] ) and

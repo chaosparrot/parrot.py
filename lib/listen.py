@@ -51,6 +51,7 @@ def break_loop_controls(audioQueue=None):
     
 def classify_audioframes( audioQueue, audio_frames, classifier, high_speed ):
     if( not audioQueue.empty() ):    
+        print( audioQueue.qsize() )
         audio_frames.append( audioQueue.get() )
         
         if( len( audio_frames ) >= 2 ):
@@ -63,9 +64,8 @@ def classify_audioframes( audioQueue, audio_frames, classifier, high_speed ):
             if( high_speed == True and highestintensity < SILENCE_INTENSITY_THRESHOLD ):
                 probabilityDict, predicted, frequency = create_empty_probability_dict( classifier, {}, 0, highestintensity, 0 )
             else:
-                fftData = np.frombuffer( wavData, dtype=np.int16 )
-                power = get_recording_power( fftData, RECORD_SECONDS )            
-            
+                power = 0#fftData = np.frombuffer( wavData, dtype=np.int16 )
+                #power = get_recording_power( fftData, RECORD_SECONDS )            
                 probabilityDict, predicted, frequency = predict_raw_data( wavData, classifier, highestintensity, power )
             
             return probabilityDict, predicted, audio_frames, highestintensity, frequency, wavData
@@ -153,8 +153,7 @@ def classification_consumer( audio, stream, classifier, persist_files, high_spee
             winner = classifier.classes_[ predicted ]                
             prediction_time = time.time() - starttime - seconds_playing
             
-            long_comment = "Time: %0.2f - Prediction in: %0.2f - Winner: %s - Percentage: %0d - Frequency %0d                                        " % (seconds_playing, prediction_time, winner, probabilityDict[winner]['percent'], probabilityDict[winner]['frequency'])
-            short_comment = "T %0.2f( %0.2f ) - %0d%s %s %0d" % (seconds_playing, prediction_time, probabilityDict[winner]['percent'], '%', winner, frequency)
+            #long_comment = "Time: %0.2f - Prediction in: %0.2f - Winner: %s - Percentage: %0d - Frequency %0d                                        " % (seconds_playing, prediction_time, winner, probabilityDict[winner]['percent'], probabilityDict[winner]['frequency'])
             short_comment = "T %0.2f - %0d%s %s F:%0d I:%0d P:%0d" % (seconds_playing, probabilityDict[winner]['percent'], '%', winner, frequency, probabilityDict[winner]['intensity'], probabilityDict[winner]['power'])            
             if( winner != "silence" ):
                 print( short_comment )
@@ -411,7 +410,6 @@ def predict_wav_file( wav_file, classifier, intensity ):
     data_row, frequency = feature_engineering( wav_file )
     data = [ data_row ]
     
-    
     if( intensity < SILENCE_INTENSITY_THRESHOLD ):
         return create_empty_probability_dict( classifier, data, frequency, intensity, 0 )
     else:
@@ -437,8 +435,10 @@ def create_empty_probability_dict( classifier, data, frequency, intensity, power
     
 def create_probability_dict( classifier, data, frequency, intensity, power ):
     # Predict the outcome of the audio file    
+    print( str(time.time()) + " start" )
     probabilities = classifier.predict_proba( data ) * 100
     probabilities = probabilities.astype(int)
+    print( str(time.time()) + " end" )
 
     # Get the predicted winner        
     predicted = np.argmax( probabilities[0] )
