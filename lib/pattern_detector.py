@@ -110,6 +110,14 @@ class PatternDetector:
             detected = ( self.above_intensity( lastDict, config['intensity'] ) and
                 self.combined_above_percentage( lastDict, label, secondary_label, config['percentage'] ) and
                 self.above_ratio( lastDict, label, secondary_label, config['ratio'] ) )
+        
+        elif( strategy == 'combined_power' ):
+            secondary_label = config['secondary_sound']
+        
+            detected = ( self.above_power( lastDict, config['power'] ) and
+                self.combined_above_percentage( lastDict, label, secondary_label, config['percentage'] ) and
+                self.above_ratio( lastDict, label, secondary_label, config['ratio'] ) )
+                
         elif( strategy == 'combined_frequency' ):
             secondary_label = config['secondary_sound']
         

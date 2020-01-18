@@ -7,7 +7,7 @@ import joblib
 import numpy as np
 import copy
 import torch
-from lib.audio_net import AudioNet
+from lib.audio_net import TinyAudioNet
 
 torch.backends.cudnn.benchmark = True
 torch.backends.cudnn.enabled = True
@@ -29,7 +29,7 @@ class TorchEnsembleClassifier:
         for index, key in enumerate(classifier_map):
             state_dict = torch.load(classifier_map[key], map_location=device)
             self.classes_ = state_dict['labels']            
-            model = AudioNet(28,len(state_dict['labels']))
+            model = TinyAudioNet(28,len(state_dict['labels']))
             model.load_state_dict(state_dict['state_dict'])
             model.eval()
             self.classifiers[key] = model
@@ -46,7 +46,7 @@ class TorchEnsembleClassifier:
     # This will ask all the classifiers for a prediction
     # The one with the highest prediction wins
     def predict_single_proba( self, data_row ):
-        data_row = torch.tensor(data_row).float()
+        data_row = torch.from_numpy(np.asarray(data_row, dtype=np.float32))
         totalProbabilities = []
         
         with torch.no_grad():

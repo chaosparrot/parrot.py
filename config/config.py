@@ -22,7 +22,7 @@ REPLAYS_FILE = REPLAYS_FOLDER + "/run.csv"
 CLASSIFIER_FOLDER = "data/models"
 OVERLAY_FOLDER = "data/overlays"
 OVERLAY_FILE = "config/current-overlay-image.txt"
-DEFAULT_CLF_FILE = "bronze_league_heroes"
+DEFAULT_CLF_FILE = "tiny_bronze_league_trio"
 
 STARTING_MODE = "starcraft"
 

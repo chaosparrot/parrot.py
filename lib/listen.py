@@ -50,9 +50,14 @@ def break_loop_controls(audioQueue=None):
     return True    
     
 def classify_audioframes( audioQueue, audio_frames, classifier, high_speed ):
-    if( not audioQueue.empty() ):    
-        print( audioQueue.qsize() )
+    if( not audioQueue.empty() ):
         audio_frames.append( audioQueue.get() )
+
+        # In case we are dealing with frames not being met and a buffer being built up,
+        # Start skipping every other audio frame to maintain being up to date,
+        # Trading being up to date over being 100% correct in sequence
+        if( audioQueue.qsize() > 1 ):
+            audioQueue.get()        
         
         if( len( audio_frames ) >= 2 ):
             audio_frames = audio_frames[-2:]
@@ -64,8 +69,8 @@ def classify_audioframes( audioQueue, audio_frames, classifier, high_speed ):
             if( high_speed == True and highestintensity < SILENCE_INTENSITY_THRESHOLD ):
                 probabilityDict, predicted, frequency = create_empty_probability_dict( classifier, {}, 0, highestintensity, 0 )
             else:
-                power = 0#fftData = np.frombuffer( wavData, dtype=np.int16 )
-                #power = get_recording_power( fftData, RECORD_SECONDS )            
+                power = fftData = np.frombuffer( wavData, dtype=np.int16 )
+                power = get_recording_power( fftData, RECORD_SECONDS )            
                 probabilityDict, predicted, frequency = predict_raw_data( wavData, classifier, highestintensity, power )
             
             return probabilityDict, predicted, audio_frames, highestintensity, frequency, wavData
@@ -435,10 +440,8 @@ def create_empty_probability_dict( classifier, data, frequency, intensity, power
     
 def create_probability_dict( classifier, data, frequency, intensity, power ):
     # Predict the outcome of the audio file    
-    print( str(time.time()) + " start" )
     probabilities = classifier.predict_proba( data ) * 100
     probabilities = probabilities.astype(int)
-    print( str(time.time()) + " end" )
 
     # Get the predicted winner        
     predicted = np.argmax( probabilities[0] )

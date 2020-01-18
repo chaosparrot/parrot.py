@@ -39,8 +39,8 @@ class StarcraftMode:
                 'strategy': 'rapid_power',
                 'sound': 'thrill_thr',
                 'percentage': 80,
-                'power': 30000,
-                'throttle': 0.3
+                'power': 22000,
+                'throttle': 0.05
             },
             'click': {
                 'strategy': 'rapid_power',
@@ -60,13 +60,15 @@ class StarcraftMode:
                 'strategy': 'rapid_power',
                 'sound': 'sound_whistle',
                 'percentage': 90,
-                'power': 70000,
+                'power': 40000,
                 'throttle': 0.3
             },
             'control': {
-                'strategy': 'rapid_power',
-                'sound': 'vowel_oh',
+                'strategy': 'combined_power',
+                'sound': 'vowel_ah',
+                'secondary_sound': 'vowel_oh',                
                 'percentage': 90,
+                'ratio': 0.01,
                 'power': 20000,
                 'throttle': 0.2
             },
@@ -79,8 +81,8 @@ class StarcraftMode:
             },
             'alt': {
                 'strategy': 'rapid_power',
-                'sound': 'sibilant_zh',
-                'percentage': 90,
+                'sound': 'fricative_v',
+                'percentage': 95,
                 'power': 20000,
                 'throttle': 0.4
             },
@@ -92,16 +94,16 @@ class StarcraftMode:
                 'throttle': 0.4
             },
             'first_ability': {
-                'strategy': 'rapid_power',
+                'strategy': 'rapid_intensity',
                 'sound': 'vowel_ow',
-                'percentage': 70,
+                'percentage': 90,
                 'intensity': 1000,
                 'throttle': 0.3
             },
             'second_ability': {
                 'strategy': 'rapid_power',
-                'sound': 'approximant_r',
-                'percentage': 90,
+                'sound': 'vowel_ae',
+                'percentage': 98,
                 'power': 25000,
                 'throttle': 0.4
             },
@@ -121,14 +123,20 @@ class StarcraftMode:
                 'lowest_intensity': 500
             },
             'numbers': {
-                'strategy': 'combined',
+                'strategy': 'rapid_power',
                 'sound': 'vowel_iy',
-                'secondary_sound': 'vowel_eu',    
                 'percentage': 90,
-                'intensity': 2500,
-                'ratio': 0.5,
+                'power': 30000,
                 'throttle': 0.18
             },
+            'numbers_secondary': {
+                'strategy': 'rapid_power',
+                'sound': 'vowel_eu',
+                'percentage': 40,
+                'ratio': 0.01,
+                'power': 20000,
+                'throttle': 0.18
+            },            
             'menu': {
                 'strategy': 'rapid',
                 'sound': 'sound_call_bell',
@@ -145,6 +153,7 @@ class StarcraftMode:
         self.should_drag = False
         self.last_control_group = -1
         self.ability_selected = False
+        self.last_ability_selected = None        
         self.ctrlKey = False
         self.shiftKey = False
         self.altKey = False
@@ -215,7 +224,7 @@ class StarcraftMode:
                 self.update_overlay()
         
     def release_hold_keys( self ):
-        self.ability_selected = False 
+        self.ability_selected = False
         self.hold_control( False )
         self.hold_shift( False )
         self.hold_alt( False )
@@ -250,7 +259,8 @@ class StarcraftMode:
             return
             
         # Selecting units
-        selecting = not self.detector.is_throttled('rapidclick') and self.detector.detect( "select" )
+        rapidclick = self.detector.detect("rapidclick")
+        selecting = self.detector.detect( "select" )
         if( self.ability_selected and selecting ):
             self.inputManager.click(button='left')
             print( "LMB" )
@@ -260,8 +270,18 @@ class StarcraftMode:
             self.detector.clear_throttle('camera')
             self.detector.clear_throttle('first_ability')
             self.detector.clear_throttle('second_ability')
+        elif( self.ability_selected and rapidclick ):
+            if( self.last_ability_selected == 'first' ):
+                self.inputManager.press('z')
+            elif( self.last_ability_selected == 'second' ):
+                self.inputManager.press('x')
+            elif( self.last_ability_selected == 'third' ):
+                self.inputManager.press('c')
             
-            self.detector.throttle('rapidclick')
+            # Prevent some misclassifying errors when using the thr sound
+            self.detector.set_throttle( 'control', 0.3 )
+            self.detector.set_throttle( 'grid_ability', 0.3 )
+
         else:
             self.drag_mouse( selecting )
         
@@ -334,36 +354,23 @@ class StarcraftMode:
         elif( self.detector.detect( "first_ability" ) ):
             self.ability_selected = True
             self.detector.clear_throttle('rapidclick')
+            self.last_ability_selected = 'first'
             
-            if( self.altKey ):
-                print( "pressing Z" )
-                self.inputManager.press( 'z' )
-                
-            else:
-                print( "pressing Q" )
-                self.inputManager.press( 'q' )
+            self.inputManager.press( 'q' )
             
         ## Press W
         elif( self.detector.detect( "second_ability") ):
             self.ability_selected = True
             self.detector.clear_throttle('rapidclick')
+            self.last_ability_selected = 'second'
         
-            if( self.altKey ):
-                print( "pressing X" )
-                self.inputManager.press( 'x' )
-            else:
-                print( "pressing W" )
-                self.inputManager.press( 'w' )
+            self.inputManager.press( 'w' )
                 
         ## Press R ( Burrow )
         elif( self.detector.detect( "r") ):
+            self.last_ability_selected = 'third'
         
-            if( self.altKey ):
-                print( "pressing C" )
-                self.inputManager.press( 'c' )
-            else:
-                print( "pressing R" )
-                self.inputManager.press( 'r' )
+            self.inputManager.press( 'r' )
         
         elif( self.detector.detect( "menu" ) ):
             self.release_hold_keys()
@@ -382,7 +389,7 @@ class StarcraftMode:
             self.hold_alt( False )
                         
         ## Press control group ( only allow CTRL and SHIFT )
-        elif( self.detector.detect( "numbers" ) ):        
+        elif( self.detector.detect( "numbers" ) or ( ( self.ctrlKey == True or self.shiftKey == True ) and self.detector.detect("numbers_secondary") ) ):        
             quadrant3x3 = self.detector.detect_mouse_quadrant( 3, 3 )
             self.use_control_group( quadrant3x3 )
                             

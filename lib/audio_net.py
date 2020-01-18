@@ -35,6 +35,33 @@ class AudioNet(nn.Module):
             return self.log_softmax(x)
         else:
             return self.softmax(x)
+
+class TinyAudioNet(nn.Module):
+
+    def __init__(self, inputsize, outputsize, only_logsoftmax=False):
+        super(TinyAudioNet, self).__init__()
+        self.only_logsoftmax = only_logsoftmax
+        self.softmax = nn.Softmax(dim=-1)
+        self.log_softmax = nn.LogSoftmax(dim=1)
+        self.relu = nn.ReLU()
+        
+        self.fc1 = nn.Linear(inputsize, 512)
+        self.fc2 = nn.Linear(512, 512)
+        self.fc3 = nn.Linear(512, 512)
+        self.fc4 = nn.Linear(512, 256)
+        self.fc5 = nn.Linear(256, outputsize)
+		
+    def forward(self, x):
+        x = self.relu( self.fc1(x) )
+        x = self.relu( self.fc2(x) )
+        x = self.relu( self.fc3(x) )
+        x = self.relu( self.fc4(x) )
+        x = self.fc5(x)
+        if( self.training or self.only_logsoftmax ):
+            return self.log_softmax(x)
+        else:
+            return self.softmax(x)
+            
             
 class AudioNetTrainer:
 
@@ -57,9 +84,9 @@ class AudioNetTrainer:
         x, y = dataset[0]
         self.dataset_size = len(dataset)
         self.dataset_labels = dataset.get_labels()
-        self.net = AudioNet(len(x), len(self.dataset_labels), True)
+        self.net = TinyAudioNet(len(x), len(self.dataset_labels), True)
         self.optimizer = optim.SGD(self.net.parameters(), lr=0.003, momentum=0.9)
-
+ 
         # Split the dataset into validation and training data loaders
         indices = list(range(self.dataset_size))
         split = int(np.floor(self.validation_split * self.dataset_size))
