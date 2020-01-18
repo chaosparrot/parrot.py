@@ -11,7 +11,7 @@ class ModeSwitcher(object):
 	__currentMode = None	
 	__modes = {}
 	
-	def __new__(cls):
+	def __new__(cls, is_testing=False):
 		if ModeSwitcher.__instance is None:
 			ModeSwitcher.__instance = object.__new__(cls)
 			
@@ -21,7 +21,7 @@ class ModeSwitcher(object):
 				'twitch': TwitchMode(ModeSwitcher.__instance),
 				'switch': SwitchMode(ModeSwitcher.__instance),
 				'heroes': HeroesMode(ModeSwitcher.__instance),
-				'starcraft': StarcraftMode(ModeSwitcher.__instance),
+				'starcraft': StarcraftMode(ModeSwitcher.__instance, is_testing),
 				'phonemes': PhonemesMode(ModeSwitcher.__instance),				
 				'testing': TestMode(ModeSwitcher.__instance),
 				'worklog': ExcelMode(ModeSwitcher.__instance, ''),

@@ -15,8 +15,8 @@ from lib.grammar.chat_grammar import *
 
 class StarcraftMode:
             
-    def __init__(self, modeSwitcher):
-        self.inputManager = InputManager(is_testing=INPUT_TESTING_MODE)
+    def __init__(self, modeSwitcher, is_testing=False):
+        self.inputManager = InputManager(is_testing=is_testing)
         if( SPEECHREC_ENABLED == True ):
             self.grammar = Grammar("Starcraft")
             self.chatCommandRule = ChatCommandRule()
@@ -29,8 +29,8 @@ class StarcraftMode:
             'select': {
                 'strategy': 'continuous',
                 'sound': 'sibilant_s',
-                'percentage': 60,
-                'intensity': 800,
+                'percentage': 90,
+                'intensity': 1400,
                 'lowest_percentage': 40,
                 'lowest_intensity': 800,
                 'throttle': 0.01
@@ -38,84 +38,79 @@ class StarcraftMode:
             'rapidclick': {
                 'strategy': 'rapid',
                 'sound': 'thrill_thr',
-                'percentage': 70,
-                'ratio': 0,    
-                'intensity': 1000,
+                'percentage': 80,
+                'power': 30000,
                 'throttle': 0.3
             },
             'click': {
                 'strategy': 'rapid',
                 'sound': 'click_alveolar',
                 'percentage': 90,
-                'intensity': 1650,
-                'throttle': 0.15
+                'power': 25000,
+                'throttle': 0.2
             },
             'toggle_speech': {
                 'strategy': 'rapid',
                 'sound': 'sound_finger_snap',
                 'percentage': 90,
-                'intensity': 25000,
-                'throttle': 0.2
+                'power': 100000,
+                'throttle': 0.3
             },            
             'movement': {
                 'strategy': 'rapid',
                 'sound': 'sound_whistle',
                 'percentage': 90,
-                'intensity': 1000,
-                'throttle': 0.2
+                'power': 70000,
+                'throttle': 0.3
             },
             'control': {
                 'strategy': 'rapid',
                 'sound': 'vowel_oh',
                 'percentage': 90,
-                'intensity': 1000,
+                'power': 20000,
                 'throttle': 0.2
             },
             'shift': {
                 'strategy': 'rapid',
                 'sound': 'sibilant_sh',
                 'percentage': 90,
-                'intensity': 1600,
-                'ratio': 0,
+                'power': 20000,
                 'throttle': 0.4
             },
             'alt': {
-                'strategy': 'frequency_threshold',
-                'sound': 'sound_whistle',
-                'percentage': 70,
-                'intensity': 1000,
-                'above_frequency': 50,
-                'throttle': 0.3
+                'strategy': 'rapid',
+                'sound': 'sibilant_zh',
+                'percentage': 90,
+                'power': 20000,
+                'throttle': 0.4
             },
             'camera': {
                 'strategy': 'rapid',
                 'sound': 'vowel_y',
                 'percentage': 90,
-                'ratio': 1.8,
-                'intensity': 5000,
-                'throttle': 0.2
+                'power': 25000,
+                'throttle': 0.4
             },
             'first_ability': {
                 'strategy': 'rapid',
                 'sound': 'vowel_ow',
                 'percentage': 70,
                 'intensity': 1000,
-                'ratio': 0.3,
                 'throttle': 0.3
             },
             'second_ability': {
                 'strategy': 'rapid',
-                'sound': 'vowel_ae',
+                'sound': 'approximant_r',
                 'percentage': 90,
-                'intensity': 5000,
-                'throttle': 0.15
+                'power': 25000,
+                'throttle': 0.4
             },
             'r': {
                 'strategy': 'rapid',
                 'sound': 'fricative_f',
                 'percentage': 90,
-                'intensity': 6000,
-                'throttle': 0.2
+                'power': 20000,
+                'throttle': 0.4
             },
             'grid_ability': {
                 'strategy': 'continuous',
@@ -137,9 +132,9 @@ class StarcraftMode:
             'menu': {
                 'strategy': 'rapid',
                 'sound': 'sound_call_bell',
-                'percentage': 90,
-                'intensity': 5000,
-                'throttle': 0.3
+                'percentage': 80,
+                'power': 150000,
+                'throttle': 0.5
             }
         })
 
@@ -231,11 +226,8 @@ class StarcraftMode:
         
         # Always allow switching between speech and regular mode
         if( self.detector.detect("toggle_speech" ) ):
-            quadrant3x3 = self.detector.detect_mouse_quadrant( 3, 3 )
-            
-            if( quadrant3x3 < 6 ):
-                self.release_hold_keys()
-                self.toggle_speech()
+            self.release_hold_keys()
+            self.toggle_speech()
                 
             return self.detector.tickActions            
         # Recognize speech commands in speech mode
@@ -383,23 +375,17 @@ class StarcraftMode:
                 self.press_ability( 'esc' )
             
         ## Move the camera
-        elif( not self.detector.is_throttled('second_ability') and self.detector.detect( "camera" ) ):
+        elif( self.detector.detect( "camera" ) ):
             quadrant3x3 = self.detector.detect_mouse_quadrant( 3, 3 )
             self.camera_movement( quadrant3x3 )
             self.hold_shift( False )
             self.hold_alt( False )
                         
         ## Press control group ( only allow CTRL and SHIFT )
-        elif( self.detector.detect( "numbers" ) ):
-            if( self.altKey ):
-                self.inputManager.keyDown('alt')
-        
+        elif( self.detector.detect( "numbers" ) ):        
             quadrant3x3 = self.detector.detect_mouse_quadrant( 3, 3 )
             self.use_control_group( quadrant3x3 )
-            
-            if( self.altKey ):
-                self.inputManager.keyUp('alt')
-                
+                            
             self.hold_alt( False )                
             self.hold_control( False )
             self.hold_shift( False )
