@@ -163,6 +163,7 @@ class StarcraftMode:
         self.shiftKey = False
         self.altKey = False
         self.hold_down_start_timer = 0
+        self.hold_down_key_timer = 0
         self.last_key_timestamp = 0        
         
         self.hold_key = ""
@@ -376,11 +377,11 @@ class StarcraftMode:
             self.detector.clear_throttle('rapidclick')
             self.last_ability_selected = 'second'
             
-            if( time.time() - self.hold_down_start_timer > self.KEY_DELAY_THROTTLE ):
+            if( time.time() - self.hold_down_key_timer > self.KEY_DELAY_THROTTLE ):
                 self.press_ability_throttled( 'w', 0.1 )
             
-            if( self.hold_down_start_timer == 0 ):
-                self.hold_down_start_timer = time.time()            
+            if( self.hold_down_key_timer == 0 ):
+                self.hold_down_key_timer = time.time()            
                 
         ## Press R ( Burrow )
         elif( self.detector.detect( "r") ):
@@ -412,7 +413,9 @@ class StarcraftMode:
             self.hold_alt( False )                
             self.hold_control( False )
             self.hold_shift( False )
-
+        else:
+            self.hold_down_key_timer = 0
+            
         return        
     
     def use_control_group( self, quadrant ):
