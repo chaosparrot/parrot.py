@@ -60,8 +60,14 @@ class PatternDetector:
         self.timestamps[action] = 0
         
     def set_throttle( self, action, throttle ):
-        self.config[action]['throttle'] = throttle    
+        self.config[action]['throttle'] = throttle
         
+    def deactivate_for( self, action, delay ):
+        throttle = 0
+        if( 'throttle' in self.config[action] ):
+            throttle = self.config[action]['throttle']
+        self.timestamps[action] = self.currentTime + delay - throttle
+
     def detect_strategy( self, action, config ):
         if( 'throttle' in config and self.throttle_detection( action, config['throttle'] ) ):
             return False

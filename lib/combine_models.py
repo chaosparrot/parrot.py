@@ -129,8 +129,6 @@ def determine_default_model_name( model_type ):
     default_clf_filename = DEFAULT_CLF_FILE + "_combined"
     if( model_type == "markov_chain" ):
         default_clf_filename = DEFAULT_CLF_FILE + "_markov"
-    elif( model_type == "expert" ):
-        default_clf_filename = DEFAULT_CLF_FILE + "_expert"
     elif( model_type == "change_resistant" ):
         default_clf_filename = DEFAULT_CLF_FILE
     

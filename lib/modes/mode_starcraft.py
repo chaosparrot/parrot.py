@@ -33,20 +33,20 @@ class StarcraftMode:
                 'intensity': 1400,
                 'lowest_percentage': 50,
                 'lowest_intensity': 1000,
-                'throttle': 0.01
+                'throttle': 0.001
             },
             'rapidclick': {
                 'strategy': 'rapid_power',
                 'sound': 'thrill_thr',
                 'percentage': 80,
-                'power': 22000,
-                'throttle': 0.01
+                'power': 20000,
+                'throttle': 0.05
             },
             'click': {
-                'strategy': 'rapid',
+                'strategy': 'rapid_power',
                 'sound': 'click_alveolar',
                 'percentage': 90,
-                'intensity': 1300,
+                'power': 20000,
                 'throttle': 0.2
             },
             'toggle_speech': {
@@ -59,7 +59,7 @@ class StarcraftMode:
             'movement': {
                 'strategy': 'rapid_power',
                 'sound': 'sound_whistle',
-                'percentage': 90,
+                'percentage': 80,
                 'power': 30000,
                 'throttle': 0.3
             },
@@ -86,15 +86,17 @@ class StarcraftMode:
                 'throttle': 0.4
             },
             'camera': {
-                'strategy': 'rapid',
+                'strategy': 'rapid_power',
                 'sound': 'vowel_y',
                 'percentage': 90,
-                'intensity': 1400,
+                'power': 15000,
                 'throttle': 0.25
             },
             'first_ability': {
-                'strategy': 'rapid_intensity',
+                'strategy': 'combined',
                 'sound': 'vowel_ow',
+                'secondary_sound': 'vowel_u',
+                'ratio': 0.3,
                 'percentage': 90,
                 'intensity': 1000,
                 'throttle': 0.3
@@ -115,17 +117,20 @@ class StarcraftMode:
             },
             'grid_ability': {
                 'strategy': 'combined_continuous',
-                'sound': 'vowel_aa',
-                'secondary_sound': 'vowel_ah',
+                'sound': 'vowel_ah',
+                'secondary_sound': 'vowel_aa',
                 'ratio': 0,
-                'percentage': 80,
-                'intensity': 1000,
+                'percentage': 90,
+                'intensity': 1500,
                 'lowest_percentage': 12,
-                'lowest_intensity': 500
+                'lowest_intensity': 1000,
+                'throttle': 0.03
             },
             'numbers': {
-                'strategy': 'rapid_power',
+                'strategy': 'combined_power',
                 'sound': 'vowel_iy',
+                'secondary_sound': 'vowel_ih',
+                'ratio': 4,
                 'percentage': 80,
                 'power': 25000,
                 'throttle': 0.18
@@ -137,7 +142,7 @@ class StarcraftMode:
                 'ratio': 0.01,
                 'power': 20000,
                 'throttle': 0.18
-            },            
+            },
             'menu': {
                 'strategy': 'rapid_power',
                 'sound': 'sound_call_bell',
@@ -202,14 +207,14 @@ class StarcraftMode:
                 self.altKey = alt            
                 print( 'Enabling ALT' )
                 self.update_overlay()
-                self.detector.set_throttle( 'first_ability', 0.1 )
-                self.detector.set_throttle( 'second_ability', 0.1 )
+                self.detector.deactivate_for( 'first_ability', 0.1 )
+                self.detector.deactivate_for( 'second_ability', 0.1 )
             else:
                 self.altKey = alt
                 print( 'Disabling ALT' )
                 self.update_overlay()
-                self.detector.set_throttle( 'first_ability', 0.3 )
-                self.detector.set_throttle( 'second_ability', 0.15 )
+                self.detector.deactivate_for( 'first_ability', 0.3 )
+                self.detector.deactivate_for( 'second_ability', 0.15 )
     
     def hold_control( self, ctrlKey ):
         if( self.ctrlKey != ctrlKey ):
@@ -271,7 +276,7 @@ class StarcraftMode:
             self.detector.clear_throttle('camera')
             self.detector.clear_throttle('first_ability')
             self.detector.clear_throttle('second_ability')
-            #self.detector.set_throttle('select', 0.4)
+            self.detector.deactivate_for('select', 0.3)
         elif( self.ability_selected and rapidclick ):
             if( self.last_ability_selected == 'first' ):
                 self.inputManager.press('z')
@@ -281,8 +286,9 @@ class StarcraftMode:
                 self.inputManager.press('c')
             
             # Prevent some misclassifying errors when using the thr sound
-            self.detector.set_throttle( 'control', 0.3 )
-            self.detector.set_throttle( 'grid_ability', 0.3 )
+            self.detector.deactivate_for( 'control', 0.3 )
+            self.detector.deactivate_for( 'click', 0.1 )
+            self.detector.deactivate_for( 'grid_ability', 0.3 )
 
         else:
             self.drag_mouse( selecting )
@@ -298,7 +304,7 @@ class StarcraftMode:
             if( self.hold_down_start_timer == 0 ):
                 self.hold_down_start_timer = time.time()
                 
-            self.detector.set_throttle( 'control', 0.15 )                
+            self.detector.deactivate_for( 'control', 0.15 )                
         else:
             self.hold_down_start_timer = 0
         
@@ -315,6 +321,8 @@ class StarcraftMode:
             else:
                 self.inputManager.click(button='right')
                 print( "RMB" )
+
+            self.detector.deactivate_for( 'grid_ability', 0.2 )
                 
             # Release the held keys - except when shift clicking units in the selection tray ( for easy removing from the unit group )
             if( not( self.shiftKey and self.detect_selection_tray() ) ):

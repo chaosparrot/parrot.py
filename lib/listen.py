@@ -86,7 +86,7 @@ def action_consumer( stream, classifier, dataDicts, persist_replay, replay_file,
     try:
         if( persist_replay ):
             with open(replay_file, 'a', newline='') as csvfile:    
-                headers = ['time', 'winner', 'intensity', 'frequency', 'actions', 'buffer']
+                headers = ['time', 'winner', 'intensity', 'frequency', 'power', 'actions', 'buffer']
                 headers.extend( classifier.classes_ )
                 writer = csv.DictWriter(csvfile, fieldnames=headers, delimiter=',')
                 writer.writeheader()
@@ -106,12 +106,13 @@ def action_consumer( stream, classifier, dataDicts, persist_replay, replay_file,
                             if( isinstance( actions, list ) == False ):
                                 actions = []
                             
-                        replay_row = { 'time': int(seconds_playing * 1000) / 1000, 'actions': ':'.join(actions), 'buffer': classifierQueue.qsize() }
+                        replay_row = { 'time': int(seconds_playing * 1000) / 1000, 'actions': ':'.join(actions), 'buffer': classifierQueue.qsize()}
                         for label, labelDict in probabilityDict.items():
                             replay_row[ label ] = labelDict['percent']
                             if( labelDict['winner'] ):
                                 replay_row['winner'] = label
                             replay_row['intensity'] = int(labelDict['intensity'])
+                            replay_row['power'] = int(labelDict['power'])                            
                             replay_row['frequency'] = labelDict['frequency']                
                         writer.writerow( replay_row )
                         csvfile.flush()                            
