@@ -57,7 +57,8 @@ def classify_audioframes( audioQueue, audio_frames, classifier, high_speed ):
         # Start skipping every other audio frame to maintain being up to date,
         # Trading being up to date over being 100% correct in sequence
         if( audioQueue.qsize() > 1 ):
-            audioQueue.get()        
+            print( "SKIP FRAME", audioQueue.qsize() )
+            audioQueue.get()
         
         if( len( audio_frames ) >= 2 ):
             audio_frames = audio_frames[-2:]

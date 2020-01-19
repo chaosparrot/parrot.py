@@ -103,6 +103,18 @@ class PatternDetector:
                     self.above_intensity( lastDict, config['intensity'] ) )
                 if( detected == True ):
                     self.timestamps[ action + "_start" ] = self.currentTime
+
+        elif( strategy == 'combined_continuous' ):
+            secondary_label = config['secondary_sound']        
+            if( self.throttle_detection( action, RECORD_SECONDS * 4 ) == True ):
+                detected = ( self.combined_above_percentage( lastDict, label, secondary_label, config['lowest_percentage'] ) and
+                    self.above_intensity( lastDict, config['lowest_intensity'] ) )
+            else:
+                detected = ( self.combined_above_percentage( lastDict, label, secondary_label, config['percentage'] ) and
+                    self.above_intensity( lastDict, config['intensity'] ) )
+                if( detected == True ):
+                    self.timestamps[ action + "_start" ] = self.currentTime
+
                     
         elif( strategy == 'combined' ):
             secondary_label = config['secondary_sound']

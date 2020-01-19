@@ -64,10 +64,9 @@ class StarcraftMode:
                 'throttle': 0.3
             },
             'control': {
-                'strategy': 'combined_power',
-                'sound': 'vowel_ah',
-                'secondary_sound': 'vowel_oh',                
-                'percentage': 90,
+                'strategy': 'rapid_power',
+                'sound': 'vowel_oh',                
+                'percentage': 85,
                 'ratio': 0.01,
                 'power': 20000,
                 'throttle': 0.2
@@ -90,7 +89,7 @@ class StarcraftMode:
                 'strategy': 'rapid_power',
                 'sound': 'vowel_y',
                 'percentage': 90,
-                'power': 25000,
+                'power': 23000,
                 'throttle': 0.4
             },
             'first_ability': {
@@ -103,7 +102,7 @@ class StarcraftMode:
             'second_ability': {
                 'strategy': 'rapid_power',
                 'sound': 'vowel_ae',
-                'percentage': 98,
+                'percentage': 90,
                 'power': 25000,
                 'throttle': 0.4
             },
@@ -115,9 +114,11 @@ class StarcraftMode:
                 'throttle': 0.4
             },
             'grid_ability': {
-                'strategy': 'continuous',
+                'strategy': 'combined_continuous',
                 'sound': 'vowel_aa',
-                'percentage': 90,
+                'secondary_sound': 'vowel_ah',
+                'ratio': 0,
+                'percentage': 80,
                 'intensity': 1000,
                 'lowest_percentage': 12,
                 'lowest_intensity': 500
@@ -125,7 +126,7 @@ class StarcraftMode:
             'numbers': {
                 'strategy': 'rapid_power',
                 'sound': 'vowel_iy',
-                'percentage': 90,
+                'percentage': 80,
                 'power': 30000,
                 'throttle': 0.18
             },
@@ -138,10 +139,10 @@ class StarcraftMode:
                 'throttle': 0.18
             },            
             'menu': {
-                'strategy': 'rapid',
+                'strategy': 'rapid_power',
                 'sound': 'sound_call_bell',
                 'percentage': 80,
-                'power': 150000,
+                'power': 100000,
                 'throttle': 0.5
             }
         })
@@ -270,6 +271,7 @@ class StarcraftMode:
             self.detector.clear_throttle('camera')
             self.detector.clear_throttle('first_ability')
             self.detector.clear_throttle('second_ability')
+            #self.detector.set_throttle('select', 0.4)
         elif( self.ability_selected and rapidclick ):
             if( self.last_ability_selected == 'first' ):
                 self.inputManager.press('z')

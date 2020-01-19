@@ -25,12 +25,13 @@ class TorchEnsembleClassifier:
     # Initialize the classifiers and their leaf classes
     def __init__( self, classifier_map ):
         self.classifiers = {}
-        device = torch.device('cpu')
+        self.device = torch.device('cuda')
         for index, key in enumerate(classifier_map):
-            state_dict = torch.load(classifier_map[key], map_location=device)
+            state_dict = torch.load(classifier_map[key], map_location=self.device)
             self.classes_ = state_dict['labels']            
             model = TinyAudioNet(28,len(state_dict['labels']))
             model.load_state_dict(state_dict['state_dict'])
+            model.to( self.device )
             model.eval()
             self.classifiers[key] = model
                                     
@@ -46,13 +47,13 @@ class TorchEnsembleClassifier:
     # This will ask all the classifiers for a prediction
     # The one with the highest prediction wins
     def predict_single_proba( self, data_row ):
-        data_row = torch.from_numpy(np.asarray(data_row, dtype=np.float32))
+        data_row = torch.from_numpy(np.asarray(data_row, dtype=np.float32)).to( self.device )
         totalProbabilities = []
         
         with torch.no_grad():
             type = None            
             for index in self.classifiers.keys():
-                probabilities = self.classifiers[index](data_row)
+                probabilities = self.classifiers[index](data_row).cpu()
                 
                 if( len( totalProbabilities ) == 0 ):
                     totalProbabilities = probabilities
