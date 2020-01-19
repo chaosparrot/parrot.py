@@ -106,7 +106,7 @@ class StarcraftMode:
                 'sound': 'vowel_ae',
                 'percentage': 90,
                 'power': 25000,
-                'throttle': 0.4
+                'throttle': 0
             },
             'r': {
                 'strategy': 'rapid_power',
@@ -123,8 +123,7 @@ class StarcraftMode:
                 'percentage': 90,
                 'intensity': 1500,
                 'lowest_percentage': 12,
-                'lowest_intensity': 1000,
-                'throttle': 0.03
+                'lowest_intensity': 1000
             },
             'numbers': {
                 'strategy': 'combined_power',
@@ -159,11 +158,12 @@ class StarcraftMode:
         self.should_drag = False
         self.last_control_group = -1
         self.ability_selected = False
-        self.last_ability_selected = None        
+        self.last_ability_selected = None
         self.ctrlKey = False
         self.shiftKey = False
         self.altKey = False
         self.hold_down_start_timer = 0
+        self.last_key_timestamp = 0        
         
         self.hold_key = ""
 
@@ -297,14 +297,14 @@ class StarcraftMode:
         if( self.detector.detect("grid_ability") ):
             quadrant4x3 = self.detector.detect_mouse_quadrant( 4, 3 )
             if( time.time() - self.hold_down_start_timer > self.KEY_DELAY_THROTTLE ):
-                self.use_ability( quadrant4x3 )
+                self.use_ability_throttled( quadrant4x3, 0.05 )
                 self.release_hold_keys()
                 self.hold_shift( False )
             
             if( self.hold_down_start_timer == 0 ):
                 self.hold_down_start_timer = time.time()
                 
-            self.detector.deactivate_for( 'control', 0.15 )                
+            self.detector.deactivate_for( 'control', 0.15 )
         else:
             self.hold_down_start_timer = 0
         
@@ -372,11 +372,15 @@ class StarcraftMode:
             
         ## Press W
         elif( self.detector.detect( "second_ability") ):
-            self.ability_selected = True
+            self.ability_selected = True            
             self.detector.clear_throttle('rapidclick')
             self.last_ability_selected = 'second'
-        
-            self.inputManager.press( 'w' )
+            
+            if( time.time() - self.hold_down_start_timer > self.KEY_DELAY_THROTTLE ):
+                self.press_ability_throttled( 'w', 0.1 )
+            
+            if( self.hold_down_start_timer == 0 ):
+                self.hold_down_start_timer = time.time()            
                 
         ## Press R ( Burrow )
         elif( self.detector.detect( "r") ):
@@ -458,11 +462,21 @@ class StarcraftMode:
             self.press_ability('c')
         elif( quadrant == 12 ):
             self.press_ability('v')
+            
+    def use_ability_throttled( self, quadrant, throttle ):
+        if( time.time() - self.last_key_timestamp > throttle ):
+            self.last_key_timestamp = time.time()
+            self.use_ability( quadrant )
         
     def press_ability( self, key ):
         print( "pressing " + key )
         self.inputManager.press( key )
         self.release_hold_keys()
+        
+    def press_ability_throttled( self, key, throttle ):
+        if( time.time() - self.last_key_timestamp > throttle ):
+            self.last_key_timestamp = time.time()
+            self.press_ability( key )
         
     def camera_movement( self, quadrant ):
         ## Move camera to kerrigan when looking above the UI
