@@ -61,7 +61,19 @@ class TinyAudioNet(nn.Module):
             return self.log_softmax(x)
         else:
             return self.softmax(x)
-            
+
+class TinyAudioNetEnsemble(nn.Module):
+    def __init__(self, modelA, modelB, modelC):
+        super(TinyAudioNetEnsemble, self).__init__()
+        self.modelA = modelA
+        self.modelB = modelB
+        self.modelC = modelC
+        
+    def forward(self, x):
+        x1 = self.modelA(x)
+        x2 = self.modelB(x)
+        x3 = self.modelC(x)
+        return ( x1 + x2 + x3 ) / 3
             
 class AudioNetTrainer:
 

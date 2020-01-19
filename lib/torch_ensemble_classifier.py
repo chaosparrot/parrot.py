@@ -7,8 +7,9 @@ import joblib
 import numpy as np
 import copy
 import torch
-from lib.audio_net import TinyAudioNet
+from lib.audio_net import TinyAudioNet, TinyAudioNetEnsemble
 
+torch.set_num_threads(1)
 torch.backends.cudnn.benchmark = True
 torch.backends.cudnn.enabled = True
 
@@ -17,6 +18,8 @@ torch.backends.cudnn.enabled = True
 class TorchEnsembleClassifier:
     
     classifiers = {}
+    
+    combinedClassifier = None
             
     # A list of all the available classes which will be used as a starting point
     # When a prediction is made without this map having the key, it will not be added
@@ -25,7 +28,8 @@ class TorchEnsembleClassifier:
     # Initialize the classifiers and their leaf classes
     def __init__( self, classifier_map ):
         self.classifiers = {}
-        self.device = torch.device('cuda')
+        self.device = torch.device('cpu')
+        classifierArray = []
         for index, key in enumerate(classifier_map):
             state_dict = torch.load(classifier_map[key], map_location=self.device)
             self.classes_ = state_dict['labels']            
@@ -34,6 +38,10 @@ class TorchEnsembleClassifier:
             model.to( self.device )
             model.eval()
             self.classifiers[key] = model
+            classifierArray.append( key )
+        self.combinedClassifier = TinyAudioNetEnsemble( self.classifiers[ classifierArray[0] ], self.classifiers[ classifierArray[1] ], self.classifiers[ classifierArray[2] ] )
+        self.combinedClassifier.eval()
+        self.combinedClassifier.to( self.device )
                                     
     # Predict the probabilities of the given data array
     def predict_proba( self, data ):
@@ -51,18 +59,22 @@ class TorchEnsembleClassifier:
         totalProbabilities = []
         
         with torch.no_grad():
-            type = None            
-            for index in self.classifiers.keys():
-                probabilities = self.classifiers[index](data_row).cpu()
-                
-                if( len( totalProbabilities ) == 0 ):
-                    totalProbabilities = probabilities
-                else:
-                    for probindex, probability in enumerate( probabilities ):
-                        totalProbabilities[ probindex ] = totalProbabilities[ probindex ] + probability
-
+            type = None
+            totalProbabilities = self.combinedClassifier( data_row ).cpu()
+            
+            #startTriple = time.time()
+            #for index in self.classifiers.keys():
+            #    probabilities = self.classifiers[index](data_row).cpu()
+            #    
+            #    if( len( totalProbabilities ) == 0 ):
+            #        totalProbabilities = probabilities
+            #    else:
+            #        for probindex, probability in enumerate( probabilities ):
+            #            totalProbabilities[ probindex ] = totalProbabilities[ probindex ] + probability
+            #print( "TRIPLET", str( time.time() - startTriple ) )
+                        
             # Normalize the model
-            for probindex, probability in enumerate( totalProbabilities ):
-                totalProbabilities[ probindex ] = totalProbabilities[ probindex ] * ( 1 / len( self.classifiers.keys() ) )
+            #for probindex, probability in enumerate( totalProbabilities ):
+            #    totalProbabilities[ probindex ] = totalProbabilities[ probindex ] * ( 1 / len( self.classifiers.keys() ) )
                                                 
         return np.asarray( totalProbabilities, dtype=np.float64 )

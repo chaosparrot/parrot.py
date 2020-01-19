@@ -31,7 +31,7 @@ class StarcraftMode:
                 'sound': 'sibilant_s',
                 'percentage': 95,
                 'intensity': 1400,
-                'lowest_percentage': 40,
+                'lowest_percentage': 50,
                 'lowest_intensity': 1000,
                 'throttle': 0.01
             },
@@ -40,13 +40,13 @@ class StarcraftMode:
                 'sound': 'thrill_thr',
                 'percentage': 80,
                 'power': 22000,
-                'throttle': 0.05
+                'throttle': 0.01
             },
             'click': {
-                'strategy': 'rapid_power',
+                'strategy': 'rapid',
                 'sound': 'click_alveolar',
                 'percentage': 90,
-                'power': 25000,
+                'intensity': 1300,
                 'throttle': 0.2
             },
             'toggle_speech': {
@@ -60,12 +60,12 @@ class StarcraftMode:
                 'strategy': 'rapid_power',
                 'sound': 'sound_whistle',
                 'percentage': 90,
-                'power': 40000,
+                'power': 30000,
                 'throttle': 0.3
             },
             'control': {
                 'strategy': 'rapid_power',
-                'sound': 'vowel_oh',                
+                'sound': 'vowel_oh',
                 'percentage': 85,
                 'ratio': 0.01,
                 'power': 20000,
@@ -86,11 +86,11 @@ class StarcraftMode:
                 'throttle': 0.4
             },
             'camera': {
-                'strategy': 'rapid_power',
+                'strategy': 'rapid',
                 'sound': 'vowel_y',
                 'percentage': 90,
-                'power': 23000,
-                'throttle': 0.4
+                'intensity': 1400,
+                'throttle': 0.25
             },
             'first_ability': {
                 'strategy': 'rapid_intensity',
@@ -127,7 +127,7 @@ class StarcraftMode:
                 'strategy': 'rapid_power',
                 'sound': 'vowel_iy',
                 'percentage': 80,
-                'power': 30000,
+                'power': 25000,
                 'throttle': 0.18
             },
             'numbers_secondary': {
@@ -297,6 +297,8 @@ class StarcraftMode:
             
             if( self.hold_down_start_timer == 0 ):
                 self.hold_down_start_timer = time.time()
+                
+            self.detector.set_throttle( 'control', 0.15 )                
         else:
             self.hold_down_start_timer = 0
         
