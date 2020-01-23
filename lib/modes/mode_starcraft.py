@@ -485,19 +485,23 @@ class StarcraftMode:
         ## Move camera to kerrigan when looking above the UI
         if( quadrant < 3 ):
             self.press_ability( "f1" )
-        elif( quadrant == 2 ):            
+        elif( quadrant == 2 ):
             self.inputManager.press( "f2" )
         elif( quadrant > 3 and quadrant < 7 ):
             self.inputManager.press( "backspace" )
             self.detector.clear_throttle('rapidclick')
         
         ## Move camera to danger when when looking at the minimap or unit selection
-        elif( quadrant == 7 or quadrant == 8 ):
+        elif( quadrant == 7 ):
             self.press_ability( "space" )
             
-        ## Follow the unit when looking near the command card
+        ## Camera hotkey
+        elif( quadrant == 8 ):
+            self.press_ability( "f3" )
+            
+        ## Camera hotkey
         elif( quadrant == 9 ):
-            self.press_ability( "." )
+            self.press_ability( "f5" )
                 
     # Detect when the cursor is inside the command area
     def detect_command_area( self ):
