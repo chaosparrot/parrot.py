@@ -487,21 +487,24 @@ class StarcraftMode:
             self.press_ability( "f1" )
         elif( quadrant == 2 ):
             self.inputManager.press( "f2" )
-        elif( quadrant > 3 and quadrant < 7 ):
+        elif( quadrant > 3 and quadrant < 6 ):
             self.inputManager.press( "backspace" )
-            self.detector.clear_throttle('rapidclick')
         
-        ## Move camera to danger when when looking at the minimap or unit selection
-        elif( quadrant == 7 ):
-            self.press_ability( "space" )
-            
+        ## Camera hotkeys
+        elif( quadrant == 6 ):
+            self.press_ability( "f2" )        
+        
         ## Camera hotkey
-        elif( quadrant == 8 ):
+        elif( quadrant == 7 ):
             self.press_ability( "f3" )
             
         ## Camera hotkey
-        elif( quadrant == 9 ):
+        elif( quadrant == 8 ):
             self.press_ability( "f5" )
+            
+        ## Camera hotkey
+        elif( quadrant == 9 ):
+            self.press_ability( "f6" )
                 
     # Detect when the cursor is inside the command area
     def detect_command_area( self ):
