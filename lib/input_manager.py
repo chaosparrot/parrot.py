@@ -53,21 +53,27 @@ class InputManager:
     # --------- ACTUAL PYAUTOGUI ACTIONS ---------
                 
     def pressAction(self, key):
+        print( "----------> PRESSING " + key )
         pyautogui.press( key )
 
     def keyDownAction(self, key):
+        print( "----------> HOLDING DOWN " + key )    
         pyautogui.keyDown( key )
         
     def keyUpAction(self, key):
+        print( "----------> RELEASING " + key )    
         pyautogui.keyUp( key )
         
     def clickAction(self, button='left'):
+        print( "----------> CLICKING " + button )        
         pyautogui.click( button=button )
         
     def mouseDownAction( self, button='left' ):
+        print( "----------> HOLDING DOWN MOUSE " + button )
         pyautogui.mouseDown( button=button )
         
     def mouseUpAction( self, button='left' ):
+        print( "----------> RELEASING MOUSE " + button )    
         pyautogui.mouseUp( button=button )
         
     # --------- TEST METHODS FOR PRINTING ---------

@@ -12,6 +12,7 @@ import os
 import pythoncom
 from lib.overlay_manipulation import update_overlay_image
 from lib.grammar.chat_grammar import *
+from lib.grammar.replay_grammar import *
 
 class StarcraftMode:
             
@@ -21,7 +22,15 @@ class StarcraftMode:
             self.grammar = Grammar("Starcraft")
             self.chatCommandRule = ChatCommandRule()
             self.chatCommandRule.set_callback( self.toggle_speech )
-            self.grammar.add_rule( self.chatCommandRule )        
+            self.replayCommandRule = ReplaySpeechCommand()
+            self.toggleEyetracker = ToggleEyetrackerCommand()
+            self.quitReplayCommand = QuitReplayCommand()
+            self.quitReplayCommand.set_callback( self.toggle_speech )
+            self.grammar.add_rule( self.chatCommandRule )
+            self.grammar.add_rule( self.replayCommandRule )            
+            self.grammar.add_rule( self.toggleEyetracker )
+            self.grammar.add_rule( self.quitReplayCommand )
+            
     
         self.mode = "regular"
         self.modeSwitcher = modeSwitcher
@@ -33,7 +42,7 @@ class StarcraftMode:
                 'intensity': 1400,
                 'lowest_percentage': 50,
                 'lowest_intensity': 1000,
-                'throttle': 0.001
+                'throttle': 0
             },
             'rapidclick': {
                 'strategy': 'rapid_power',
@@ -54,7 +63,7 @@ class StarcraftMode:
                 'sound': 'sound_finger_snap',
                 'percentage': 90,
                 'power': 100000,
-                'throttle': 0.3
+                'throttle': 0.8
             },            
             'movement': {
                 'strategy': 'rapid_power',
@@ -168,17 +177,26 @@ class StarcraftMode:
         
         self.hold_key = ""
 
-    def toggle_speech( self ):
+    def toggle_speech( self, with_enter=True ):
         self.release_hold_keys()
         
         if( self.mode == "regular" ):
             self.mode = "speech"
             self.grammar.load()
-            self.inputManager.press('enter')
+            if( with_enter ):
+                self.inputManager.press('enter')
         else:
             self.mode = "regular"
             self.grammar.unload()
         toggle_speechrec()
+        
+    # Used in case the speech recognition is triggered accidentally
+    def reset_mode( self ):
+        if( self.mode == "speech" ):
+            self.grammar.unload()
+            toggle_speechrec()
+        self.inputManager.press("esc")
+        self.mode = "regular"
         
     def start( self ):
         mute_sound()
@@ -194,25 +212,21 @@ class StarcraftMode:
             if( shift == True ):
                 self.inputManager.keyDown('shift')
                 self.shiftKey = shift            
-                print( 'Holding SHIFT' )
                 self.update_overlay()                
             else:
                 self.inputManager.keyUp('shift')
                 self.shiftKey = shift
-                print( 'Releasing SHIFT' )                
                 self.update_overlay()
     
     def hold_alt( self, alt ):
         if( self.altKey != alt ):
             if( alt == True ):
                 self.altKey = alt            
-                print( 'Enabling ALT' )
                 self.update_overlay()
                 self.detector.deactivate_for( 'first_ability', 0.1 )
                 self.detector.deactivate_for( 'second_ability', 0.1 )
             else:
                 self.altKey = alt
-                print( 'Disabling ALT' )
                 self.update_overlay()
                 self.detector.deactivate_for( 'first_ability', 0.3 )
                 self.detector.deactivate_for( 'second_ability', 0.15 )
@@ -221,12 +235,10 @@ class StarcraftMode:
         if( self.ctrlKey != ctrlKey ):
             if( ctrlKey == True ):
                 self.inputManager.keyDown('ctrl')
-                print( 'Holding CTRL' )
                 self.ctrlKey = ctrlKey
                 self.update_overlay()                
             else:
                 self.inputManager.keyUp('ctrl')
-                print( 'Releasing CTRL' )
                 self.ctrlKey = ctrlKey
                 self.update_overlay()
         
@@ -242,9 +254,16 @@ class StarcraftMode:
         
         # Always allow switching between speech and regular mode
         if( self.detector.detect("toggle_speech" ) ):
-            self.release_hold_keys()
-            self.toggle_speech()
-                
+            quadrant3x3 = self.detector.detect_mouse_quadrant( 3, 3 )
+            if( quadrant3x3 == 2 ):
+                self.release_hold_keys()
+                self.toggle_speech( False )
+            elif( quadrant3x3 == 1 ):
+                self.reset_mode()
+            else:
+                self.release_hold_keys()
+                self.toggle_speech()
+            
             return self.detector.tickActions            
         # Recognize speech commands in speech mode
         elif( self.mode == "speech" ):
@@ -270,7 +289,6 @@ class StarcraftMode:
         selecting = self.detector.detect( "select" )
         if( self.ability_selected and selecting ):
             self.inputManager.click(button='left')
-            print( "LMB" )
             self.ability_selected = False
             
             # Clear the throttles for abilities
@@ -318,10 +336,8 @@ class StarcraftMode:
             # Cast selected ability or Ctrl+click
             if( self.detect_command_area() or self.ability_selected == True or self.ctrlKey == True or self.altKey == True or ( self.shiftKey and self.detect_selection_tray() ) ):
                 self.inputManager.click(button='left')
-                print( "LMB" )
             else:
                 self.inputManager.click(button='right')
-                print( "RMB" )
 
             self.detector.deactivate_for( 'grid_ability', 0.2 )
                 
@@ -336,7 +352,6 @@ class StarcraftMode:
             self.detector.clear_throttle('camera')
             self.detector.clear_throttle('first_ability')
             self.detector.clear_throttle('second_ability')
-            print( "LMB" )
             
         # CTRL KEY holding
         elif( self.detector.detect( "control" ) ):
@@ -472,7 +487,6 @@ class StarcraftMode:
             self.use_ability( quadrant )
         
     def press_ability( self, key ):
-        print( "pressing " + key )
         self.inputManager.press( key )
         self.release_hold_keys()
         
