@@ -80,6 +80,15 @@ class StarcraftMode:
                 'power': 20000,
                 'throttle': 0.2
             },
+            'secondary_control': {
+                'strategy': 'combined_power',
+                'sound': 'sibilant_z',
+                'secondary_sound': 'fricative_v',                
+                'percentage': 98,
+                'power': 20000,
+                'ratio': 0,
+                'throttle': 0.2
+            },
             'shift': {
                 'strategy': 'rapid_power',
                 'sound': 'sibilant_sh',
@@ -356,6 +365,9 @@ class StarcraftMode:
         # CTRL KEY holding
         elif( self.detector.detect( "control" ) ):
             self.hold_control( True )
+        elif( self.detector.detect( "secondary_control" ) ):
+            self.hold_control( True )
+            self.detector.deactivate_for( 'select', 0.2 )
             
         # SHIFT KEY holding / toggling
         elif( self.detector.detect( "shift" ) ):
@@ -417,6 +429,7 @@ class StarcraftMode:
         elif( self.detector.detect( "camera" ) ):
             quadrant3x3 = self.detector.detect_mouse_quadrant( 3, 3 )
             self.camera_movement( quadrant3x3 )
+            self.hold_control( False )
             self.hold_shift( False )
             self.hold_alt( False )
                         
@@ -424,10 +437,11 @@ class StarcraftMode:
         elif( self.detector.detect( "numbers" ) or ( ( self.ctrlKey == True or self.shiftKey == True ) and self.detector.detect("numbers_secondary") ) ):        
             quadrant3x3 = self.detector.detect_mouse_quadrant( 3, 3 )
             self.use_control_group( quadrant3x3 )
-                            
+            
             self.hold_alt( False )                
             self.hold_control( False )
             self.hold_shift( False )
+            self.detector.deactivate_for('camera', 0.3)
         else:
             self.hold_down_key_timer = 0
             
@@ -497,28 +511,31 @@ class StarcraftMode:
         
     def camera_movement( self, quadrant ):
         ## Move camera to kerrigan when looking above the UI
-        if( quadrant < 3 ):
-            self.press_ability( "f1" )
+        if( quadrant == 1 ):
+            self.inputManager.press( "f1" )
         elif( quadrant == 2 ):
             self.inputManager.press( "f2" )
-        elif( quadrant > 3 and quadrant < 6 ):
+        elif( quadrant == 3 ):
+            self.inputManager.press( "f3" )
+        elif( quadrant == 4 ):
+            self.inputManager.press( "f5" )            
+        elif( quadrant == 5 ):
             self.inputManager.press( "backspace" )
-        
         ## Camera hotkeys
         elif( quadrant == 6 ):
-            self.press_ability( "f2" )        
+            self.inputManager.press( "f6" )        
         
         ## Camera hotkey
         elif( quadrant == 7 ):
-            self.press_ability( "f3" )
+            self.inputManager.press( "f7" )
             
         ## Camera hotkey
         elif( quadrant == 8 ):
-            self.press_ability( "f5" )
+            self.inputManager.press( "f8" )
             
         ## Camera hotkey
         elif( quadrant == 9 ):
-            self.press_ability( "f6" )
+            self.inputManager.press( "f9" )
                 
     # Detect when the cursor is inside the command area
     def detect_command_area( self ):
