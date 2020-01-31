@@ -45,11 +45,13 @@ class StarcraftMode:
                 'throttle': 0
             },
             'rapidclick': {
-                'strategy': 'rapid_power',
+                'strategy': 'continuous_power',
                 'sound': 'thrill_thr',
                 'percentage': 80,
+                'lowest_percentage': 40,                
                 'power': 20000,
-                'throttle': 0.05
+                'lowest_power': 15000,                
+                'throttle': 0
             },
             'click': {
                 'strategy': 'rapid_power',
@@ -316,11 +318,11 @@ class StarcraftMode:
             self.detector.deactivate_for('select', 0.3)
         elif( self.ability_selected and rapidclick ):
             if( self.last_ability_selected == 'first' ):
-                self.inputManager.press('z')
+                self.cast_ability_throttled('z', 0.05)
             elif( self.last_ability_selected == 'second' ):
-                self.inputManager.press('x')
+                self.cast_ability_throttled('x', 0.05)
             elif( self.last_ability_selected == 'third' ):
-                self.inputManager.press('c')
+                self.cast_ability_throttled('c', 0.05)
             
             # Prevent some misclassifying errors when using the thr sound
             self.detector.deactivate_for( 'control', 0.3 )
@@ -331,7 +333,7 @@ class StarcraftMode:
             self.drag_mouse( selecting )
         
         ## Press Grid ability
-        if( self.detector.detect("grid_ability") ):
+        if( self.detector.detect("grid_ability") and not rapidclick ):
             quadrant4x3 = self.detector.detect_mouse_quadrant( 4, 3 )
             if( time.time() - self.hold_down_start_timer > self.KEY_DELAY_THROTTLE ):
                 self.use_ability_throttled( quadrant4x3, 0.05 )
@@ -516,6 +518,12 @@ class StarcraftMode:
     def press_ability( self, key ):
         self.inputManager.press( key )
         self.release_hold_keys()
+        
+    def cast_ability_throttled( self, key, throttle ):
+        if( time.time() - self.last_key_timestamp > throttle ):
+            self.last_key_timestamp = time.time()
+            self.cast_ability( key )
+        
         
     def press_ability_throttled( self, key, throttle ):
         if( time.time() - self.last_key_timestamp > throttle ):

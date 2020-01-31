@@ -110,6 +110,17 @@ class PatternDetector:
                 if( detected == True ):
                     self.timestamps[ action + "_start" ] = self.currentTime
 
+        elif( strategy == 'continuous_power' ):
+            if( self.throttle_detection( action, RECORD_SECONDS * 4 ) == True ):
+                detected = ( self.above_percentage( lastDict, label, config['lowest_percentage'] ) and
+                    self.above_power( lastDict, config['lowest_power'] ) )
+            else:
+                detected = ( self.above_percentage( lastDict, label, config['percentage'] ) and
+                    self.above_power( lastDict, config['power'] ) )
+                if( detected == True ):
+                    self.timestamps[ action + "_start" ] = self.currentTime
+                    
+                    
         elif( strategy == 'combined_continuous' ):
             secondary_label = config['secondary_sound']        
             if( self.throttle_detection( action, RECORD_SECONDS * 4 ) == True ):
