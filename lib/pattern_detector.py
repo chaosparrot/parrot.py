@@ -93,7 +93,7 @@ class PatternDetector:
                 
         elif( strategy == 'frequency_threshold' ):
             detected = ( self.above_percentage( lastDict, label, config['percentage'] ) and
-                self.above_intensity( lastDict, config['intensity'] ) )
+                self.above_power( lastDict, config['power'] ) )
                 
             if( detected and 'above_frequency' in config ):
                 detected = self.above_frequency( lastDict, config['above_frequency'] )

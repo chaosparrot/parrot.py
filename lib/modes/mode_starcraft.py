@@ -66,10 +66,19 @@ class StarcraftMode:
                 'throttle': 0.8
             },            
             'movement': {
-                'strategy': 'rapid_power',
+                'strategy': 'frequency_threshold',
                 'sound': 'sound_whistle',
+                'below_frequency': 55,
                 'percentage': 80,
                 'power': 30000,
+                'throttle': 0.3
+            },
+            'secondary_movement': {
+                'strategy': 'frequency_threshold',
+                'sound': 'sound_whistle',
+                'above_frequency': 55,
+                'percentage': 80,
+                'power': 20000,
                 'throttle': 0.3
             },
             'control': {
@@ -377,19 +386,23 @@ class StarcraftMode:
         elif( self.detector.detect( "alt" ) ):
             self.hold_alt( not self.altKey )
 
-        ## Movement options
+        ## Primary movement options
         elif( self.detector.detect( "movement" ) ):
+            self.cast_ability( 'a' )
+        
+            self.hold_shift( False )
+        ## Secondary movement options
+        elif( self.detector.detect( "secondary_movement" ) ):
             quadrant3x3 = self.detector.detect_mouse_quadrant( 3, 3 )
-            if( quadrant3x3 <= 5 or quadrant3x3 == 7 ):
-                self.cast_ability( 'a' )
-            elif( quadrant3x3 == 6 ):
-                self.press_ability( 'h' )
-            elif( quadrant3x3 == 8 ):
-                self.press_ability( 's' )
-            elif( quadrant3x3 == 9 ):
+            if( quadrant3x3 <= 3 ):
                 self.cast_ability( 'p' )
+            elif( quadrant3x3 > 3 and quadrant3x3 <= 6 ):
+                self.press_ability( 'h' )
+            else:
+                self.cast_ability( 's' )
                 
-            self.hold_shift( False )                
+            self.hold_shift( False )            
+
         ## Press Q
         elif( self.detector.detect( "first_ability" ) ):
             self.ability_selected = True
