@@ -60,13 +60,6 @@ class StarcraftMode:
                 'power': 20000,
                 'throttle': 0.2
             },
-            'toggle_speech': {
-                'strategy': 'rapid_power',
-                'sound': 'sound_finger_snap',
-                'percentage': 90,
-                'power': 100000,
-                'throttle': 0.8
-            },            
             'movement': {
                 'strategy': 'frequency_threshold',
                 'sound': 'sound_whistle',
@@ -115,9 +108,11 @@ class StarcraftMode:
                 'throttle': 0.4
             },
             'camera': {
-                'strategy': 'rapid_power',
+                'strategy': 'combined_power',
                 'sound': 'vowel_y',
-                'percentage': 90,
+                'secondary_sound': 'vowel_u',
+                'ratio': 4,
+                'percentage': 85,
                 'power': 15000,
                 'throttle': 0.25
             },
@@ -273,17 +268,23 @@ class StarcraftMode:
         self.detector.tick( dataDicts )
         
         # Always allow switching between speech and regular mode
-        if( self.detector.detect("toggle_speech" ) ):
+        if( self.detector.detect( "menu" ) ):
+            self.release_hold_keys()
+            
             quadrant3x3 = self.detector.detect_mouse_quadrant( 3, 3 )
-            if( quadrant3x3 == 2 ):
+            if( quadrant3x3 == 9 ):
+                self.press_ability( 'f10' )
+            elif( quadrant3x3 == 2 ):
                 self.release_hold_keys()
                 self.toggle_speech( False )
             elif( quadrant3x3 == 1 ):
                 self.reset_mode()
-            else:
+            elif( quadrant3x3 == 5 ):
                 self.release_hold_keys()
                 self.toggle_speech()
-            
+            else:
+                self.press_ability( 'esc' )
+                    
             return self.detector.tickActions            
         # Recognize speech commands in speech mode
         elif( self.mode == "speech" ):
@@ -328,7 +329,6 @@ class StarcraftMode:
             self.detector.deactivate_for( 'control', 0.3 )
             self.detector.deactivate_for( 'click', 0.1 )
             self.detector.deactivate_for( 'grid_ability', 0.3 )
-
         else:
             self.drag_mouse( selecting )
         
@@ -430,15 +430,6 @@ class StarcraftMode:
             self.last_ability_selected = 'third'
         
             self.inputManager.press( 'r' )
-        
-        elif( self.detector.detect( "menu" ) ):
-            self.release_hold_keys()
-            
-            quadrant3x3 = self.detector.detect_mouse_quadrant( 3, 3 )
-            if( quadrant3x3 == 9 ):
-                self.press_ability( 'f10' )
-            else:
-                self.press_ability( 'esc' )
             
         ## Move the camera
         elif( self.detector.detect( "camera" ) ):
