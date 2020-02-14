@@ -79,7 +79,7 @@ class StarcraftMode:
             'control': {
                 'strategy': 'rapid_power',
                 'sound': 'vowel_oh',
-                'percentage': 85,
+                'percentage': 80,
                 'ratio': 0.01,
                 'power': 20000,
                 'throttle': 0.2
@@ -88,7 +88,7 @@ class StarcraftMode:
                 'strategy': 'combined_power',
                 'sound': 'sibilant_z',
                 'secondary_sound': 'fricative_v',                
-                'percentage': 98,
+                'percentage': 85
                 'power': 20000,
                 'ratio': 0,
                 'throttle': 0.2
@@ -116,6 +116,15 @@ class StarcraftMode:
                 'power': 15000,
                 'throttle': 0.25
             },
+            'camera_secondary': {
+                'strategy': 'combined_power',
+                'sound': 'vowel_eu',
+                'secondary_sound': 'vowel_y',
+                'percentage': 60,
+                'ratio': 0,
+                'power': 20000,
+                'throttle': 0.18
+            },            
             'first_ability': {
                 'strategy': 'combined',
                 'sound': 'vowel_ow',
@@ -124,7 +133,7 @@ class StarcraftMode:
                 'percentage': 90,
                 'intensity': 1000,
                 'throttle': 0.3
-            },
+            },            
             'second_ability': {
                 'strategy': 'rapid_power',
                 'sound': 'vowel_ae',
@@ -159,10 +168,11 @@ class StarcraftMode:
                 'throttle': 0.18
             },
             'numbers_secondary': {
-                'strategy': 'rapid_power',
-                'sound': 'vowel_eu',
-                'percentage': 40,
-                'ratio': 0.01,
+                'strategy': 'combined_power',
+                'sound': 'vowel_y',
+                'secondary_sound': 'vowel_ih',
+                'percentage': 60,
+                'ratio': 0,
                 'power': 20000,
                 'throttle': 0.18
             },
@@ -279,7 +289,7 @@ class StarcraftMode:
                 self.toggle_speech( False )
             elif( quadrant3x3 == 1 ):
                 self.reset_mode()
-            elif( quadrant3x3 == 5 ):
+            elif( quadrant3x3 == 3 ):
                 self.release_hold_keys()
                 self.toggle_speech()
             else:
@@ -336,7 +346,7 @@ class StarcraftMode:
         if( self.detector.detect("grid_ability") and not rapidclick ):
             quadrant4x3 = self.detector.detect_mouse_quadrant( 4, 3 )
             if( time.time() - self.hold_down_start_timer > self.KEY_DELAY_THROTTLE ):
-                self.use_ability_throttled( quadrant4x3, 0.05 )
+                self.use_ability_throttled( quadrant4x3, 0.03 )
                 self.release_hold_keys()
                 self.hold_shift( False )
             
@@ -379,6 +389,7 @@ class StarcraftMode:
         elif( self.detector.detect( "secondary_control" ) ):
             self.hold_control( True )
             self.detector.deactivate_for( 'select', 0.2 )
+            self.detector.deactivate_for( 'camera', 0.2 )
             
         # SHIFT KEY holding / toggling
         elif( self.detector.detect( "shift" ) ):
@@ -438,9 +449,17 @@ class StarcraftMode:
             self.hold_control( False )
             self.hold_shift( False )
             self.hold_alt( False )
-                        
+        elif( self.ctrlKey == True and self.detector.is_throttled('control') and self.detector.detect("camera_secondary") ):
+            quadrant3x3 = self.detector.detect_mouse_quadrant( 3, 3 )
+            self.camera_movement( quadrant3x3 )
+            self.hold_control( False )
+            self.hold_shift( False )
+            self.hold_alt( False )
+            
+            self.detector.deactivate_for('camera', 0.3)
+            self.detector.deactivate_for('numbers', 0.3)
         ## Press control group ( only allow CTRL and SHIFT )
-        elif( self.detector.detect( "numbers" ) or ( ( self.ctrlKey == True or self.shiftKey == True ) and self.detector.detect("numbers_secondary") ) ):        
+        elif( self.detector.detect( "numbers" ) ):        
             quadrant3x3 = self.detector.detect_mouse_quadrant( 3, 3 )
             self.use_control_group( quadrant3x3 )
             
@@ -448,6 +467,15 @@ class StarcraftMode:
             self.hold_control( False )
             self.hold_shift( False )
             self.detector.deactivate_for('camera', 0.3)
+        elif( ( ( self.ctrlKey == True and self.detector.is_throttled('secondary_control') ) or self.shiftKey == True ) and self.detector.detect("numbers_secondary") ):
+            quadrant3x3 = self.detector.detect_mouse_quadrant( 3, 3 )
+            self.use_control_group( quadrant3x3 )
+            
+            self.hold_alt( False )                
+            self.hold_control( False )
+            self.hold_shift( False )
+            self.detector.deactivate_for('camera', 0.3)
+            self.detector.deactivate_for('numbers', 0.3)
         else:
             self.hold_down_key_timer = 0
             

@@ -101,7 +101,7 @@ class PatternDetector:
             if( detected and 'below_frequency' in config ):
                 detected = self.below_frequency( lastDict, config['below_frequency'] )
         elif( strategy == 'continuous' ):
-            if( self.throttle_detection( action, RECORD_SECONDS * 4 ) == True ):
+            if( self.throttle_detection( action, RECORD_SECONDS * 6 ) == True ):
                 detected = ( self.above_percentage( lastDict, label, config['lowest_percentage'] ) and
                     self.above_intensity( lastDict, config['lowest_intensity'] ) )
             else:
@@ -111,7 +111,7 @@ class PatternDetector:
                     self.timestamps[ action + "_start" ] = self.currentTime
 
         elif( strategy == 'continuous_power' ):
-            if( self.throttle_detection( action, RECORD_SECONDS * 4 ) == True ):
+            if( self.throttle_detection( action, RECORD_SECONDS * 6 ) == True ):
                 detected = ( self.above_percentage( lastDict, label, config['lowest_percentage'] ) and
                     self.above_power( lastDict, config['lowest_power'] ) )
             else:
@@ -123,7 +123,7 @@ class PatternDetector:
                     
         elif( strategy == 'combined_continuous' ):
             secondary_label = config['secondary_sound']        
-            if( self.throttle_detection( action, RECORD_SECONDS * 4 ) == True ):
+            if( self.throttle_detection( action, RECORD_SECONDS * 6 ) == True ):
                 detected = ( self.combined_above_percentage( lastDict, label, secondary_label, config['lowest_percentage'] ) and
                     self.above_intensity( lastDict, config['lowest_intensity'] ) )
             else:
