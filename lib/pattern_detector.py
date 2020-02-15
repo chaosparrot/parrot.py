@@ -62,6 +62,9 @@ class PatternDetector:
     def set_throttle( self, action, throttle ):
         self.config[action]['throttle'] = throttle
         
+    def add_tick_action( self, action ):
+        self.tickActions.append( action )
+        
     def deactivate_for( self, action, delay ):
         throttle = 0
         if( 'throttle' in self.config[action] ):

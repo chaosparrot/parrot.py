@@ -88,7 +88,7 @@ class StarcraftMode:
                 'strategy': 'combined_power',
                 'sound': 'sibilant_z',
                 'secondary_sound': 'fricative_v',                
-                'percentage': 85
+                'percentage': 90,
                 'power': 20000,
                 'ratio': 0,
                 'throttle': 0.2
@@ -277,6 +277,10 @@ class StarcraftMode:
     def handle_input( self, dataDicts ):
         self.detector.tick( dataDicts )
         
+        # Reset the grid ability thing
+        if( self.detector.detect_silence() ):
+            self.hold_down_start_timer = 0        
+        
         # Always allow switching between speech and regular mode
         if( self.detector.detect( "menu" ) ):
             self.release_hold_keys()
@@ -354,8 +358,6 @@ class StarcraftMode:
                 self.hold_down_start_timer = time.time()
                 
             self.detector.deactivate_for( 'control', 0.15 )
-        else:
-            self.hold_down_start_timer = 0
         
         if( selecting ):
             self.ability_selected = False
@@ -536,6 +538,7 @@ class StarcraftMode:
         
     def press_ability( self, key ):
         self.inputManager.press( key )
+        self.detector.add_tick_action( key )
         self.release_hold_keys()
         
     def cast_ability_throttled( self, key, throttle ):
