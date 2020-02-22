@@ -326,7 +326,7 @@ def plot_replay( replay_data ):
     plt.title("Percentage distribution of predicted sounds", loc='left', fontsize=12, fontweight=0, color='black')
     plt.ylabel("Percentage")
 
-    for column in replay_data.drop(['winner', 'intensity', 'time', 'frequency', 'actions', 'buffer'], axis=1):
+    for column in replay_data.drop(['winner', 'intensity', 'time', 'frequency', 'actions', 'buffer', 'power'], axis=1):
         if( column != "silence" ):
             color = colors[num]        
             num+=1

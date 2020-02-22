@@ -71,8 +71,8 @@ class StarcraftMode:
             'secondary_movement': {
                 'strategy': 'frequency_threshold',
                 'sound': 'sound_whistle',
-                'above_frequency': 55,
-                'percentage': 80,
+                'above_frequency': 57,
+                'percentage': 99,
                 'power': 20000,
                 'throttle': 0.3
             },
@@ -205,7 +205,7 @@ class StarcraftMode:
     def toggle_speech( self, with_enter=True ):
         self.release_hold_keys()
         
-        if( self.mode == "regular" ):
+        if( self.mode != "regular" ):
             self.mode = "speech"
             self.grammar.load()
             if( with_enter ):
@@ -276,11 +276,7 @@ class StarcraftMode:
     
     def handle_input( self, dataDicts ):
         self.detector.tick( dataDicts )
-        
-        # Reset the grid ability thing
-        if( self.detector.detect_silence() ):
-            self.hold_down_start_timer = 0        
-        
+                
         # Always allow switching between speech and regular mode
         if( self.detector.detect( "menu" ) ):
             self.release_hold_keys()
@@ -293,6 +289,8 @@ class StarcraftMode:
                 self.toggle_speech( False )
             elif( quadrant3x3 == 1 ):
                 self.reset_mode()
+            elif( quadrant3x3 == 7 ):
+                self.mode = "ignore_commands"
             elif( quadrant3x3 == 3 ):
                 self.release_hold_keys()
                 self.toggle_speech()
@@ -318,6 +316,9 @@ class StarcraftMode:
             self.drag_mouse( False )
             self.hold_down_start_timer = 0
             return
+            
+        if( self.detector.detect_below_threshold( 800 ) ):
+            self.hold_down_start_timer = 0
             
         # Selecting units
         rapidclick = self.detector.detect("rapidclick")
@@ -372,6 +373,7 @@ class StarcraftMode:
                 self.inputManager.click(button='right')
 
             self.detector.deactivate_for( 'grid_ability', 0.2 )
+            self.detector.deactivate_for( 'secondary_movement', 0.2 )
                 
             # Release the held keys - except when shift clicking units in the selection tray ( for easy removing from the unit group )
             if( not( self.shiftKey and self.detect_selection_tray() ) ):

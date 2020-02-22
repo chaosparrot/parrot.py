@@ -47,6 +47,9 @@ class PatternDetector:
     def detect_silence( self ):
         return self.predictionDicts[-1]['silence']['intensity'] < SILENCE_INTENSITY_THRESHOLD
         
+    def detect_below_threshold( self, threshold ):
+        return self.predictionDicts[-1]['silence']['intensity'] < threshold        
+        
     def is_throttled( self, action ):
         if action not in self.config:
             return False
