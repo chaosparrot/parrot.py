@@ -205,7 +205,7 @@ class StarcraftMode:
     def toggle_speech( self, with_enter=True ):
         self.release_hold_keys()
         
-        if( self.mode != "regular" ):
+        if( self.mode != "speech" ):
             self.mode = "speech"
             self.grammar.load()
             if( with_enter ):
