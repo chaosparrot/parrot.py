@@ -141,6 +141,13 @@ class StarcraftMode:
                 'power': 25000,
                 'throttle': 0
             },
+            'third_ability': {
+                'strategy': 'rapid_power',
+                'sound': 'approximant_r',
+                'percentage': 95,
+                'power': 80000,
+                'throttle': 0
+            },            
             'r': {
                 'strategy': 'rapid_power',
                 'sound': 'fricative_f',
@@ -331,6 +338,7 @@ class StarcraftMode:
             self.detector.clear_throttle('camera')
             self.detector.clear_throttle('first_ability')
             self.detector.clear_throttle('second_ability')
+            self.detector.clear_throttle('third_ability')
             self.detector.deactivate_for('select', 0.3)
         elif( self.ability_selected and rapidclick ):
             if( self.last_ability_selected == 'first' ):
@@ -438,8 +446,18 @@ class StarcraftMode:
                 self.press_ability_throttled( 'w', 0.1 )
             
             if( self.hold_down_key_timer == 0 ):
-                self.hold_down_key_timer = time.time()            
-                
+                self.hold_down_key_timer = time.time()
+        ## Press E
+        elif( self.detector.detect( "third_ability") ):
+            self.ability_selected = True            
+            self.detector.clear_throttle('rapidclick')
+            self.last_ability_selected = 'third'
+            
+            if( time.time() - self.hold_down_key_timer > self.KEY_DELAY_THROTTLE ):
+                self.press_ability_throttled( 'e', 0.1 )
+            
+            if( self.hold_down_key_timer == 0 ):
+                self.hold_down_key_timer = time.time()
         ## Press R ( Burrow )
         elif( self.detector.detect( "r") ):
             self.last_ability_selected = 'third'
