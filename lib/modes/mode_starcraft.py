@@ -54,18 +54,18 @@ class StarcraftMode:
                 'throttle': 0
             },
             'click': {
-                'strategy': 'rapid_power',
+                'strategy': 'frequency_threshold',
                 'sound': 'click_alveolar',
                 'percentage': 90,
+                'above_frequency': 58,
                 'power': 20000,
                 'throttle': 0.2
             },
             'movement': {
-                'strategy': 'frequency_threshold',
+                'strategy': 'rapid_power',
                 'sound': 'sound_whistle',
-                'below_frequency': 55,
                 'percentage': 80,
-                'power': 30000,
+                'power': 23000,
                 'throttle': 0.3
             },
             'secondary_movement': {
@@ -414,6 +414,7 @@ class StarcraftMode:
         ## Primary movement options
         elif( self.detector.detect( "movement" ) ):
             self.cast_ability( 'a' )
+            self.detector.deactivate_for( 'control', 0.4 )
         
             self.hold_shift( False )
         ## Secondary movement options
