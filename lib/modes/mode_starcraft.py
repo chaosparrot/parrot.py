@@ -69,11 +69,10 @@ class StarcraftMode:
                 'throttle': 0.3
             },
             'secondary_movement': {
-                'strategy': 'frequency_threshold',
-                'sound': 'sound_whistle',
-                'above_frequency': 57,
-                'percentage': 99,
-                'power': 20000,
+                'strategy': 'rapid_power',
+                'sound': 'sound_finger_snap',
+                'percentage': 65,
+                'power': 100000,
                 'throttle': 0.3
             },
             'control': {
@@ -420,12 +419,10 @@ class StarcraftMode:
         ## Secondary movement options
         elif( self.detector.detect( "secondary_movement" ) ):
             quadrant3x3 = self.detector.detect_mouse_quadrant( 3, 3 )
-            if( quadrant3x3 <= 3 ):
-                self.cast_ability( 'p' )
-            elif( quadrant3x3 > 3 and quadrant3x3 <= 6 ):
-                self.press_ability( 'h' )
-            else:
-                self.cast_ability( 's' )
+            if( quadrant3x3 <= 6 ):
+                self.cast_ability( 'h' )
+            elif( quadrant3x3 > 6 ):
+                self.press_ability( 'p' )
                 
             self.hold_shift( False )            
 
