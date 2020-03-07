@@ -3,10 +3,7 @@ from pyautogui import press, typewrite
 
 quickCommands = {}
 quickCommands["Good luck have fun"] = "gl hf"
-quickCommands["gl hf"] = "gl hf"
-quickCommands["Hello"] = "gl hf"
 quickCommands["Good game"] = "gg"
-quickCommands["gg"] = "gg"
 quickCommands["Good game well played"] = "gg wp"
 
 chatChoices = Choice( "quickcommand", quickCommands)

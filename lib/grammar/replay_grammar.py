@@ -3,30 +3,25 @@ from pyautogui import press, typewrite
 from config.config import *
 
 quickCommands = {}
-quickCommands["show production"] = "d"
-quickCommands["show income"] = "i"
-quickCommands["show units"] = "u"
-quickCommands["show actions"] = "m"
-quickCommands["lock on"] = "c"
-quickCommands["follow me"] = "1"
-quickCommands["follow my vision"] = "1"
-quickCommands["follow me and lock on"] = "1c"
-quickCommands["follow my vision and lock on"] = "1c"
-quickCommands["follow my opponents vision"] = "2"
-quickCommands["follow my opponents vision and lock on"] = "2c"
-quickCommands["follow them"] = "2"
-quickCommands["follow them and lock on"] = "2c"
-quickCommands["follow everyone"] = "e"
-quickCommands["speed up"] = "="
-quickCommands["engage warp speed"] = "==="
+quickCommands["production statistics"] = "d"
+quickCommands["income statistics"] = "i"
+quickCommands["unit statistics"] = "u"
+quickCommands["upgrade statistics"] = "g"
+quickCommands["ay pee em statistics"] = "m"
+quickCommands["toggle camera"] = "c"
+quickCommands["view player"] = "1"
+quickCommands["view opponent"] = "2"
+quickCommands["view everyone"] = "e"
+quickCommands["speed up"] = "+"
+quickCommands["warp speed"] = "+++"
 quickCommands["slow down"] = "-"
-quickCommands["pause the game"] = "p"
-quickCommands["resume the game"] = "p"
+quickCommands["pause replay"] = "p"
+quickCommands["resume replay"] = "p"
 
 commandChoices = Choice( "quickcommand", quickCommands)
 
 class ReplaySpeechCommand(CompoundRule):
-    spec = "Abathur <quickcommand>"
+    spec = "Replay <quickcommand>"
     extras = [commandChoices]
     callback = False
     
@@ -35,13 +30,14 @@ class ReplaySpeechCommand(CompoundRule):
     
     def _process_recognition(self, node, extras):
         press('esc')
+        print( "REPLAY COMMAND - " + extras['quickcommand'] )
         typewrite( extras["quickcommand"], interval=0.1 )
         
         if( self.callback ):
             self.callback()
 
 class ToggleEyetrackerCommand(CompoundRule):
-    spec = "Abathur toggle eyetracker"
+    spec = "Replay (toggle|disable) eyetracker"
     extras = [commandChoices]
     callback = False
     
