@@ -35,9 +35,10 @@ def learn_data():
     clf_filename += '.pkl'
     
     print( "Type the algorithm that you wish to use for recognition ( Default is random forest )")
-    print( "- [R] Random Forest ( sklearn )" )
-    print( "- [M] Multi Layer Perceptron ( Neural net in sklearn )" )
-    print( "- [A] Audio Net ( Neural net in Pytorch )" )
+    print( "- [R] Random Forest ( SKLEARN )" )
+    print( "- [M] Multi Layer Perceptron ( Neural net in SKLEARN )" )
+    if( not PYTORCH_AVAILABLE ):
+        print( "- [A] Audio Net ( Neural net in Pytorch )" )
     print( "- [X] Exit the learning" )
 
     dir_path = os.path.join( os.path.dirname( os.path.dirname( os.path.realpath(__file__)) ), DATASET_FOLDER)
@@ -61,7 +62,7 @@ def learn_data():
         fit_sklearn_classifier( classifier, dir_path, clf_filename )
     elif( model_type.lower() == "x" ):
         return
-    elif( model_type.lower() == "a" ):
+    elif( model_type.lower() == "a" and PYTORCH_AVAILABLE ):
         print( "Selected Audio Net!")    
     
         # Import pytorch related thins here to make sure pytorch isn't a hard requirement
@@ -88,7 +89,7 @@ def fit_sklearn_classifier( classifier,  dir_path, clf_filename ):
     dataX, dataY, directory_names, total_feature_engineering_time = load_data( dir_path, max_files_per_category )
     print( "--------------------------" )
 
-    print( "Learing the data..." )
+    print( "Learning the data..." )
     classifier.fit( dataX, dataY )
     print( "Data analyzed!               " )
     
@@ -113,7 +114,6 @@ def fit_sklearn_classifier( classifier,  dir_path, clf_filename ):
         create_confusion_matrix( classifier, dataX, dataY, directory_names )
         print( "--------------------------" )
     
-
     
 def load_wav_files( directory, label, int_label, start, end ):
     category_dataset_x = []
@@ -137,7 +137,6 @@ def load_wav_files( directory, label, int_label, start, end ):
     print( "Loaded " + str( len( category_dataset_labels ) ) + " .wav files for category " + label + " (id: " + str(int_label) + ")" )
     return category_dataset_x, category_dataset_labels, totalFeatureEngineeringTime
             
-
 def determine_labels( dir_path ):
     data_directory_names =  [directory for directory in os.listdir( dir_path ) if directory != ".gitkeep"]
     
@@ -153,8 +152,7 @@ def determine_labels( dir_path ):
             print( "Disabled " + directory_name )
             
     return filtered_data_directory_names
-           
-            
+             
 def load_data( dir_path, max_files ):
     filtered_data_directory_names = determine_labels( dir_path )
 

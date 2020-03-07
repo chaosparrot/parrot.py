@@ -21,7 +21,7 @@ The algorithm also seems to become less accurate as more and more different soun
 
 When you have gone through the generation of the model, you can check for its results. It will give an estimate of how good it thinks it is ( seen in the green accuracy box ).
 While the percentage alone does not give you enough information about how well the model will perform on certain sounds, it gives a good estimation of whether or not the model is useful at all.
-I like to keep this estimate above 90%.
+I like to keep this estimate above 90%. Above 95% is optimal so you can use most of the sounds that have been recorded accurately.
 
 On top of that, you can also generate a detailed analysis. This will create a confusion matrix ( seen on the right ).
 The Y axis is the actual sound name that you recorded, the X axis is the sound name the generated model thought it was hearing.

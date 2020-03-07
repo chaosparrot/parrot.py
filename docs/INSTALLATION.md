@@ -73,3 +73,12 @@ For this, I use the Tobii Eye Tracker 4C and a seperate program called Project I
 I haven't tried any other eye tracker, but this one seems just fine for this program.
 
 Follow their installation instructions and make sure you can toggle your mouse cursor following by pressing a key - I have F4 configured to toggle it
+
+Optional - Install PyTorch for advanced neural network usage
+----------------
+
+I personally saw a big improvement when I switched to neural networks running in an ensemble. 
+Pytorch offers a vast array of machinelearning techniques that might be useful to get even more recognition strength out of your generated models. 
+
+But setting up Pytorch might be complicated because you will also need CUDA support and a decent graphics card.
+If you're just playing around for the first time - You can just stick to the regular installation until you require more accuracy.

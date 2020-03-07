@@ -27,14 +27,15 @@ def combine_models():
         
     print( "What kind of model do you want to make? " )
     print( "[E]nsemble ( default )" )
-    print( "[ET]- Ensemble for Pytorch" )
+    if( PYTORCH_AVAILABLE ):
+        print( "[ET]- Ensemble for Pytorch" )
     print( "[H]ierarchial" )
     print( "[C]hange resistant" )
     print( "[M]arkov chain" )
     model_type = input("")
     if( model_type == "" or model_type.strip().lower() == "e" ):
         model_type = "ensemble"
-    elif( model_type == "" or model_type.strip().lower() == "et" ):
+    elif( model_type.strip().lower() == "et" and PYTORCH_AVAILABLE ):
         model_type = "ensemble_torch"        
     elif( model_type.strip().lower() == "h" ):
         model_type = "hierarchial"        
@@ -148,7 +149,6 @@ def connect_model( clf_filename, classifier_map, model_type ):
         classifier = EnsembleClassifier( classifier_map )
     elif( model_type == "ensemble_torch" ):
         from lib.torch_ensemble_classifier import TorchEnsembleClassifier    
-    
         classifier = TorchEnsembleClassifier( classifier_map )        
     else:
         classifier = ChangeResistantClassifier( classifier_map )

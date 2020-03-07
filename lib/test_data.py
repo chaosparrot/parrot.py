@@ -215,13 +215,14 @@ def audio_analysis( available_models ):
         dataRows = []
         for index, prediction in enumerate( predictions ):
             timeString = full_wav_files[ index ].replace( REPLAYS_AUDIO_FOLDER + os.sep, "" ).replace( ".wav", "" )
-            dataRow = {'time': int(float(timeString) * 1000) / 1000, 'intensity': 0, 'actions': [], 'buffer': 0 }
+            dataRow = {'time': int(float(timeString) * 1000) / 1000, 'intensity': 0, 'power': 0, 'actions': [], 'buffer': 0 }
             for column in prediction:
                 dataRow[column] = prediction[ column ]['percent']
                 if( prediction[ column ]['winner'] ):
                     dataRow['winner'] = column
                     dataRow['frequency'] = prediction[column]['frequency']
-                    dataRow['intensity'] = prediction[column]['intensity']                    
+                    dataRow['intensity'] = prediction[column]['intensity']         
+                    dataRow['power'] = prediction[column]['power']
 
             dataRows.append( dataRow )
 

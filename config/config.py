@@ -1,5 +1,8 @@
 import pyaudio
 import pyautogui
+import importlib
+pytorch_spec = importlib.util.find_spec("torch")
+PYTORCH_AVAILABLE = pytorch_spec is not None
 pyautogui.FAILSAFE = False
 
 FORMAT = pyaudio.paInt16
