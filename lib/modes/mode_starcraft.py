@@ -360,7 +360,6 @@ class StarcraftMode:
             if( time.time() - self.hold_down_start_timer > self.KEY_DELAY_THROTTLE ):
                 self.use_ability_throttled( quadrant4x3, 0.03 )
                 self.release_hold_keys()
-                self.hold_shift( False )
             
             if( self.hold_down_start_timer == 0 ):
                 self.hold_down_start_timer = time.time()

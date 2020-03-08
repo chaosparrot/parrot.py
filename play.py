@@ -25,7 +25,7 @@ def main(argv):
     classifier = joblib.load( CLASSIFIER_FOLDER + "/" + default_classifier_file + ".pkl" )
             
     mode_switcher = ModeSwitcher( input_testing_mode )
-    mode_switcher.switchMode( STARTING_MODE )
+    mode_switcher.switchMode( starting_mode )
     start_nonblocking_listen_loop( classifier, mode_switcher, SAVE_REPLAY_DURING_PLAY, SAVE_FILES_DURING_PLAY, -1, True )
     mode_switcher.exit()
 

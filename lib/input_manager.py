@@ -1,3 +1,4 @@
+from config.config import REPEAT_DELAY, REPEAT_RATE
 import time
 import pyautogui
 pyautogui.FAILSAFE = False
@@ -14,8 +15,21 @@ class InputManager:
         'mouseDown': False,
         'mouseUp': False,
     }
-
-    def __init__(self, is_testing = False):
+    
+    toggle_keys = {
+        'ctrl': False,
+        'shift': False,
+        'alt': False
+    }    
+    
+    key_hold_timings = {}
+    is_testing = False
+    
+    def __init__(self, is_testing = False, repeat_delay=REPEAT_DELAY, repeat_rate=REPEAT_RATE):
+        self.is_testing = is_testing
+        self.repeat_delay = repeat_delay
+        self.repeat_rate_ms = round(1000 / repeat_rate) / 1000
+        
         if( is_testing ):
             self.function_mappings['press'] = self.pressTest
             self.function_mappings['keyDown'] = self.keyDownTest
@@ -37,6 +51,43 @@ class InputManager:
         
     def keyDown( self, key ):
         self.function_mappings['keyDown'](key)
+        
+    def hold( self, key, repeat_rate_ms=0 ):
+        if( repeat_rate_ms == 0 ):
+            repeat_rate_ms = self.repeat_rate_ms
+
+        if( key in self.toggle_keys.keys() and self.toggle_keys[key] == False ):
+            self.keyDown( key )
+            self.toggle_keys[ key ] = True
+        else:
+            if( key not in self.key_hold_timings ):
+                self.key_hold_timings[key] = time.time()
+                self.press(key)
+            elif( time.time() - self.key_hold_timings[ key ] > self.repeat_delay ):
+                self.key_hold_timings[ key ] += repeat_rate_ms
+                self.press(key)
+                
+    def release_non_toggle_keys( self ):
+        heldDownKeys = list(self.key_hold_timings)
+        for key in heldDownKeys:
+            if( key not in self.toggle_keys.keys() ):
+                self.release( key )
+            
+    def release_toggle_keys( self ):
+        heldDownKeys = list(self.key_hold_timings)
+        for key in heldDownKeys:
+            if( key in self.toggle_keys.keys() ):
+                self.release( key )
+        
+    def release( self, key ):
+        if( self.is_testing ):
+            print( "-> RELEASING " + key )
+        
+        if( key in self.toggle_keys and self.toggle_keys[key] == True ):
+            self.keyUp( key )
+            self.toggle_keys[ key ] = False
+        elif( key in self.key_hold_timings ):
+            del self.key_hold_timings[key]
 
     def keyUp( self, key ):
         self.function_mappings['keyUp'](key)
@@ -64,6 +115,11 @@ class InputManager:
         print( "----------> RELEASING " + key )    
         pyautogui.keyUp( key )
         
+    def holdAction( self, key ):    
+        if( time.time() - self.last_key_timestamp > throttle ):
+            self.last_key_timestamp = time.time()
+            self.cast_ability( key )    
+        
     def clickAction(self, button='left'):
         print( "----------> CLICKING " + button )        
         pyautogui.click( button=button )
@@ -86,6 +142,12 @@ class InputManager:
         
     def keyUpTest(self, key):
         print( "-> Releasing " + key.upper() )
+        
+    def holdTest(self, key):
+        print( "-> Pressing " + key.upper() )
+        
+    def releaseTest(self, key):
+        print( "-> Releasing " + key.upper() )        
         
     def clickTest(self, button='left'):
         print( "-> Clicking " + button.upper() + " mouse button" )

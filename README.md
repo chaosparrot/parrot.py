@@ -5,8 +5,8 @@ It's name is inspired by the way parrots and parakeets communicate, using chirps
 
 # Software requirements
 * Windows version 7 and up.
-* Project IRIS ( used for turning the eyetracker into a mouse cursor )
-* Python 3.6 (64 bit if you want to use Pytorch)
+* Python 3.6 and up (64 bit recommended)
+* Project IRIS ( OPTIONAL - Used for turning the eyetracker into a mouse cursor )
 
 Python packages such as
 * numpy

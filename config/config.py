@@ -1,10 +1,11 @@
 import pyaudio
 import pyautogui
 import importlib
-pytorch_spec = importlib.util.find_spec("torch")
-PYTORCH_AVAILABLE = pytorch_spec is not None
 pyautogui.FAILSAFE = False
+REPEAT_DELAY = 0.5
+REPEAT_RATE = 33
 
+SPEECHREC_ENABLED = False
 FORMAT = pyaudio.paInt16
 CHANNELS = 2
 RATE = 44100
@@ -32,5 +33,11 @@ STARTING_MODE = "starcraft"
 SAVE_REPLAY_DURING_PLAY = True
 SAVE_FILES_DURING_PLAY = False
 EYETRACKING_TOGGLE = "f4"
-SPEECHREC_ENABLED = True
 OVERLAY_ENABLED = True
+
+pytorch_spec = importlib.util.find_spec("torch")
+PYTORCH_AVAILABLE = pytorch_spec is not None
+
+dragonfly_spec = importlib.util.find_spec("dragonfly")
+if( SPEECHREC_ENABLED == True ):
+    SPEECHREC_ENABLED = dragonfly_spec is not None
