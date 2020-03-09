@@ -2,10 +2,11 @@ import pyaudio
 import pyautogui
 import importlib
 pyautogui.FAILSAFE = False
+
 REPEAT_DELAY = 0.5
 REPEAT_RATE = 33
-
 SPEECHREC_ENABLED = False
+
 FORMAT = pyaudio.paInt16
 CHANNELS = 2
 RATE = 44100
@@ -18,8 +19,8 @@ INPUT_DEVICE_INDEX = 1
 SLIDING_WINDOW_AMOUNT = 2
 INPUT_TESTING_MODE = False
 
-DATASET_FOLDER = "data/recordings/30ms"
-RECORDINGS_FOLDER = "data/recordings/30ms"
+DATASET_FOLDER = "data/recordings"
+RECORDINGS_FOLDER = "data/recordings"
 REPLAYS_FOLDER = "data/replays"
 REPLAYS_AUDIO_FOLDER = "data/replays/audio"
 REPLAYS_FILE = REPLAYS_FOLDER + "/run.csv"
@@ -27,13 +28,13 @@ CLASSIFIER_FOLDER = "data/models"
 OVERLAY_FOLDER = "data/overlays"
 OVERLAY_FILE = "config/current-overlay-image.txt"
 
-DEFAULT_CLF_FILE = "tiny_bronze_league_trio3"
-STARTING_MODE = "starcraft"
+DEFAULT_CLF_FILE = "dummy"
+STARTING_MODE = "mode_tutorial_a"
 
 SAVE_REPLAY_DURING_PLAY = True
 SAVE_FILES_DURING_PLAY = False
 EYETRACKING_TOGGLE = "f4"
-OVERLAY_ENABLED = True
+OVERLAY_ENABLED = False
 
 pytorch_spec = importlib.util.find_spec("torch")
 PYTORCH_AVAILABLE = pytorch_spec is not None

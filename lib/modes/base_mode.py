@@ -65,7 +65,7 @@ class BaseMode:
         self.quadrant3x3 = self.detector.detect_mouse_quadrant( 3, 3 )
         self.quadrant4x3 = self.detector.detect_mouse_quadrant( 4, 3 )
         
-        if( self.detector.detect_silence() ):
+        if( self.detect_silence() ):
             self.stop_drag_mouse()
             self.inputManager.release_non_toggle_keys()
                 
@@ -79,7 +79,7 @@ class BaseMode:
             self.handle_sounds( dataDicts )
             
         return self.detector.tickActions
-        
+                
     def handle_speech( self, dataDicts ):
         print( "No speech handler" )
         return
@@ -87,16 +87,19 @@ class BaseMode:
     def handle_sounds( self, dataDicts ):
         print( "No sound handler" )
         return
-                
+        
+    def detect( self, key ):
+        return self.detector.detect( key )
+        
+    def detect_silence( self ):
+        return self.detector.detect_silence()        
+        
     def drag_mouse( self ):
         self.toggle_drag_mouse( True )
 
     def stop_drag_mouse( self ):
         self.toggle_drag_mouse( False )
-        
-    def detect( self, key ):
-        return self.detector.detect( key )
-        
+                
     def leftclick( self ):
         self.inputManager.click(button='left')
 
@@ -123,7 +126,6 @@ class BaseMode:
             self.mode = "regular"
             self.grammar.unload()
         toggle_speechrec()
-        
 
     # Drag mouse for selection purposes
     def toggle_drag_mouse( self, should_drag ):
