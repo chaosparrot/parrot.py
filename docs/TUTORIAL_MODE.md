@@ -51,4 +51,18 @@ You can also look in the lib/input_manager file for examples on how pyautogui is
 Detection strategies ( uses mode_tutorial_c.py )
 ----
 
-Now we are going to connect our sounds to our keyboard inputs.
+Now we are going to connect our sounds to our keyboard inputs. This can be done using patterns.
+Patterns are a combination of activation thresholds and throttles. Every individual pattern must have a name to identify it, sounds which you can detect using your model, and some activation thresholds like power, intensity and frequency.
+Optionally you can add things like throttles to your activation to make sure your pattern doesn't get activated continuously.
+
+In our example file ( mode_tutorial_c.py ) we have two patterns that can be detected. Loud is connected to the noise sound ( which is a sound that is detected by the dummy model ) and will only get activated if the model is above 90 percent certain that the sound is being heard.
+Another pattern is called louder, and this one has a second threshold 'power' of 50.000, and will only get activated if the power of the sound is above 50.000 despite it listening to the same sound.
+There are many complex things you can do with patterns, like having the percentages of sounds combined to reach a possible threshold. Or having a lowest threshold in case you want to use a continuous sound for activation.
+You can even throttle multiple sounds at the same time, like in the louder example, to avoid activating certain patterns after one another.
+
+Here you can also see the if detect statements ( On line 29 for example ). In case the pattern louder is being detected, we will press B, if the loud pattern is detected, we will press A.
+This is the thing that connects our detection patterns to actions. There are many different things you can do with if statements ( as seen in the documentation over at: https://docs.python.org/3/tutorial/controlflow.html ).
+But one thing you must make sure of, is that you use the right amount of spaces on the next line ( On line 30 in our example ) to make sure the program doesn't crash.
+
+This step is more trial and error. I personally use the testing mode to see what thresholds work best for what activation function.
+

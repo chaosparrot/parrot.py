@@ -41,17 +41,7 @@ In order to map a sound to a key, you will have to go through a certain process:
 * Step 1 - [Recording the sound](docs/RECORDING.md)
 * Step 2 - [Training a model on the sound for recognition](docs/TRAINING.md)
 * Step 3 - [Analyse whether or not the sound is properly recognized](docs/ANALYSING.md)
-
-# Tweaking the interaction modes
-
-As it stands right now, there is no easy way to do the configuration of the given interaction modes. You will have to edit the code yourself.
-The modes can be found in the lib/modes/ directory.
-
-Most of this tweaking will include changing the pattern detector configuration in the top of the files by changing the sounds and their percentage and intensity thresholds.
-
-There keys should not be changed, however, inside its contents, you can tweak the following elements:
-Sound - This is the name of the sound you wish to use when this key should be activated
-Strategy - You can choose between.. TODO
+* Step 4 - [Connecting sounds to keyboard and mouse inputs](docs/TUTORIAL_MODE.md)
 
 # Running the program
 
@@ -67,3 +57,4 @@ You can fix that by starting windows speech rec, going to your C:\Users\YOURUSER
 
  - Add examples of how to use the program
  - Seperate out the eyetracker and speech recognition parts, in order to allow the users not to have to install and configure all the different parts in order to get set up properly. 
+ - Make a dummy mode for rapid testing without having to train a model yourself
