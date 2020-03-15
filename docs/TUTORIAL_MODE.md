@@ -56,7 +56,7 @@ Patterns are a combination of activation thresholds and throttles. Every individ
 Optionally you can add things like throttles to your activation to make sure your pattern doesn't get activated continuously.
 
 In our example file ( mode_tutorial_c.py ) we have two patterns that can be detected. Loud is connected to the noise sound ( which is a sound that is detected by the dummy model ) and will only get activated if the model is above 90 percent certain that the sound is being heard.
-Another pattern is called louder, and this one has a second threshold 'power' of 50.000, and will only get activated if the power of the sound is above 50.000 despite it listening to the same sound.
+Another pattern is called louder, and this one has a second threshold 'power' of 80.000, and will only get activated if the power of the sound is above 80.000 despite it listening to the same sound.
 There are many complex things you can do with patterns, like having the percentages of sounds combined to reach a possible threshold. Or having a lowest threshold in case you want to use a continuous sound for activation.
 You can even throttle multiple sounds at the same time, like in the louder example, to avoid activating certain patterns after one another.
 

@@ -9,7 +9,6 @@ class TutorialMode(BaseMode):
             'sounds': ['noise'],
             'threshold': {
                 'percentage': 90,
-                'power': 50000
             },
             'throttle': {
                 'loud': 0.3
@@ -20,7 +19,7 @@ class TutorialMode(BaseMode):
             'sounds': ['noise'],
             'threshold': {
                 'percentage': 90,
-                'power': 100000
+                'power': 80000
             },
             'throttle': {
                 'louder': 1.0,

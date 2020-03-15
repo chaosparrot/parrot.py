@@ -62,8 +62,8 @@ class PatternDetector:
                     continual_detection_calls = self.generate_detection_functions( thresholds, sounds )
                     
                     recovery_threshold = RECORD_SECONDS * 6
-                    cdc_lambda = lambda self, detection_calls=copy(continual_detection_calls): self.detect_all( detection_calls, 'CONTINUAL' )
-                    dc_lambda = lambda self, detection_calls=copy(detection_calls): self.detect_all( detection_calls, 'FIRST THRESHOLD' )
+                    cdc_lambda = lambda self, detection_calls=copy(continual_detection_calls): self.detect_all( detection_calls )
+                    dc_lambda = lambda self, detection_calls=copy(detection_calls): self.detect_all( detection_calls )
                     detect_lambda = lambda self, pattern_name=pattern_name, rt=recovery_threshold: self.detect_throttle( pattern_name, rt )
                     detection_calls = [lambda self, cdc=copy(cdc_lambda), dc=copy(dc_lambda), dt=copy(detect_lambda): cdc( self ) if dt( self ) else dc( self ) ]
                     
@@ -115,16 +115,13 @@ class PatternDetector:
         
     # Loop over the detection functions and return true if all of them have been checked
     # This is basically an 'all' function which uses functions to calculate if they have all passed
-    def detect_all( self, detection_functions, function_name="" ):    
+    def detect_all( self, detection_functions ):    
         for detect_function in detection_functions:
             if( detect_function( self ) == False ):
                 return False                
         return True
         
     def detect_throttle( self, pattern_name, additional_seconds=0 ):
-        if( additional_seconds is not 0 ):
-            print( pattern_name, self.currentTime, self.currentTime + additional_seconds, self.timestamps[ pattern_name ], self.currentTime < self.timestamps[ pattern_name ] + additional_seconds )
-    
         return self.currentTime < self.timestamps[ pattern_name ] + additional_seconds
 
     # Throttle the type of detection by a certain amount of milliseconds
