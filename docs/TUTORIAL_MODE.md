@@ -48,7 +48,7 @@ More interactions, such as scrolling and holding down the middle mouse button, a
 [View the pyautogui documentation and possible keyboard keys here](https://pyautogui.readthedocs.io/en/latest/keyboard.html)
 You can also look in the lib/input_manager file for examples on how pyautogui is used.
 
-Detection strategies ( uses mode_tutorial_c.py )
+Detection strategies ( uses mode_tutorial_c.py and mode_tutorial_d.py )
 ----
 
 Now we are going to connect our sounds to our keyboard inputs. This can be done using patterns.
@@ -57,12 +57,28 @@ Optionally you can add things like throttles to your activation to make sure you
 
 In our example file ( mode_tutorial_c.py ) we have two patterns that can be detected. Loud is connected to the noise sound ( which is a sound that is detected by the dummy model ) and will only get activated if the model is above 90 percent certain that the sound is being heard.
 Another pattern is called louder, and this one has a second threshold 'power' of 80.000, and will only get activated if the power of the sound is above 80.000 despite it listening to the same sound.
-There are many complex things you can do with patterns, like having the percentages of sounds combined to reach a possible threshold. Or having a lowest threshold in case you want to use a continuous sound for activation.
-You can even throttle multiple sounds at the same time, like in the louder example, to avoid activating certain patterns after one another.
+There are many complex things you can do with patterns. The example below shows how you can throttle multiple sounds after activation.
 
-Here you can also see the if detect statements ( On line 29 for example ). In case the pattern louder is being detected, we will press B, if the loud pattern is detected, we will press A.
+![Multiple throttles](media/mode-tutorial-patterns.png)
+
+The example below shows a pattern where the percentages of sounds are combined to reach a threshold. There is also a secondary threshold that is useful for continuous sound activation which changes its intensity over a long while.
+
+![Continuous sounds](media/mode-tutorial-patterns-2.png)
+
+Back to mode_tutorial_c.py.
+You can see the if detect statements ( On line 29 for example ). In case the pattern louder is being detected, we will press B, if the loud pattern is detected, we will press A.
 This is the thing that connects our detection patterns to actions. There are many different things you can do with if statements ( as seen in the documentation over at: https://docs.python.org/3/tutorial/controlflow.html ).
 But one thing you must make sure of, is that you use the right amount of spaces on the next line ( On line 30 in our example ) to make sure the program doesn't crash.
 
 This step is more trial and error. I personally use the testing mode to see what thresholds work best for what activation function.
+
+Detecting areas on the screen
+----
+
+Now that we can connect our sounds to actions, there are other things to explore. One of them is connecting a certain action to an area on the screen.
+Many times, your model might not be able to recognize a lot of different sounds. Practically, it can be handier to have a few sounds that are recognized well, but are seperated from actions in another way.
+
+
+
+
 
