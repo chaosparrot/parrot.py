@@ -4,12 +4,15 @@ from config.config import *
 import math
 pyautogui.FAILSAFE = False
 pyautogui.PAUSE = 0.0
+from copy import copy
 
 class PatternDetector:
     currentTime = time.time()
     predictionDicts = []
+    lastDict = {}
     timestamps = {}
     config = {}
+    patterns = {}
     
     tickActions = []
     screenWidth = 0
@@ -20,6 +23,75 @@ class PatternDetector:
     def __init__(self, config):
         self.config = config
         self.screenWidth, self.screenHeight = pyautogui.size()
+        self.prepare_patterns()
+    
+    def prepare_patterns( self ):
+        if( isinstance( self.config, list ) ):
+            currentTime = time.time()
+        
+            for config_pattern in self.config:
+                pattern_name = copy(config_pattern['name'])
+                sounds = copy(config_pattern['sounds'])
+                self.timestamps[ pattern_name ] = currentTime
+                
+                throttle_detect = lambda self, pattern_name=pattern_name: self.detect_throttle( pattern_name )
+                detect = lambda self: False
+                throttle_activate = lambda self, pattern_name=pattern_name: self.throttle( pattern_name )
+                throttle_in_seconds = 0
+                
+                if( 'throttle' in config_pattern ):
+                    throttle_activate = lambda self, throttles=copy( config_pattern['throttle'] ): self.activate_throttle( throttles )
+                    
+                detection_calls = []
+                if( 'threshold' in config_pattern ):
+                    thresholds = copy(config_pattern['threshold'])
+                    if( 'percentage' in thresholds ):
+                        detection_calls.append( lambda self, threshold=thresholds['percentage'], sounds=sounds: sum( self.lastDict[sound]['percent'] for sound in sounds) >= threshold )
+                    if( 'power' in thresholds ):
+                        detection_calls.append( lambda self, threshold=thresholds['power']: self.lastDict['silence']['power'] >= threshold )
+                    if( 'ratio' in thresholds and len(sounds) > 1 ):
+                        detection_calls.append( lambda self, threshold=thresholds['ratio'], sounds=sounds: ( self.lastDict[sounds[0]]['percent'] / self.lastDict[sounds[1]]['percent'] >= threshold ) )
+                    if( 'intensity' in thresholds ):
+                        detection_calls.append( lambda self, threshold=thresholds['intensity']: self.lastDict['silence']['intensity'] >= threshold )
+                    if( 'frequency' in thresholds ):
+                        detection_calls.append( lambda self, threshold=thresholds['frequency']: self.lastDict['silence']['frequency'] >= threshold )
+                        
+                    ## These will check whether a threshold is below the given value
+                    if( 'below_percentage' in thresholds ):
+                        detection_calls.append( lambda self, threshold=thresholds['percentage'], sounds=sounds: sum( self.lastDict[sound]['percent'] for sound in sounds) < threshold )
+                    if( 'below_power' in thresholds ):
+                        detection_calls.append( lambda self, threshold=thresholds['power']: self.lastDict['silence']['power'] < threshold )
+                    if( 'below_ratio' in thresholds and len(sounds) > 1 ):
+                        detection_calls.append( lambda self, threshold=thresholds['ratio'], sounds=sounds: ( self.lastDict[sounds[0]]['percent'] / self.lastDict[sounds[1]]['percent'] < threshold ) )
+                    if( 'below_intensity' in thresholds ):
+                        detection_calls.append( lambda self, threshold=thresholds['intensity']: self.lastDict['silence']['intensity'] < threshold )
+                    if( 'below_frequency' in thresholds ):
+                        detection_calls.append( lambda self, threshold=thresholds['frequency']: self.lastDict['silence']['frequency'] < threshold )
+                        
+                ## This will allow continuous sounds to be made above a certain threshold if the first threshold has been activated
+                #if( 'minimum_threshold' in config_pattern ):
+                #    thresholds = copy(config_pattern['minimum_threshold'])                
+                #    minimum_detection_calls = []
+                #    if( 'percentage' in thresholds ):
+                #        minimum_detection_calls.append( lambda self, threshold=thresholds['percentage'], sounds=sounds: sum( self.lastDict[sound]['percent'] for sound in sounds) >= threshold )
+                #    if( 'power' in thresholds ):
+                #        minimum_detection_calls.append( lambda self, threshold=thresholds['power']: self.lastDict['silence']['power'] >= threshold )
+                #    if( 'ratio' in thresholds and len(sounds) > 1 ):
+                #        minimum_detection_calls.append( lambda self, threshold=thresholds['ratio'], sounds=sounds: ( self.lastDict[sounds[0]]['percent'] / self.lastDict[sounds[1]]['percent'] >= threshold ) )
+                #    if( 'intensity' in thresholds ):
+                #        minimum_detection_calls.append( lambda self, threshold=thresholds['intensity']: self.lastDict['silence']['intensity'] >= threshold )
+                #    if( 'frequency' in thresholds ):
+                #        minimum_detection_calls.append( lambda self, threshold=thresholds['frequency']: self.lastDict['silence']['frequency'] >= threshold )
+                #        
+                #    detection_calls = [lambda self, mdc=copy(minimum_detection_calls), dc=copy(detection_calls): self.detect_all( mdc, 'MDC' ) if self.throttle_detection( pattern_name, RECORD_SECONDS * 6 ) == False else self.detect_all(dc, 'DC')]
+                    
+                    
+                detect = lambda self, detection_calls=copy(detection_calls): self.detect_all( detection_calls )
+                self.patterns[ pattern_name ] = {
+                    'throttle_detect': throttle_detect,
+                    'throttle_activate': throttle_activate,
+                    'detect': detect,
+                }
 
     # Update the timestamp used for throttle detection
     # And set the prediction dicts to be used for detection
@@ -27,7 +99,18 @@ class PatternDetector:
         self.currentTime = timestamp if timestamp != None else time.time()
         self.mouseX, self.mouseY = pyautogui.position()
         self.predictionDicts = predictionDicts
+        self.lastDict = self.predictionDicts[-1]
         self.tickActions = []
+        
+    # Loop over the detection functions and return true if all of them have been checked
+    def detect_all( self, detection_functions, function_name="" ):    
+        for detect_function in detection_functions:
+            if( detect_function( self ) == False ):
+                return False
+        return True
+        
+    def detect_throttle( self, pattern_name ):
+        return self.currentTime < self.timestamps[ pattern_name ]
 
     # Throttle the type of detection by a certain amount of milliseconds
     def throttle_detection( self, key, throttle_in_seconds ):
@@ -36,11 +119,29 @@ class PatternDetector:
             return False
         else:
             return ( self.currentTime - throttle_in_seconds ) < self.timestamps[ key ]
+            
+    def activate_throttle( self, throttles ):
+        for key in throttles.keys():
+            throttle = throttles[key]
+            self.timestamps[key] = self.currentTime + throttle
                 
     # Detect an action using the strategy that was set in the configuration
     def detect( self, action ):
-        if action not in self.config:
+        if action not in self.config and action not in self.patterns:
             return False
+        elif( action in self.patterns ):
+            #print( action, self.timestamps )
+            if( self.patterns[action]['throttle_detect']( self ) ):
+                return False
+        
+            detected = self.patterns[action]['detect'](self)
+            if( detected == True ):
+                self.tickActions.append( action )
+                self.patterns[action]['throttle_activate']( self )
+                
+            #print( "DETECT", action, detected )
+                
+            return detected
         else:
             return self.detect_strategy( action, self.config[action] )
         

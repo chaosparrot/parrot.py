@@ -21,8 +21,13 @@ def main(argv):
             starting_mode = arg
     
     # Load the trained classifier
-    print( "Loading classifier " + CLASSIFIER_FOLDER + "/" + default_classifier_file + ".pkl" )
-    classifier = joblib.load( CLASSIFIER_FOLDER + "/" + default_classifier_file + ".pkl" )
+    if( default_classifier_file != "dummy" ):
+        print( "Loading classifier " + CLASSIFIER_FOLDER + "/" + default_classifier_file + ".pkl" )
+        classifier = joblib.load( CLASSIFIER_FOLDER + "/" + default_classifier_file + ".pkl" )
+    else:
+        print( "Loading dummy classifier for testing purposes" )
+        from lib.dummy_classifier import DummyClassifier
+        classifier = DummyClassifier()
             
     mode_switcher = ModeSwitcher( input_testing_mode )
     mode_switcher.switchMode( starting_mode )
