@@ -72,13 +72,27 @@ But one thing you must make sure of, is that you use the right amount of spaces 
 
 This step is more trial and error. I personally use the testing mode to see what thresholds work best for what activation function.
 
-Detecting areas on the screen
+Detecting areas on the screen ( uses mode_tutorial_e.py and mode_tutorial_f.py )
 ----
 
 Now that we can connect our sounds to actions, there are other things to explore. One of them is connecting a certain action to an area on the screen.
 Many times, your model might not be able to recognize a lot of different sounds. Practically, it can be handier to have a few sounds that are recognized well, but are seperated from actions in another way.
 
+There are two easy ways to check whether or not your mouse ( or eyetracker cursor if you are using an eyetracker that moves your mouse ) is in a specific region of the screen.
+There is the value quadrant3x3 - Which displays in what quadrant the mouse is in ( regions shown below )
 
+![3x3 quadrant](media/mode-tutorial-areas.png)
+
+And there is the value quadrant4x3 - Which uses the following quadrants:
+
+![4x3 quadrant](media/mode-tutorial-areas-4.png)
+
+In our mode_tutorial_e.py example, you can see that when we detect the noise sound and combine it with a specific area of the screen, we can increase the amount of actions for a single sound by 9 if we use the 3x3 quadrant.
+When we use the 4x3 quadrant, that number increases to 12! This allows us to use far less sounds, or use a specific sound that is recognized quickly and accurately, to press a multitude of different buttons.
+
+It is also possible to detect whether or not your mouse is in a custom area of the screen.
+In the mode_tutorial_f.py example, you can see the detect_inside_screen function. Here you can give your topleft coordinates ( x an y ) and the width and height of the box you want to detect.
+In this case, we use the topleft coordinate of the screen ( 0, 0 ) and detect a box 400 pixels wide and 400 pixels down.
 
 
 

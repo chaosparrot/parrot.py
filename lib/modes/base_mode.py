@@ -13,15 +13,15 @@ import pythoncom
 from lib.overlay_manipulation import update_overlay_image
 
 # Quadrants
-TOP_LEFT = 1
-TOP_MIDDLE = 2
-TOP_RIGHT = 3
-CENTER_LEFT = 4
-CENTER_MIDDLE = 5
-CENTER_RIGHT = 6
-BOTTOM_LEFT = 7
-BOTTOM_MIDDLE = 8
-BOTTOM_RIGHT = 9
+TOPLEFT = 1
+TOPMIDDLE = 2
+TOPRIGHT = 3
+CENTERLEFT = 4
+CENTERMIDDLE = 5
+CENTERRIGHT = 6
+BOTTOMLEFT = 7
+BOTTOMMIDDLE = 8
+BOTTOMRIGHT = 9
 
 class BaseMode:
     quadrant3x3 = 0
@@ -136,6 +136,11 @@ class BaseMode:
                 self.inputManager.mouseUp()
                 
         self.should_drag = should_drag
+        
+    # Detect when the cursor is inside an area
+    def detect_inside_area( self, x, y, width, height ):
+        return self.detector.detect_inside_minimap( x, y, width, height )
+
 
     def update_overlay( self ):
         if( not( self.ctrlKey or self.shiftKey or self.altKey ) ):
