@@ -18,21 +18,21 @@ class TutorialMode(BaseMode):
 
     def handle_sounds( self, dataDicts ):
         if( self.detect('loud') ):
-            if( self.quadrant3x3 === TOPLEFT ):
+            if( self.quadrant3x3 == TOPLEFT ):
                 press('1')
-            elif( self.quadrant3x3 === TOPMIDDLE ):
+            elif( self.quadrant3x3 == TOPMIDDLE ):
                 press('2')
-            elif( self.quadrant3x3 === TOPRIGHT ):
+            elif( self.quadrant3x3 == TOPRIGHT ):
                 press('3')
-            elif( self.quadrant3x3 === CENTERLEFT ):
+            elif( self.quadrant3x3 == CENTERLEFT ):
                 press('4')
-            elif( self.quadrant3x3 === CENTERMIDDLE ):
+            elif( self.quadrant3x3 == CENTERMIDDLE ):
                 press('5')
-            elif( self.quadrant3x3 === CENTERRIGHT ):
+            elif( self.quadrant3x3 == CENTERRIGHT ):
                 press('6')
-            elif( self.quadrant3x3 === BOTTOMLEFT ):
+            elif( self.quadrant3x3 == BOTTOMLEFT ):
                 press('7')
-            elif( self.quadrant3x3 === BOTTOMMIDDLE ):
+            elif( self.quadrant3x3 == BOTTOMMIDDLE ):
                 press('8')
-            elif( self.quadrant3x3 === BOTTOMRIGHT ):
+            elif( self.quadrant3x3 == BOTTOMRIGHT ):
                 press('9')

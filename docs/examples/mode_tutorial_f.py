@@ -21,4 +21,4 @@ class TutorialMode(BaseMode):
             if( self.detect_inside_area(0, 0, 400, 400 ):
                 press('1')
             else:
-			    press('2')
+                press('2')
