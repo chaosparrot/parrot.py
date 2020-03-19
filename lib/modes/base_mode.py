@@ -41,13 +41,12 @@ class BaseMode:
         self.altKey = False
         
         if( SPEECHREC_ENABLED == True ):
+            from dragonfly import Grammar
             from lib.grammar.simple_grammar import SimpleSpeechCommand
             import pythoncom
             self.grammar = Grammar("Simple")
-            self.simpleCommandRule = SimpleSpeechCommand(self.speech_commands)
-            self.exitSpeechCommand = SimpleSpeechCommand({'Exit speech mode': ''}, callback=self.toggle_speech)
+            self.simpleCommandRule = SimpleSpeechCommand(self.speech_commands, callback=self.toggle_speech)
             self.grammar.add_rule( self.simpleCommandRule )
-            self.grammar.add_rule( self.exitSpeechCommand )
         
     def start( self ):
         update_overlay_image( "default" )
@@ -72,7 +71,7 @@ class BaseMode:
         # Recognize speech commands in speech mode
         if( self.mode == "speech" ):
             pythoncom.PumpWaitingMessages()
-            self.handle_speech( dataDicts, quadrant3x3, quadrant4x3 )
+            self.handle_speech( dataDicts )
             
         # Regular quick command mode
         elif( self.mode == "regular" ):

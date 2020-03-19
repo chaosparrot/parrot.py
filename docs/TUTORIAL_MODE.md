@@ -94,5 +94,27 @@ It is also possible to detect whether or not your mouse is in a custom area of t
 In the mode_tutorial_f.py example, you can see the detect_inside_screen function. Here you can give your topleft coordinates ( x an y ) and the width and height of the box you want to detect.
 In this case, we use the topleft coordinate of the screen ( 0, 0 ) and detect a box 400 pixels wide and 400 pixels down.
 
+Using speech recognition ( uses mode_tutorial_g.py )
+----
+
+There is another way to connect sounds with actions, and that is through speech recognition. This uses the dragonfly and windows speech recognition api that you might have installed and configured.
+Speech recognition is very powerful, and allows you to map your voice commands to actions with relative accuracy without having to do manual sound training in Parrot.py. 
+
+Before you try out speech recognition, make sure to change the SPEECH_RECOGNITION_ENABLED to True in the config/config.py file.
+In the mode_tutorial_g.py file, I have added two speech commands. They can be read in the part annotated with A. These two commands will press a and b respectively, but the last command will also toggle speech recognition off.
+
+On top of that, you will notice a handle_sound and a handle_speech area. Parrot.py allows you to recognize the speech recognition in unison with regular sounds, however, these can usually conflict with one another. 
+Let's say that you bind the 'ah' sound to a key, while you use that sound in one of your speech commands. On top of that, windows speech recognition tends to have a bunch of commands readily available to execute, which you might not want to activate accidentally.
+( For example, shut down your computer or shut down the game you're playing ).
+
+This is the reason for toggle_speech. This will toggle between handle_sound being used, and handle_speech. In the handle_speech area, I have added a detection for a chime sound.
+I have made two sounds detectable. The regular loud noise and a chiming sound ( You can hiss loudly to activate it ). This allows you to rapidly switch between speech and sound mode.
+
+For advanced usecases, you can check the documentation over at https://pythonhosted.org/dragonfly/ . Internally, you can see how the BaseMode uses the grammars to build up a simple speech to action workflow.
+
+Conclusion
+----
+
+This concludes the basic tutorials for making your own interaction modes. I hope you have all the examples you need. If you are missing something, or aren't sure about some functionality, please do let me know.
 
 

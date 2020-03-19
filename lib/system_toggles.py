@@ -24,4 +24,3 @@ def toggle_eyetracker():
 def toggle_speechrec():
 	if( SPEECHREC_ENABLED == True ):
 		hotkey('ctrl','win')
-		print( "TOGGLE!" )
