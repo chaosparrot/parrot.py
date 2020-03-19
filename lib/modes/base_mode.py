@@ -121,9 +121,11 @@ class BaseMode:
         if( self.mode != "speech" ):
             self.mode = "speech"
             self.grammar.load()
+            print( "--- TOGGLING SPEECH RECOGNITION ON" )
         else:
             self.mode = "regular"
             self.grammar.unload()
+            print( "--- TOGGLING SPEECH RECOGNITION OFF" )
         toggle_speechrec()
 
     # Drag mouse for selection purposes
@@ -139,7 +141,6 @@ class BaseMode:
     # Detect when the cursor is inside an area
     def detect_inside_area( self, x, y, width, height ):
         return self.detector.detect_inside_minimap( x, y, width, height )
-
 
     def update_overlay( self ):
         if( not( self.ctrlKey or self.shiftKey or self.altKey ) ):
