@@ -46,7 +46,7 @@ class StarcraftMode:
             },
             'rapidclick': {
                 'strategy': 'continuous_power',
-                'sound': 'thrill_thr',
+                'sound': 'general_thrill_thr',
                 'percentage': 80,
                 'lowest_percentage': 40,                
                 'power': 20000,
@@ -144,7 +144,7 @@ class StarcraftMode:
                 'strategy': 'rapid_power',
                 'sound': 'approximant_r',
                 'percentage': 95,
-                'power': 80000,
+                'power': 60000,
                 'throttle': 0
             },            
             'r': {
@@ -156,8 +156,8 @@ class StarcraftMode:
             },
             'grid_ability': {
                 'strategy': 'combined_continuous',
-                'sound': 'vowel_ah',
-                'secondary_sound': 'vowel_aa',
+                'sound': 'general_vowel_aa',
+                'secondary_sound': 'vowel_ah',
                 'ratio': 0,
                 'percentage': 90,
                 'intensity': 1500,
@@ -167,8 +167,8 @@ class StarcraftMode:
             'numbers': {
                 'strategy': 'combined_power',
                 'sound': 'vowel_iy',
-                'secondary_sound': 'vowel_ih',
-                'ratio': 4,
+                'secondary_sound': 'approximant_j',
+                'ratio': 0,
                 'percentage': 80,
                 'power': 25000,
                 'throttle': 0.18
@@ -267,7 +267,7 @@ class StarcraftMode:
             if( ctrlKey == True ):
                 self.inputManager.keyDown('ctrl')
                 self.ctrlKey = ctrlKey
-                self.update_overlay()                
+                self.update_overlay()
             else:
                 self.inputManager.keyUp('ctrl')
                 self.ctrlKey = ctrlKey
@@ -339,7 +339,7 @@ class StarcraftMode:
             self.detector.clear_throttle('second_ability')
             self.detector.clear_throttle('third_ability')
             self.detector.deactivate_for('select', 0.3)
-        elif( self.ability_selected and rapidclick ):
+        elif( rapidclick ):
             if( self.last_ability_selected == 'first' ):
                 self.cast_ability_throttled('z', 0.05)
             elif( self.last_ability_selected == 'second' ):
@@ -365,6 +365,7 @@ class StarcraftMode:
                 self.hold_down_start_timer = time.time()
                 
             self.detector.deactivate_for( 'control', 0.15 )
+            self.detector.deactivate_for( 'secondary_control', 0.15 )
         
         if( selecting ):
             self.ability_selected = False
@@ -379,19 +380,11 @@ class StarcraftMode:
                 self.inputManager.click(button='right')
 
             self.detector.deactivate_for( 'grid_ability', 0.2 )
-            self.detector.deactivate_for( 'secondary_movement', 0.2 )
+            self.detector.deactivate_for( 'secondary_movement', 0.4 )
                 
             # Release the held keys - except when shift clicking units in the selection tray ( for easy removing from the unit group )
             if( not( self.shiftKey and self.detect_selection_tray() ) ):
                 self.release_hold_keys()
-        elif( ( self.detector.is_throttled('camera') or self.detector.is_throttled("first_ability") or self.detector.is_throttled('second_ability') ) and self.detector.detect( "rapidclick" ) ):
-            self.inputManager.click(button='left')
-            self.ability_selected = False
-            
-            # Clear the throttles for abilities
-            self.detector.clear_throttle('camera')
-            self.detector.clear_throttle('first_ability')
-            self.detector.clear_throttle('second_ability')
             
         # CTRL KEY holding
         elif( self.detector.detect( "control" ) ):

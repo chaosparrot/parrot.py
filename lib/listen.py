@@ -115,7 +115,9 @@ def action_consumer( stream, classifier, dataDicts, persist_replay, replay_file,
                             replay_row['power'] = int(labelDict['power'])                            
                             replay_row['frequency'] = labelDict['frequency']                
                         writer.writerow( replay_row )
-                        csvfile.flush()                            
+                        csvfile.flush()
+                    else:
+                        time.sleep( RECORD_SECONDS / 3 )
         else:
             while( stream.is_active() ):
                 if( not classifierQueue.empty() ):
@@ -127,6 +129,8 @@ def action_consumer( stream, classifier, dataDicts, persist_replay, replay_file,
                         actions = mode_switcher.getMode().handle_input( dataDicts )
                         if( isinstance( actions, list ) == False ):
                             actions = []
+                else:
+                    time.sleep( RECORD_SECONDS / 3 )                
     except Exception as e:
         print( "----------- ERROR DURING CONSUMING ACTIONS -------------- " )
         exc_type, exc_value, exc_tb = sys.exc_info()
@@ -149,10 +153,11 @@ def classification_consumer( audio, stream, classifier, persist_files, high_spee
     
     try:    
         while( stream.is_active() ):
-            probabilityDict, predicted, audio_frames, highestintensity, frequency, wavData  = classify_audioframes( audioQueue, audio_frames, classifier, high_speed )
+            probabilityDict, predicted, audio_frames, highestintensity, frequency, wavData = classify_audioframes( audioQueue, audio_frames, classifier, high_speed )
             
             # Skip if a prediction could not be made
             if( probabilityDict == False ):
+                time.sleep( RECORD_SECONDS / 3 )
                 continue
                 
             seconds_playing = time.time() - starttime

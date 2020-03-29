@@ -37,7 +37,7 @@ def learn_data():
     print( "Type the algorithm that you wish to use for recognition ( Default is random forest )")
     print( "- [R] Random Forest ( SKLEARN )" )
     print( "- [M] Multi Layer Perceptron ( Neural net in SKLEARN )" )
-    if( not PYTORCH_AVAILABLE ):
+    if( PYTORCH_AVAILABLE ):
         print( "- [A] Audio Net ( Neural net in Pytorch )" )
     print( "- [X] Exit the learning" )
 
