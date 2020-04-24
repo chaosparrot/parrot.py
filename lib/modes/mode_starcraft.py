@@ -62,16 +62,25 @@ class StarcraftMode:
                 'throttle': 0.2
             },
             'movement': {
-                'strategy': 'rapid_power',
+                'strategy': 'frequency_threshold',
                 'sound': 'sound_whistle',
                 'percentage': 80,
+                'below_frequency': 54,
+                'power': 23000,
+                'throttle': 0.3
+            },
+            'click_after_movement': {
+                'strategy': 'frequency_threshold',
+                'sound': 'sound_whistle',
+                'percentage': 80,
+                'above_frequency': 54,
                 'power': 23000,
                 'throttle': 0.3
             },
             'secondary_movement': {
                 'strategy': 'rapid_power',
                 'sound': 'sound_finger_snap',
-                'percentage': 65,
+                'percentage': 90,
                 'power': 100000,
                 'throttle': 0.3
             },
@@ -79,6 +88,7 @@ class StarcraftMode:
                 'strategy': 'rapid_power',
                 'sound': 'vowel_oh',
                 'percentage': 80,
+                'below_frequency': 40,
                 'ratio': 0.01,
                 'power': 20000,
                 'throttle': 0.2
@@ -96,14 +106,14 @@ class StarcraftMode:
                 'strategy': 'rapid_power',
                 'sound': 'sibilant_sh',
                 'percentage': 90,
-                'power': 20000,
+                'power': 18000,
                 'throttle': 0.4
             },
             'alt': {
                 'strategy': 'rapid_power',
                 'sound': 'fricative_v',
                 'percentage': 95,
-                'power': 20000,
+                'power': 200000,
                 'throttle': 0.4
             },
             'camera': {
@@ -143,8 +153,8 @@ class StarcraftMode:
             'third_ability': {
                 'strategy': 'rapid_power',
                 'sound': 'approximant_r',
-                'percentage': 95,
-                'power': 60000,
+                'percentage': 90,
+                'power': 45000,
                 'throttle': 0
             },            
             'r': {
@@ -171,7 +181,7 @@ class StarcraftMode:
                 'ratio': 0,
                 'percentage': 80,
                 'power': 25000,
-                'throttle': 0.18
+                'throttle': 0.16
             },
             'numbers_secondary': {
                 'strategy': 'combined_power',
@@ -180,7 +190,7 @@ class StarcraftMode:
                 'percentage': 60,
                 'ratio': 0,
                 'power': 20000,
-                'throttle': 0.18
+                'throttle': 0.16
             },
             'menu': {
                 'strategy': 'rapid_power',
@@ -274,6 +284,7 @@ class StarcraftMode:
                 self.update_overlay()
         
     def release_hold_keys( self ):
+        print( "RELEASE HOLD KEYS!" )
         self.ability_selected = False
         self.hold_control( False )
         self.hold_shift( False )
@@ -341,18 +352,24 @@ class StarcraftMode:
             self.detector.deactivate_for('select', 0.3)
         elif( rapidclick ):
             if( self.last_ability_selected == 'first' ):
-                self.cast_ability_throttled('z', 0.05)
+                self.cast_ability_throttled('z', 0.032)
             elif( self.last_ability_selected == 'second' ):
-                self.cast_ability_throttled('x', 0.05)
+                self.cast_ability_throttled('x', 0.032)
             elif( self.last_ability_selected == 'third' ):
-                self.cast_ability_throttled('c', 0.05)
+                self.cast_ability_throttled('c', 0.032)
             
             # Prevent some misclassifying errors when using the thr sound
             self.detector.deactivate_for( 'control', 0.3 )
             self.detector.deactivate_for( 'click', 0.1 )
             self.detector.deactivate_for( 'grid_ability', 0.3 )
+            self.ability_selected = False
         else:
             self.drag_mouse( selecting )
+            
+        ## Click after attacking
+        if( self.detector.is_throttled('movement') and self.detector.detect("click_after_movement") ):
+            self.inputManager.click(button='left')
+            self.ability_selected = False
         
         ## Press Grid ability
         if( self.detector.detect("grid_ability") and not rapidclick ):
@@ -366,6 +383,7 @@ class StarcraftMode:
                 
             self.detector.deactivate_for( 'control', 0.15 )
             self.detector.deactivate_for( 'secondary_control', 0.15 )
+            self.detector.deactivate_for( 'movement', 0.15 )
         
         if( selecting ):
             self.ability_selected = False
@@ -379,8 +397,9 @@ class StarcraftMode:
             else:
                 self.inputManager.click(button='right')
 
-            self.detector.deactivate_for( 'grid_ability', 0.2 )
+            self.detector.deactivate_for( 'grid_ability', 0.4 )
             self.detector.deactivate_for( 'secondary_movement', 0.4 )
+            self.detector.deactivate_for( 'movement', 0.3 )            
                 
             # Release the held keys - except when shift clicking units in the selection tray ( for easy removing from the unit group )
             if( not( self.shiftKey and self.detect_selection_tray() ) ):
@@ -404,19 +423,19 @@ class StarcraftMode:
 
         ## Primary movement options
         elif( self.detector.detect( "movement" ) ):
-            self.cast_ability( 'a' )
+            self.cast_ability( 'k' )
             self.detector.deactivate_for( 'control', 0.4 )
         
             self.hold_shift( False )
         ## Secondary movement options
         elif( self.detector.detect( "secondary_movement" ) ):
             quadrant3x3 = self.detector.detect_mouse_quadrant( 3, 3 )
-            if( quadrant3x3 <= 6 ):
-                self.cast_ability( 'h' )
-            elif( quadrant3x3 > 6 ):
-                self.press_ability( 'p' )
-                
-            self.hold_shift( False )            
+            if( quadrant3x3 == 1 ):
+                self.cast_ability( 'p' )
+                self.hold_shift( False )
+            elif( quadrant3x3 == 3 ):
+                self.press_ability( 'h' )
+                self.hold_shift( False )
 
         ## Press Q
         elif( self.detector.detect( "first_ability" ) ):
@@ -425,6 +444,8 @@ class StarcraftMode:
             self.last_ability_selected = 'first'
             
             self.inputManager.press( 'q' )
+            self.detector.deactivate_for( 'control', 0.25 )
+
             
         ## Press W
         elif( self.detector.detect( "second_ability") ):
@@ -439,6 +460,7 @@ class StarcraftMode:
                 self.hold_down_key_timer = time.time()
         ## Press E
         elif( self.detector.detect( "third_ability") ):
+            print( "THIRD ABILITY!" )
             self.ability_selected = True            
             self.detector.clear_throttle('rapidclick')
             self.last_ability_selected = 'third'
@@ -554,8 +576,8 @@ class StarcraftMode:
     def cast_ability_throttled( self, key, throttle ):
         if( time.time() - self.last_key_timestamp > throttle ):
             self.last_key_timestamp = time.time()
-            self.cast_ability( key )
-        
+            self.inputManager.press( key )
+            self.detector.add_tick_action( key )
         
     def press_ability_throttled( self, key, throttle ):
         if( time.time() - self.last_key_timestamp > throttle ):
