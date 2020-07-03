@@ -18,7 +18,7 @@ INPUT_DEVICE_INDEX = 1
 SLIDING_WINDOW_AMOUNT = 2
 INPUT_TESTING_MODE = False
 
-DATASET_FOLDER = "data/recordings/30ms"
+DATASET_FOLDER = "data/recordings/30mscold"
 RECORDINGS_FOLDER = "data/recordings/30mscold"
 REPLAYS_FOLDER = "data/replays"
 REPLAYS_AUDIO_FOLDER = "data/replays/audio"
@@ -26,6 +26,8 @@ REPLAYS_FILE = REPLAYS_FOLDER + "/run.csv"
 CLASSIFIER_FOLDER = "data/models"
 OVERLAY_FOLDER = "data/overlays"
 OVERLAY_FILE = "config/current-overlay-image.txt"
+COMMAND_FILE = "config/current-log.txt"
+
 
 DEFAULT_CLF_FILE = "tiny_gold_league_trio"
 STARTING_MODE = "starcraft"

@@ -24,24 +24,40 @@ def loop_overlay():
     text = tk.Text(window, height=1, width=20, relief="flat")
     text.configure(bg="#000000", fg="#FFFFFF", padx=20, pady=20, font=("Arial Black", 40, "bold"))
     text.insert(INSERT, "vowel_ah")
-    text.place(x=0, y=0)
+    text.place(x=60, y=0)
     
-    commandText = tk.Text(window, relief="flat", width=8, height=1)
+    commandText = tk.Text(window, relief="flat", width=20, height=1)
     commandText.configure(bg="#000000", fg="#FFFFFF", font=("Arial Black", 120, "bold"))
     commandText.tag_add("here", "1.0", "1.1")
-    commandText.tag_configure("s", offset=70, font=('Arial Black', 40, "bold"))
-    commandText.insert(INSERT,"Q","","*10","s")
+    commandText.tag_configure("times", offset=70, font=('Arial Black', 40, "bold"))
+    commandText.insert(INSERT,"Q","","*10","times")
     commandText.grid(row=0)
-    commandText.place(x=40, y=200)
+    commandText.place(x=80, y=200)
+    
+    img = ImageTk.PhotoImage(Image.open("media/sound.png"))
+    panel = Label(window, image = img, borderwidth = 0)
 
     current_overlay_status = ""
     while True:
         time.sleep( 0.032 )
-        filepath = OVERLAY_FILE
+        filepath = COMMAND_FILE
         
         with open(filepath) as fp:  
-            overlay_status = fp.readline()
+            ctrl_shift_alt = fp.readline()
+            sound = fp.readline()
+            command = fp.readline()
+            times = fp.readline()
             
+            text.delete('1.0', END)
+            text.insert(INSERT, sound)
+            commandText.delete('1.0', END)
+            
+            if (times!="1"):
+                commandText.insert(INSERT,command.rstrip("\n"),"","*" + times,"times")
+            else:
+                commandText.insert(INSERT,command.rstrip("\n"))                
+
+            panel.place(x=0, y=20)    
             fp.close()
 
         window.update_idletasks()
