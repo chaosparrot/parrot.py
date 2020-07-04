@@ -34,7 +34,7 @@ class StarcraftMode:
     
         self.mode = "regular"
         self.modeSwitcher = modeSwitcher
-        self.detector = PatternDetector({
+        self.patterns = {
             'select': {
                 'strategy': 'continuous',
                 'sound': 'sibilant_s',
@@ -156,7 +156,7 @@ class StarcraftMode:
                 'percentage': 90,
                 'power': 45000,
                 'throttle': 0
-            },            
+            },
             'r': {
                 'strategy': 'rapid_power',
                 'sound': 'fricative_f',
@@ -172,7 +172,7 @@ class StarcraftMode:
                 'percentage': 90,
                 'intensity': 1500,
                 'lowest_percentage': 12,
-                'lowest_intensity': 1000
+                'lowest_intensity': 900
             },
             'numbers': {
                 'strategy': 'combined_power',
@@ -199,9 +199,11 @@ class StarcraftMode:
                 'power': 100000,
                 'throttle': 0.5
             }
-        })
+        }
+        
+        self.detector = PatternDetector(self.patterns)
 
-        self.KEY_DELAY_THROTTLE = 0.5
+        self.KEY_DELAY_THROTTLE = 0.4
         
         self.pressed_keys = []
         self.should_follow = False
@@ -237,6 +239,7 @@ class StarcraftMode:
             self.grammar.unload()
             toggle_speechrec()
         self.inputManager.press("esc")
+        self.detector.add_tick_action( "Esc" )
         self.mode = "regular"
         
     def start( self ):
@@ -284,7 +287,6 @@ class StarcraftMode:
                 self.update_overlay()
         
     def release_hold_keys( self ):
-        print( "RELEASE HOLD KEYS!" )
         self.ability_selected = False
         self.hold_control( False )
         self.hold_shift( False )
@@ -313,6 +315,9 @@ class StarcraftMode:
                 self.toggle_speech()
             else:
                 self.press_ability( 'esc' )
+                self.detector.add_tick_action( "Esc" )
+                
+            self.update_command_file(dataDicts)
                     
             return self.detector.tickActions            
         # Recognize speech commands in speech mode
@@ -324,6 +329,8 @@ class StarcraftMode:
         # Regular quick command mode
         elif( self.mode == "regular" ):
             self.handle_quick_commands( dataDicts )
+
+        self.update_command_file(dataDicts)
             
         return self.detector.tickActions
     
@@ -352,11 +359,11 @@ class StarcraftMode:
             self.detector.deactivate_for('select', 0.3)
         elif( rapidclick ):
             if( self.last_ability_selected == 'first' ):
-                self.cast_ability_throttled('z', 0.032)
+                self.cast_ability_throttled('z', 0.03)
             elif( self.last_ability_selected == 'second' ):
-                self.cast_ability_throttled('x', 0.032)
+                self.cast_ability_throttled('x', 0.03)
             elif( self.last_ability_selected == 'third' ):
-                self.cast_ability_throttled('c', 0.032)
+                self.cast_ability_throttled('c', 0.03)
             
             # Prevent some misclassifying errors when using the thr sound
             self.detector.deactivate_for( 'control', 0.3 )
@@ -369,13 +376,15 @@ class StarcraftMode:
         ## Click after attacking
         if( self.detector.is_throttled('movement') and self.detector.detect("click_after_movement") ):
             self.inputManager.click(button='left')
+            self.detector.add_tick_action( "Lclick" )
+
             self.ability_selected = False
         
         ## Press Grid ability
         if( self.detector.detect("grid_ability") and not rapidclick ):
             quadrant4x3 = self.detector.detect_mouse_quadrant( 4, 3 )
             if( time.time() - self.hold_down_start_timer > self.KEY_DELAY_THROTTLE ):
-                self.use_ability_throttled( quadrant4x3, 0.03 )
+                self.use_ability_throttled( quadrant4x3, 0.025 )
                 self.release_hold_keys()
             
             if( self.hold_down_start_timer == 0 ):
@@ -394,8 +403,10 @@ class StarcraftMode:
             # Cast selected ability or Ctrl+click
             if( self.detect_command_area() or self.ability_selected == True or self.ctrlKey == True or self.altKey == True or ( self.shiftKey and self.detect_selection_tray() ) ):
                 self.inputManager.click(button='left')
-            else:
+                self.detector.add_tick_action( "left click" )
+            else:            
                 self.inputManager.click(button='right')
+                self.detector.add_tick_action( "right click" )
 
             self.detector.deactivate_for( 'grid_ability', 0.4 )
             self.detector.deactivate_for( 'secondary_movement', 0.4 )
@@ -408,18 +419,25 @@ class StarcraftMode:
         # CTRL KEY holding
         elif( self.detector.detect( "control" ) ):
             self.hold_control( True )
+            self.detector.add_tick_action( "CTRL" )
         elif( self.detector.detect( "secondary_control" ) ):
             self.hold_control( True )
             self.detector.deactivate_for( 'select', 0.2 )
             self.detector.deactivate_for( 'camera', 0.2 )
+            self.detector.add_tick_action( "CTRL" )            
             
         # SHIFT KEY holding / toggling
         elif( self.detector.detect( "shift" ) ):
             self.hold_shift( not self.shiftKey )
+            if (self.shiftKey):
+                self.detector.add_tick_action( "SHIFT" )
     
         # ALT KEY holding / toggling
         elif( self.detector.detect( "alt" ) ):
             self.hold_alt( not self.altKey )
+            if (self.shiftKey):
+                self.detector.add_tick_action( "ALT" )
+
 
         ## Primary movement options
         elif( self.detector.detect( "movement" ) ):
@@ -444,6 +462,7 @@ class StarcraftMode:
             self.last_ability_selected = 'first'
             
             self.inputManager.press( 'q' )
+            self.detector.add_tick_action( "Q" ) 
             self.detector.deactivate_for( 'control', 0.25 )
 
             
@@ -475,6 +494,7 @@ class StarcraftMode:
             self.last_ability_selected = 'third'
         
             self.inputManager.press( 'r' )
+            self.detector.add_tick_action( "R" )
             
         ## Move the camera
         elif( self.detector.detect( "camera" ) ):
@@ -570,7 +590,7 @@ class StarcraftMode:
         
     def press_ability( self, key ):
         self.inputManager.press( key )
-        self.detector.add_tick_action( key )
+        self.detector.add_tick_action( key.upper() )
         self.release_hold_keys()
         
     def cast_ability_throttled( self, key, throttle ):
@@ -588,29 +608,38 @@ class StarcraftMode:
         ## Move camera to kerrigan when looking above the UI
         if( quadrant == 1 ):
             self.inputManager.press( "f1" )
+            self.detector.add_tick_action( "F1" )
         elif( quadrant == 2 ):
             self.inputManager.press( "f2" )
+            self.detector.add_tick_action( "F2" )            
         elif( quadrant == 3 ):
             self.inputManager.press( "f3" )
+            self.detector.add_tick_action( "F3" )
         elif( quadrant == 4 ):
-            self.inputManager.press( "f5" )            
+            self.inputManager.press( "f5" )   
+            self.detector.add_tick_action( "F5" )
         elif( quadrant == 5 ):
             self.inputManager.press( "backspace" )
+            self.detector.add_tick_action( "backspace" )
         ## Camera hotkeys
         elif( quadrant == 6 ):
-            self.inputManager.press( "f6" )        
+            self.inputManager.press( "f6" )
+            self.detector.add_tick_action( "F6" )            
         
         ## Camera hotkey
         elif( quadrant == 7 ):
             self.inputManager.press( "f7" )
+            self.detector.add_tick_action( "F7" )
             
         ## Camera hotkey
         elif( quadrant == 8 ):
             self.inputManager.press( "f8" )
+            self.detector.add_tick_action( "F8" )
             
         ## Camera hotkey
         elif( quadrant == 9 ):
             self.inputManager.press( "f9" )
+            self.detector.add_tick_action( "F9" )            
                 
     # Detect when the cursor is inside the command area
     def detect_command_area( self ):
@@ -625,6 +654,7 @@ class StarcraftMode:
         if( self.should_drag != should_drag ):
             if( should_drag == True ):
                 self.inputManager.mouseDown()
+                self.detector.add_tick_action( "Mouse drag" )
             else:
                 self.inputManager.mouseUp()
                 
@@ -643,6 +673,50 @@ class StarcraftMode:
                 modes.append( "alt" )
                 
             update_overlay_image( "mode-starcraft-%s" % ( "-".join( modes ) ) )
+            
+    def update_command_file( self, dataDicts ):
+        with open(COMMAND_FILE, 'r+') as fp:
+        
+            # Read initial data first
+            ctrl_shift_alt = fp.readline()
+            sound = fp.readline().rstrip("\n")
+            command = fp.readline().rstrip("\n")
+            times = fp.readline().rstrip("\n")
+            if (times == ""):
+                times = 0                
+
+            ctrl_shift_alt = ""
+            if (self.ctrlKey):
+                ctrl_shift_alt = "ctrl"
+            if (self.shiftKey):
+                ctrl_shift_alt = ctrl_shift_alt + "shift"
+            if (self.altKey):
+                ctrl_shift_alt = ctrl_shift_alt + "alt"                    
+            
+            if (len(self.detector.tickActions) > 1):
+                sound = self.strat_to_sound(self.detector.tickActions[0])
+                
+                new_command = self.detector.tickActions[-1]
+                if (new_command == command):
+                    times = int(times) + 1
+                else:
+                    times = 1
+                command = new_command
+                fp.truncate(0)
+                
+            # Start writing new information
+            fp.seek(0)
+            fp.write(ctrl_shift_alt + '\n')
+            fp.write(sound + '\n')
+            fp.write(command + '\n')
+            fp.write(str(times))
+            fp.close()
+
+    def strat_to_sound(self, strategy):
+        sound = self.patterns[strategy]['sound']
+        sound = "/" + sound.replace("general_", "").replace("vowel_", "").replace("sibilant_", "").replace("thrill_", "").replace("sound_", "").replace("fricative_", "").replace("_alveolar", "").replace("approximant_", "") + "/"
+        return sound
+    
 
     def exit( self ):
         if( self.mode == "speech" ):

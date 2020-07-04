@@ -205,7 +205,7 @@ class PatternDetector:
                 
         elif( strategy == 'rapid_power' ):
             detected = ( self.above_percentage( lastDict, label, config['percentage'] ) and
-                self.above_power( lastDict, config['power'] ) )
+                self.above_power( lastDict, config['power'] ) and ( 'below_frequency' not in config or self.below_frequency(lastDict, config['below_frequency'] ) ) )
                 
         elif( strategy == 'frequency_threshold' ):
             detected = ( self.above_percentage( lastDict, label, config['percentage'] ) and

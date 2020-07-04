@@ -115,6 +115,7 @@ def action_consumer( stream, classifier, dataDicts, persist_replay, replay_file,
                             replay_row['power'] = int(labelDict['power'])                            
                             replay_row['frequency'] = labelDict['frequency']                
                         writer.writerow( replay_row )
+                                                
                         csvfile.flush()
                     else:
                         time.sleep( RECORD_SECONDS / 3 )
@@ -166,7 +167,7 @@ def classification_consumer( audio, stream, classifier, persist_files, high_spee
             prediction_time = time.time() - starttime - seconds_playing
             
             #long_comment = "Time: %0.2f - Prediction in: %0.2f - Winner: %s - Percentage: %0d - Frequency %0d                                        " % (seconds_playing, prediction_time, winner, probabilityDict[winner]['percent'], probabilityDict[winner]['frequency'])
-            short_comment = "T %0.2f - [%0d%s %s] F:%0d I:%0d P:%0d" % (seconds_playing, probabilityDict[winner]['percent'], '%', winner, frequency, probabilityDict[winner]['intensity'], probabilityDict[winner]['power'])            
+            short_comment = "T %0.2f - [%0d%s %s] F:%0d P:%0d" % (seconds_playing, probabilityDict[winner]['percent'], '%', winner, frequency, probabilityDict[winner]['power'])            
             if( winner != "silence" ):
                 print( short_comment )
             

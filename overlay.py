@@ -19,7 +19,7 @@ def loop_overlay():
     window.attributes('-topmost', -1) # Keep on top
     window.geometry('%dx%d+%d+%d' % (20, 20, 1840, 250))
     window.attributes("-transparentcolor", "#FFFFFF") # Remove background
-
+    
     panel = tk.Label(window, image = img)
     panel.pack(side = "bottom", fill = "both", expand = "yes")
     timestamp = time.time()

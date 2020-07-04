@@ -3,6 +3,7 @@ from pyautogui import press, typewrite
 
 quickCommands = {}
 quickCommands["Good luck have fun"] = "gl hf"
+quickCommands["This was a good game"] = "gg"
 quickCommands["Good game"] = "gg"
 quickCommands["Good game well played"] = "gg wp"
 
