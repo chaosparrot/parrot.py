@@ -115,7 +115,7 @@ class BaseMode:
         self.inputManager.release( key )
         
     def release_special_keys( self ):
-        self.inputManager.release_toggle_keys()
+        self.inputManager.release_special_keys()
         
     def toggle_speech( self ):
         if( self.mode != "speech" ):

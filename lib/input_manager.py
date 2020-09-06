@@ -16,12 +16,18 @@ class InputManager:
         'mouseUp': False,
     }
     
+    special_keys = ['ctrl', 'shift', 'alt']
+    
     toggle_keys = {
         'ctrl': False,
         'shift': False,
-        'alt': False
-    }    
-    
+        'alt': False,
+        'up': False,
+        'down': False,
+        'left': False,
+        'right': False
+    }
+
     key_hold_timings = {}
     is_testing = False
     
@@ -44,7 +50,6 @@ class InputManager:
             self.function_mappings['click'] = self.clickAction
             self.function_mappings['mouseDown'] = self.mouseDownAction
             self.function_mappings['mouseUp'] = self.mouseUpAction
-            
                 
     def press( self, key ):
         self.function_mappings['press'](key)
@@ -73,10 +78,9 @@ class InputManager:
             if( key not in self.toggle_keys.keys() ):
                 self.release( key )
             
-    def release_toggle_keys( self ):
-        heldDownKeys = list(self.key_hold_timings)
-        for key in heldDownKeys:
-            if( key in self.toggle_keys.keys() ):
+    def release_special_keys( self ):
+        for key in self.special_keys:
+            if( self.toggle_keys[ key ] == True ):
                 self.release( key )
         
     def release( self, key ):

@@ -73,6 +73,7 @@ class PatternDetector:
                     'throttle_detect': throttle_detect,
                     'throttle_activate': throttle_activate,
                     'detect': detect,
+                    'sounds': sounds
                 }
                 
     # Generate the detection lambda functions based on the threshold configuration given

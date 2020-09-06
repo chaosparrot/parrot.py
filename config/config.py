@@ -30,7 +30,7 @@ COMMAND_FILE = "config/current-log.txt"
 
 
 DEFAULT_CLF_FILE = "tiny_gold_league_trio"
-STARTING_MODE = "starcraft"
+STARTING_MODE = "heroes"
 
 SAVE_REPLAY_DURING_PLAY = True
 SAVE_FILES_DURING_PLAY = False

@@ -88,6 +88,8 @@ def action_consumer( stream, classifier, dataDicts, persist_replay, replay_file,
             with open(replay_file, 'a', newline='') as csvfile:    
                 headers = ['time', 'winner', 'intensity', 'frequency', 'power', 'actions', 'buffer']
                 headers.extend( classifier.classes_ )
+                if ('silence' not in classifier.classes_):
+                    headers.extend(['silence'])
                 writer = csv.DictWriter(csvfile, fieldnames=headers, delimiter=',')
                 writer.writeheader()
             
@@ -112,7 +114,7 @@ def action_consumer( stream, classifier, dataDicts, persist_replay, replay_file,
                             if( labelDict['winner'] ):
                                 replay_row['winner'] = label
                             replay_row['intensity'] = int(labelDict['intensity'])
-                            replay_row['power'] = int(labelDict['power'])                            
+                            replay_row['power'] = int(labelDict['power'])
                             replay_row['frequency'] = labelDict['frequency']                
                         writer.writerow( replay_row )
                                                 
@@ -443,6 +445,9 @@ def create_empty_probability_dict( classifier, data, frequency, intensity, power
             
         probabilityDict[ label ] = { 'percent': percent, 'intensity': int(intensity), 'winner': winner, 'frequency': frequency, 'power': power }
         index += 1
+        
+    if ('silence' not in classifier.classes_):
+        probabilityDict['silence'] = { 'percent': 100, 'intensity': int(intensity), 'winner': True, 'frequency': frequency, 'power': power }
             
     return probabilityDict, predicted, frequency
     
@@ -460,5 +465,8 @@ def create_probability_dict( classifier, data, frequency, intensity, power ):
     for index, percent in enumerate( probabilities[0] ):
         label = classifier.classes_[ index ]
         probabilityDict[ label ] = { 'percent': percent, 'intensity': int(intensity), 'winner': index == predicted, 'frequency': frequency, 'power': power }
+        
+    if ('silence' not in classifier.classes_):
+        probabilityDict['silence'] = { 'percent': 100, 'intensity': int(intensity), 'winner': False, 'frequency': frequency, 'power': power }
         
     return probabilityDict, predicted, frequency    

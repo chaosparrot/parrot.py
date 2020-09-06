@@ -25,7 +25,7 @@ class ModeSwitcher(object):
                 'youtube': YoutubeMode(ModeSwitcher.__instance),
                 'twitch': TwitchMode(ModeSwitcher.__instance),
                 'switch': SwitchMode(ModeSwitcher.__instance),
-                'heroes': HeroesMode(ModeSwitcher.__instance),
+                'heroes': HeroesMode(ModeSwitcher.__instance, is_testing),
                 'starcraft': StarcraftMode(ModeSwitcher.__instance, is_testing),
                 'phonemes': PhonemesMode(ModeSwitcher.__instance),                
                 'testing': TestMode(ModeSwitcher.__instance),
