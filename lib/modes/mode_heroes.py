@@ -1,7 +1,7 @@
 from config.config import *
 from lib.modes.visual_mode import *
 
-class Heroes2Mode(VisualMode):
+class HeroesMode(VisualMode):
 
     previous_edges = []
 
@@ -76,7 +76,7 @@ class Heroes2Mode(VisualMode):
             'name': 'mount',
             'sounds': ['sibilant_sh'],
             'threshold': {
-                'percentage': 90,
+                'percentage': 85,
                 'power': 18000
             },
             'throttle': {
@@ -87,7 +87,7 @@ class Heroes2Mode(VisualMode):
             'name': 'teleport',
             'sounds': ['vowel_e'],
             'threshold': {
-                'percentage': 80,
+                'percentage': 75,
                 'power': 20000
             },
             'throttle': {
@@ -163,7 +163,7 @@ class Heroes2Mode(VisualMode):
             'sounds': ['sound_finger_snap'],
             'threshold': {
                 'percentage': 90,
-                'power': 38000
+                'power': 50000
             },
             'throttle': {
                 'score': 0.5
@@ -183,6 +183,10 @@ class Heroes2Mode(VisualMode):
                 if ( key not in edges ):
                     self.release( key )
         self.previous_edges = edges
+        
+    def press_and_release( self, key ):
+        self.press( key )
+        self.release_special_keys()
     
     def handle_sounds( self, dataDicts ):
         if( self.detect('drag') ):
@@ -195,37 +199,35 @@ class Heroes2Mode(VisualMode):
         if( self.detect('move') ):
             self.rightclick()
         elif( self.detect('ability 1') ):
-            self.press('q')
+            self.press_and_release('q')
         elif( self.detect('ability 2') ):
-            self.press('w')
+            self.press_and_release('w')
         elif( self.detect('ability 3') ):
-            self.press('e')
+            self.press_and_release('e')
         elif( self.detect('ability 4') ):
-            self.press('d')
+            self.press_and_release('d')
         elif( self.detect('heroic') ):
-            self.press('r')
+            self.press_and_release('r')
         elif( self.detect('attack') ):
-            self.press('a')            
+            self.press_and_release('a')            
         elif( self.detect('mount') ):
-            self.press('z')
+            self.press_and_release('z')
         elif( self.detect('teleport') ):
-            self.press('b')            
+            self.press_and_release('b')
         elif( self.detect('control') ):
             self.hold('ctrl')
         elif( self.detect('numbers') ):
             if (self.quadrant3x3 <= 3 ):
-                self.press('1')
+                self.press_and_release('1')
             elif (self.quadrant3x3 > 3 and self.quadrant3x3 <= 6 ):
-                self.press('2')
+                self.press_and_release('2')
             elif (self.quadrant3x3 == 7 or self.quadrant3x3 == 8 ):
-                self.press('3')
+                self.press_and_release('3')
             elif (self.quadrant3x3 == 9 ):
-                self.press('4')
+                self.press_and_release('4')
 
-            self.release_special_keys()
         elif( self.detect('camera') ):
-            if (self.quadrant3x3 == 5 ):
-                self.press('space')
+            self.press_and_release('space')
         elif( self.detect('menu') ):
             self.press('f10')
         elif( self.detect('score') ):
