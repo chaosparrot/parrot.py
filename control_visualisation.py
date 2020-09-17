@@ -42,6 +42,29 @@ def loop_overlay():
     holdText.tag_configure("ALT", background="#FFF000", foreground="#000000")
     holdText.place(x=0, y=430)
     
+    # Draw the controller nipple    
+    canvas_size = 85
+    canvas = Canvas(window, width=canvas_size, height=canvas_size, bg='#000000', highlightthickness=0)
+    canvas.place(x=380, y=420 - canvas_size)
+    canvas.create_oval(3, 3, canvas_size - 3, canvas_size - 3, outline="#333", fill="#444", width=2)
+    
+    width = 40
+    height = 40
+    x = canvas_size / 2 - width / 2
+    y = canvas_size / 2 - height / 2
+    points = [[x, y + 0.5 * height], [x + 0.15 * width, y + 0.15 * height], [x + 0.5 *width, y], [x + 0.85 * width, y + 0.15 * height],
+        [x + width, y + 0.5 * height], [x + 0.85 * width, y + 0.85 * height], [x + 0.5 * width, y + height], [x + 0.15 * width, y + 0.85 * height], [x, y + 0.5 * height]]
+    
+    canvas.create_polygon(points, fill="#111") 
+    basePosX = canvas_size / 2
+    basePosY = canvas_size / 2    
+    canvasOffsetX = basePosX
+    canvasOffsetY = basePosY
+    nipple_outer = canvas.create_oval(canvasOffsetX - 25, canvasOffsetY - 25, canvasOffsetX + 25, canvasOffsetY + 25, outline="#555", fill="#999", width=2)
+    nipple_middle = canvas.create_oval(canvasOffsetX - 18, canvasOffsetY - 18, canvasOffsetX + 18, canvasOffsetY + 18, outline="#555", fill="#999", width=2)
+    nipple_inner = canvas.create_oval(canvasOffsetX - 13, canvasOffsetY - 13, canvasOffsetX + 13, canvasOffsetY + 13, outline="#555", fill="#999", width=2)
+    nipple_dot = canvas.create_oval(canvasOffsetX - 1, canvasOffsetY - 1, canvasOffsetX + 1, canvasOffsetY + 1, outline="#000", fill="#000", width=1)
+    
     img = ImageTk.PhotoImage(Image.open("media/sound.png"))
     panel = Label(window, image = img, borderwidth = 0)
 
@@ -50,8 +73,10 @@ def loop_overlay():
         time.sleep( 0.032 )
         filepath = COMMAND_FILE
         
+        canvas
+        
         with open(filepath) as fp:  
-            ctrl_shift_alt = fp.readline()
+            held_keys = fp.readline()
             sound = fp.readline()
             command = fp.readline()
             times = fp.readline()
@@ -59,6 +84,29 @@ def loop_overlay():
             text.delete('1.0', END)
             text.insert(INSERT, sound)
             commandText.delete('1.0', END)
+            
+            canvas.delete( nipple_outer )
+            canvas.delete( nipple_middle )
+            canvas.delete( nipple_inner )
+            canvas.delete( nipple_dot )
+            
+            canvasOffsetX = basePosX
+            canvasOffsetY = basePosY
+            if ( 'left' in held_keys ):
+                canvasOffsetX = canvasOffsetX - canvas_size / 5
+            elif ( 'right' in held_keys ):
+                canvasOffsetX = canvasOffsetX + canvas_size / 5
+                
+            if ( 'up' in held_keys ):
+                canvasOffsetY = canvasOffsetY - canvas_size / 5
+            elif ( 'down' in held_keys ):
+                canvasOffsetY = canvasOffsetY + canvas_size / 5                
+            
+            # Draw the controller nipple
+            nipple_outer = canvas.create_oval(canvasOffsetX - 25, canvasOffsetY - 25, canvasOffsetX + 25, canvasOffsetY + 25, outline="#555", fill="#999", width=2)
+            nipple_middle = canvas.create_oval(canvasOffsetX - 18, canvasOffsetY - 18, canvasOffsetX + 18, canvasOffsetY + 18, outline="#555", fill="#999", width=2)
+            nipple_inner = canvas.create_oval(canvasOffsetX - 13, canvasOffsetY - 13, canvasOffsetX + 13, canvasOffsetY + 13, outline="#555", fill="#999", width=2)
+            nipple_dot = canvas.create_oval(canvasOffsetX - 2, canvasOffsetY - 2, canvasOffsetX + 2, canvasOffsetY + 2, outline="#000", fill="#000", width=2)
 
             if( len(command) > 3 ):
                 commandText.configure(font=("Arial Black", 50, "bold"))
@@ -71,20 +119,20 @@ def loop_overlay():
                 commandText.tag_configure("times", offset=70, font=('Arial Black', 40, "bold"))
                 commandText.place(x=160, y=150)
                 
-            if ("ctrl" in ctrl_shift_alt):
+            if ("ctrl" in held_keys):
                 holdText.tag_configure("CTRL", background="#FF0000", foreground="#000000")
             else:
                 holdText.tag_configure("CTRL", background="#000000", foreground="#000000")            
 
-            if ("shift" in ctrl_shift_alt):
+            if ("shift" in held_keys):
                 holdText.tag_configure("SHIFT", background="#0000FF", foreground="#000000")
             else:
                 holdText.tag_configure("SHIFT", background="#000000", foreground="#000000")
 
-            if ("alt" in ctrl_shift_alt):
+            if ("alt" in held_keys):
                 holdText.tag_configure("ALT", background="#FFF000", foreground="#000000")
             else:
-                holdText.tag_configure("ALT", background="#000000", foreground="#000000")                
+                holdText.tag_configure("ALT", background="#000000", foreground="#000000")
             
             if (times!="1"):
                 commandText.insert(INSERT,command.rstrip("\n"),"","*" + times,"times")

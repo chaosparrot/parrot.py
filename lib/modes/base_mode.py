@@ -28,6 +28,7 @@ class BaseMode:
     quadrant4x3 = 0
     speech_commands = {}
     patterns = {}
+    toggles = {}
                 
     def __init__(self, modeSwitcher, is_testing=False, repeat_delay=REPEAT_DELAY, repeat_rate=REPEAT_RATE):
         self.inputManager = InputManager(is_testing=is_testing)    
@@ -58,7 +59,7 @@ class BaseMode:
     
         update_overlay_image( "default" )
         toggle_eyetracker()
-                        
+                    
     def handle_input( self, dataDicts ):
         self.detector.tick( dataDicts )
         self.quadrant3x3 = self.detector.detect_mouse_quadrant( 3, 3 )
@@ -87,7 +88,47 @@ class BaseMode:
         print( "No sound handler" )
         return
         
+    # Toggle between variables
+    # If the value is a list, turn them on in sequence after another
+    def toggle( self, value ):
+        if (isinstance(value, list)):
+            turned_on_index = -1
+            for index, key in enumerate(value):
+                if (key not in self.toggles):
+                    self.toggles[key] = False
+                elif (self.toggles[key] == True):
+                    turned_on_index = index
+                    self.toggles[key] = False
+                    
+            next_index = turned_on_index + 1
+            if (next_index >= len(value)):
+                next_index = 0
+
+            self.toggles[value[next_index]] = True
+        else:
+            if (value not in self.toggles ):
+                self.toggles[value] = False
+                
+            self.toggles[value] = not self.toggles[value]
+    
+    def enable( self, value ):
+        if (isinstance(value, list)):
+            for index, key in enumerate(value):
+                self.toggles[key] = True
+        else:
+            self.toggles[value] = True
+
+    def disable( self, value ):
+        if (isinstance(value, list)):
+            for index, key in enumerate(value):
+                self.toggles[key] = False
+        else:
+            self.toggles[value] = False
+        
     def detect( self, key ):
+        if (key in self.toggles):
+            return self.toggles[key]
+    
         return self.detector.detect( key )
         
     def detect_silence( self ):
@@ -103,7 +144,7 @@ class BaseMode:
         self.inputManager.click(button='left')
 
     def rightclick( self ):
-        self.inputManager.click(button='right')        
+        self.inputManager.click(button='right')
         
     def press( self, key ):
         self.inputManager.press( key )

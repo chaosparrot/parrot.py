@@ -39,7 +39,7 @@ class VisualMode(BaseMode):
     def detect( self, key ):
         detected = super().detect(key)
         
-        if (detected):
+        if (detected and key not in self.toggles):
             sound = self.detector.patterns[key]['sounds'][0]
             self.latest_sound = "/" + sound.replace("general_", "").replace("vowel_", "")\
                 .replace("sibilant_", "").replace("thrill_", "").replace("sound_", "").replace("fricative_", "").replace("_alveolar", "").replace("approximant_", "") + "/"
@@ -50,20 +50,28 @@ class VisualMode(BaseMode):
         with open(COMMAND_FILE, 'r+') as fp:
         
             # Read initial data first
-            ctrl_shift_alt = fp.readline()
+            held_keys = fp.readline()
             sound = fp.readline().rstrip("\n")
             command = fp.readline().rstrip("\n")
             times = fp.readline().rstrip("\n")
             if (times == ""):
                 times = 0                
 
-            ctrl_shift_alt = ""
+            held_keys = ""
             if (self.inputManager.toggle_keys['ctrl']):
-                ctrl_shift_alt = "ctrl"
+                held_keys = "ctrl"
             if (self.inputManager.toggle_keys['shift']):
-                ctrl_shift_alt = ctrl_shift_alt + "shift"
+                held_keys = held_keys + "shift"
             if (self.inputManager.toggle_keys['alt']):
-                ctrl_shift_alt = ctrl_shift_alt + "alt"                    
+                held_keys = held_keys + "alt"
+            if (self.inputManager.toggle_keys['left']):
+                held_keys = held_keys + 'left'
+            if (self.inputManager.toggle_keys['up']):
+                held_keys = held_keys + 'up'
+            if (self.inputManager.toggle_keys['right']):
+                held_keys = held_keys + 'right'
+            if (self.inputManager.toggle_keys['down']):
+                held_keys = held_keys + 'down'
             
             if (len(self.detector.tickActions) > 1):
                 sound = self.latest_sound
@@ -78,7 +86,7 @@ class VisualMode(BaseMode):
 
             # Start writing new information
             fp.seek(0)
-            fp.write(ctrl_shift_alt + '\n')
+            fp.write(held_keys + '\n')
             fp.write(sound + '\n')
             fp.write(command + '\n')
             fp.write(str(times))

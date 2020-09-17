@@ -224,8 +224,7 @@ class HeroesMode(VisualMode):
             elif (self.quadrant3x3 == 7 or self.quadrant3x3 == 8 ):
                 self.press_and_release('3')
             elif (self.quadrant3x3 == 9 ):
-                self.press_and_release('4')
-
+                self.press_and_release('4')                
         elif( self.detect('camera') ):
             self.press_and_release('space')
         elif( self.detect('menu') ):
