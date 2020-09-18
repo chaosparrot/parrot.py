@@ -17,6 +17,7 @@ SILENCE_INTENSITY_THRESHOLD = 400
 INPUT_DEVICE_INDEX = 1
 SLIDING_WINDOW_AMOUNT = 2
 INPUT_TESTING_MODE = False
+USE_COORDINATE_FILE = False
 
 DATASET_FOLDER = "data/recordings/30mscold"
 RECORDINGS_FOLDER = "data/recordings/30mscold"
@@ -26,8 +27,8 @@ REPLAYS_FILE = REPLAYS_FOLDER + "/run.csv"
 CLASSIFIER_FOLDER = "data/models"
 OVERLAY_FOLDER = "data/overlays"
 OVERLAY_FILE = "config/current-overlay-image.txt"
+COORDINATE_FILEPATH = "config/current-coordinate.txt"
 COMMAND_FILE = "config/current-log.txt"
-
 
 DEFAULT_CLF_FILE = "tiny_gold_league_trio"
 STARTING_MODE = "heroes"

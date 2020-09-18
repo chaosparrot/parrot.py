@@ -1,12 +1,14 @@
 import time
 import pyautogui
 from config.config import *
+from lib.pointer_controller import PointerController
 import math
 pyautogui.FAILSAFE = False
 pyautogui.PAUSE = 0.0
 from copy import copy
 
 class PatternDetector:
+    pointerController = False
     currentTime = time.time()
     predictionDicts = []
     lastDict = {}
@@ -15,14 +17,10 @@ class PatternDetector:
     patterns = {}
     
     tickActions = []
-    screenWidth = 0
-    screenHeight = 0
-    mouseX = 0
-    mouseY = 0
 
     def __init__(self, config):
         self.config = config
-        self.screenWidth, self.screenHeight = pyautogui.size()
+        self.pointerController = PointerController()
         self.prepare_patterns()
     
     # Turn the configuration that has been given to the pattern detector into dynamic detection strategies
@@ -109,7 +107,22 @@ class PatternDetector:
     # And set the prediction dicts to be used for detection
     def tick( self, predictionDicts, timestamp=None ):
         self.currentTime = timestamp if timestamp != None else time.time()
-        self.mouseX, self.mouseY = pyautogui.position()
+        
+        # Update the current coordinates
+        coords = [0,0]
+        if (USE_COORDINATE_FILE == True):
+            with open(COORDINATE_FILEPATH, 'r') as coordfile:
+                file_coords = coordfile.readline().split(",")
+                if (len(file_coords) == 2):
+                    x = max( 0, int(float(file_coords[0])))
+                    y = max( 0, int(float(file_coords[1])))
+                    coords = [x,y]
+                coordfile.close()
+        else:
+            x, y = pyautogui.position()
+            coords = [x,y]
+
+        self.pointerController.update_coords( coords )
         self.predictionDicts = predictionDicts
         self.lastDict = self.predictionDicts[-1]
         self.tickActions = []
@@ -367,45 +380,12 @@ class PatternDetector:
     # 4, 5, 6
     # 7, 8, 9
     def detect_mouse_quadrant( self, widthSegments, heightSegments ):
-        if( self.mouseX == 0 ):
-            widthPosition = 0
-        else:
-            widthPosition = math.floor( self.mouseX / ( self.screenWidth / widthSegments ) )
-        
-        if( self.mouseY == 0 ):
-            heightPosition = 0
-        else:
-            heightPosition = math.floor( self.mouseY /( self.screenHeight / heightSegments ) )
-
-        quadrant = 1 + widthPosition + ( heightPosition * widthSegments )
-        return quadrant
+        return self.pointerController.detect_quadrant( widthSegments, heightSegments )
 
     # Detects on what edges the mouse is currently in
-    def detect_mouse_screen_edge( self, threshold ):        
-        edges = []
-        if( self.mouseY <= threshold ):
-            edges.append( "up" )
-        elif( self.mouseY >= self.screenHeight - threshold ):
-            edges.append( "down" )
-        
-        if( self.mouseX <= threshold ):
-            edges.append( "left" )
-        elif( self.mouseX >= self.screenWidth - threshold ):
-            edges.append( "right" )
-            
-        return edges
-
-    # Detects the X and Y position on the minimap
-    # By taking the screen dimensions as the size for the minimap as if it were enlarged
-    # For extra accuracy using eyetracking
-    def detect_minimap_position( self, minimap_x, minimap_y, minimap_width, minimap_height ):
-        ratioX = self.mouseX / self.screenWidth;
-        ratioY = self.mouseY / self.screenHeight;
-        
-        minimapX = ( ratioX * minimap_width ) + minimap_x
-        minimapY = ( ratioY * minimap_height ) + minimap_y
-        return minimapX, minimapY
+    def detect_mouse_screen_edge( self, threshold ):
+        return self.pointerController.detect_screen_edge( threshold )    
         
     ## Detect whether or not we are inside an area with our cursor
     def detect_inside_minimap( self, minimap_x, minimap_y, minimap_width, minimap_height ):
-        return self.mouseX >= minimap_x and self.mouseY >= minimap_y and self.mouseX < minimap_x + minimap_width and self.mouseY < minimap_y + minimap_height
+        return self.pointerController.detect_area( minimap_x, minimap_y, minimap_width, minimap_height )

@@ -17,7 +17,7 @@ def loop_overlay():
     window = tk.Toplevel(root)
     window.overrideredirect(1) #Remove border
     window.attributes('-topmost', -1) # Keep on top
-    window.geometry('%dx%d+%d+%d' % (20, 20, 1840, 250))
+    window.geometry('%dx%d+%d+%d' % (40, 40, 1840, 250))
     window.attributes("-transparentcolor", "#FFFFFF") # Remove background
     
     panel = tk.Label(window, image = img)
@@ -27,10 +27,20 @@ def loop_overlay():
     current_overlay_status = ""
     while True:
         time.sleep( 0.016 )
-        mouseX, mouseY = pyautogui.position()
-        window.geometry("+" + str( mouseX + 20 ) + "+" + str( mouseY + 20 ))
-        filepath = OVERLAY_FILE
         
+        if (USE_COORDINATE_FILE == False):
+            mouseX, mouseY = pyautogui.position()
+            window.geometry("+" + str( mouseX - 20 ) + "+" + str( mouseY - 20 ))
+        else:
+            with open(COORDINATE_FILEPATH) as cfp:
+                coords = cfp.readline().split(",")
+                if (len(coords) == 2):
+                    coordsX = max( 0, int(float(coords[0])))
+                    coordsY = max( 0, int(float(coords[1])))
+                    window.geometry("+" + str( coordsX - 20 ) + "+" + str( coordsY - 20 ))
+                cfp.close()
+
+        filepath = OVERLAY_FILE        
         with open(filepath) as fp:  
             overlay_status = fp.readline()
             

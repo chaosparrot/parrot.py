@@ -93,7 +93,7 @@ def action_consumer( stream, classifier, dataDicts, persist_replay, replay_file,
                 writer = csv.DictWriter(csvfile, fieldnames=headers, delimiter=',')
                 writer.writeheader()
             
-                while( stream.is_active() ):
+                while( stream.is_active() ):                
                     if( not classifierQueue.empty() ):
                         current_time = time.time()
                         seconds_playing = time.time() - starttime

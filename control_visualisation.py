@@ -72,9 +72,7 @@ def loop_overlay():
     while True:
         time.sleep( 0.032 )
         filepath = COMMAND_FILE
-        
-        canvas
-        
+                
         with open(filepath) as fp:  
             held_keys = fp.readline()
             sound = fp.readline()
