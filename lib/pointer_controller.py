@@ -27,14 +27,14 @@ class PointerController:
         if( self.coords[0] <= 0 ):
             widthPosition = 0
         elif (self.coords[0] > self.screenSize[0]):
-            widthPosition = widthSegments
+            widthPosition = widthSegments - 1
         else:
             widthPosition = math.floor( self.coords[0] / ( self.screenSize[0] / widthSegments ) )
         
         if( self.coords[1] <= 0 ):
             heightPosition = 0
         elif (self.coords[1] > self.screenSize[1]):
-            heightPosition = heightSegments
+            heightPosition = heightSegments - 1
         else:
             heightPosition = math.floor( self.coords[1] /( self.screenSize[1] / heightSegments ) )
 
@@ -42,7 +42,7 @@ class PointerController:
         return quadrant
 
     # Detects on what edges the pointer is currently in
-    def detect_screen_edge( self, threshold ):        
+    def detect_screen_edge( self, threshold ):
         edges = []
         if( self.coords[1] <= threshold ):
             edges.append( "up" )

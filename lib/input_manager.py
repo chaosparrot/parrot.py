@@ -61,9 +61,10 @@ class InputManager:
         if( repeat_rate_ms == 0 ):
             repeat_rate_ms = self.repeat_rate_ms
 
-        if( key in self.toggle_keys.keys() and self.toggle_keys[key] == False ):
-            self.keyDown( key )
-            self.toggle_keys[ key ] = True
+        if( key in self.toggle_keys.keys() ):
+            if (self.toggle_keys[key] == False):
+                self.keyDown( key )
+                self.toggle_keys[ key ] = True
         else:
             if( key not in self.key_hold_timings ):
                 self.key_hold_timings[key] = time.time()
