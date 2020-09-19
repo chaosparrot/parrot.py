@@ -47,7 +47,7 @@ class PatternDetector:
                 throttle_in_seconds = 0
                 
                 if( 'throttle' in config_pattern ):
-                    if (pattern_name not in config_pattern ):
+                    if (pattern_name not in config_pattern['throttle'] ):
                         config_pattern['throttle'][pattern_name] = 0
 
                     throttle_activate = lambda self, throttles=copy( config_pattern['throttle'] ): self.activate_throttle( throttles )

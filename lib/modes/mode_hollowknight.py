@@ -141,6 +141,7 @@ class HollowknightMode(VisualMode):
                 self.inputManager.keyUp('tab')
                 
     def toggle_singlepress( self ):
+        print( 'Toggling arrowkey mode' ) 
         self.toggle('single-press-grid')
         if ( len(self.hold_arrow_keys) > 0 ):
             for key in self.hold_arrow_keys:
