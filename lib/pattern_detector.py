@@ -47,6 +47,9 @@ class PatternDetector:
                 throttle_in_seconds = 0
                 
                 if( 'throttle' in config_pattern ):
+                    if (pattern_name not in config_pattern ):
+                        config_pattern['throttle'][pattern_name] = 0
+
                     throttle_activate = lambda self, throttles=copy( config_pattern['throttle'] ): self.activate_throttle( throttles )
                     
                 detection_calls = []
@@ -108,21 +111,7 @@ class PatternDetector:
     def tick( self, predictionDicts, timestamp=None ):
         self.currentTime = timestamp if timestamp != None else time.time()
         
-        # Update the current coordinates
-        coords = [0,0]
-        if (USE_COORDINATE_FILE == True):
-            with open(COORDINATE_FILEPATH, 'r') as coordfile:
-                file_coords = coordfile.readline().split(",")
-                if (len(file_coords) == 2):
-                    x = max( 0, int(float(file_coords[0])))
-                    y = max( 0, int(float(file_coords[1])))
-                    coords = [x,y]
-                coordfile.close()
-        else:
-            x, y = pyautogui.position()
-            coords = [x,y]
-
-        self.pointerController.update_coords( coords )
+        self.pointerController.tick()
         self.predictionDicts = predictionDicts
         self.lastDict = self.predictionDicts[-1]
         self.tickActions = []

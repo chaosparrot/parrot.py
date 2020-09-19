@@ -13,6 +13,23 @@ class PointerController:
     
     def __init__(self):
         self.screenSize = pyautogui.size()
+        
+    def tick( self ):
+        # Update the current coordinates
+        if (USE_COORDINATE_FILE == True):
+            with open(COORDINATE_FILEPATH, 'r') as coordfile:
+                raw_coords = coordfile.readline()
+                file_coords = raw_coords.split(",")
+                if (len(file_coords) == 2):
+                    x = max( 0, int(float(file_coords[0])))
+                    y = max( 0, int(float(file_coords[1])))
+                    coords = [x,y]
+                    self.update_coords( coords )
+                coordfile.close()
+        else:
+            x, y = pyautogui.position()
+            coords = [x,y]
+            self.update_coords( coords )    
 
     # Updates the current coordinates of our pointer
     def update_coords( self, coords ):

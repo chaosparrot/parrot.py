@@ -1,5 +1,6 @@
 from config.config import *
 from lib.modes.visual_mode import *
+from lib.overlay_manipulation import update_overlay_image
 
 class HollowknightMode(VisualMode):
 
@@ -52,12 +53,13 @@ class HollowknightMode(VisualMode):
             'name': 'charge',
             'sounds': ['approximant_r'],
             'threshold': {
-                'percentage': 80,
+                'percentage': 90,
                 'power': 12000
             },
             'continual_threshold': {
-                'percentage': 30
-            },            
+                'percentage': 30,
+                'power': 3000                
+            },
             'throttle': {
                 'attack': 0.1
             }
@@ -79,7 +81,7 @@ class HollowknightMode(VisualMode):
             'sounds': ['sound_finger_snap'],
             'threshold': {
                 'percentage': 90,
-                'power': 50000
+                'power': 80000
             },
             'throttle': {
                 'menu': 0.5
@@ -87,9 +89,11 @@ class HollowknightMode(VisualMode):
         }        
     ]
     
-    def __init__(self, modeSwitcher, is_testing=False, repeat_delay=REPEAT_DELAY, repeat_rate=REPEAT_RATE):
-        super().__init__(modeSwitcher, is_testing, repeat_delay, repeat_rate )
+    def start(self):
+        super().start()
         self.enable('single-press-grid')
+        update_overlay_image('coords-overlay')
+        
     
     hold_arrow_keys = []
         
@@ -121,14 +125,11 @@ class HollowknightMode(VisualMode):
     
         if (self.detect('menu')):
             self.press('esc')
+            self.toggle_singlepress()
         elif (self.detect('attack')):
             self.press('x')
         elif (self.detect('movement_modes')):
-            self.toggle('single-press-grid')
-            if ( len(self.hold_arrow_keys) > 0 ):
-                for key in self.hold_arrow_keys:
-                    self.release( key )
-            
+            self.toggle_singlepress()
             
         # Toggle the map open
         elif (self.detect('map')):
@@ -138,6 +139,12 @@ class HollowknightMode(VisualMode):
                 self.inputManager.keyDown('tab')
             else:
                 self.inputManager.keyUp('tab')
+                
+    def toggle_singlepress( self ):
+        self.toggle('single-press-grid')
+        if ( len(self.hold_arrow_keys) > 0 ):
+            for key in self.hold_arrow_keys:
+                self.release( key )        
                 
     def handle_arrowkeys( self, dataDicts):
         edges = self.handle_grid()                   
