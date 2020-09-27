@@ -63,7 +63,14 @@ def learn_data():
     elif( model_type.lower() == "x" ):
         return
     elif( model_type.lower() == "a" and PYTORCH_AVAILABLE ):
-        print( "Selected Audio Net!")    
+        print( "Selected Audio Net!")
+        print( "How many nets do you wish to train at the same time? ( Default is 1 )" )
+        net_count = input("")
+        if ( net_count == "" ):
+            net_count = 1
+        else:
+            net_count = int(net_count)
+
     
         # Import pytorch related thins here to make sure pytorch isn't a hard requirement
         from lib.audio_net import AudioNet, AudioNetTrainer
@@ -73,7 +80,7 @@ def learn_data():
         dataset_labels = determine_labels( dir_path )
         print( "--------------------------" )        
         dataset = AudioDataset(DATASET_FOLDER, dataset_labels)
-        trainer = AudioNetTrainer(dataset)
+        trainer = AudioNetTrainer(dataset, net_count)
         
         print( "Learning the data..." )
         trainer.train( clf_filename )

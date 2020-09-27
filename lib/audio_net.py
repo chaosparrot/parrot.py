@@ -77,11 +77,11 @@ class TinyAudioNetEnsemble(nn.Module):
             
 class AudioNetTrainer:
 
-    net = None
+    nets = []
     dataset_labels = []
     dataset_size = 0
     
-    optimizer = None
+    optimizers = []
     validation_loader = None
     train_loader = None
     criterion = nn.NLLLoss()
@@ -92,12 +92,15 @@ class AudioNetTrainer:
     use_cuda = torch.cuda.is_available()
     device = torch.device("cuda" if use_cuda else "cpu")
     
-    def __init__(self, dataset):
+    def __init__(self, dataset, net_count = 1):
+        self.net_count = net_count
         x, y = dataset[0]
         self.dataset_size = len(dataset)
         self.dataset_labels = dataset.get_labels()
-        self.net = TinyAudioNet(len(x), len(self.dataset_labels), True)
-        self.optimizer = optim.SGD(self.net.parameters(), lr=0.003, momentum=0.9)
+        
+        for i in range(self.net_count):
+            self.nets.append(TinyAudioNet(len(x), len(self.dataset_labels), True))
+            self.optimizers.append(optim.Adam(self.nets[i].parameters(), lr=0.003))
  
         # Split the dataset into validation and training data loaders
         indices = list(range(self.dataset_size))
@@ -113,7 +116,8 @@ class AudioNetTrainer:
         
         
     def train(self, filename):
-        self.net = self.net.to(self.device)
+        for i in range(self.net_count):
+            self.nets[i] = self.nets[i].to(self.device)
         starttime = int(time.time())
         
         best_accuracy = 0
@@ -127,40 +131,47 @@ class AudioNetTrainer:
             for epoch in range(self.max_epochs):
                 # Training
                 epoch_loss = 0.0
-                running_loss = 0.0
+                running_loss = []                
+                for j in range(self.net_count):
+                    running_loss.append(0.0)
+                    self.nets[j].train(True)
                 i = 0
-                self.net.train(True)
                 with torch.set_grad_enabled(True):
                     for local_batch, local_labels in self.train_loader:
                         # Transfer to GPU
                         local_batch, local_labels = local_batch.to(self.device), local_labels.to(self.device)
                         
                         # Zero the gradients for this batch
-                        self.optimizer.zero_grad()
+                        i += 1                        
+                        for j in range(self.net_count):
+                            net = self.nets[j]
+                            optimizer = self.optimizers[j]
+                            optimizer.zero_grad()
                         
-                        # Calculating loss
-                        output = self.net(local_batch)
-                        loss = self.criterion(output, local_labels)
-                        loss.backward()
+                            # Calculating loss
+                            output = net(local_batch)
+                            loss = self.criterion(output, local_labels)
+                            loss.backward()
                                     
-                        # Prevent exploding weights
-                        torch.nn.utils.clip_grad_norm_(self.net.parameters(),4)
-                        self.optimizer.step()
+                            # Prevent exploding weights
+                            torch.nn.utils.clip_grad_norm_(net.parameters(),4)
+                            optimizer.step()
                         
-                        running_loss += loss.item()
-                        epoch_loss += output.shape[0] * loss.item()     
-                        i += 1
-                        if( i % 10 == 0 ):
-                            correct_in_minibatch = ( local_labels == output.max(dim = 1)[1] ).sum()
-                            print('[%d, %5d] loss: %.3f acc: %.3f' % (epoch + 1, i + 1, (running_loss / 10), correct_in_minibatch.item()/self.batch_size))
-                            running_loss = 0.0
+                            running_loss[j] += loss.item()
+                            epoch_loss += output.shape[0] * loss.item()
+                            
+                            if( i % 10 == 0 ):
+                                correct_in_minibatch = ( local_labels == output.max(dim = 1)[1] ).sum()
+                                print('[Net: %d, %d, %5d] loss: %.3f acc: %.3f' % (j + 1, epoch + 1, i + 1, (running_loss[j] / 10), correct_in_minibatch.item()/self.batch_size))
+                                running_loss[j] = 0.0
                     
                 epoch_loss = epoch_loss / ( self.dataset_size * (1 - self.validation_split) )
                 print('Training loss: {:.4f}'.format(epoch_loss))
                 print( "Validating..." )
+                for j in range(self.net_count):
+                    self.nets[j].train(False)
                 
                 # Validation
-                self.net.train(False)
                 epoch_validation_loss = 0.0
                 correct = 0
                 with torch.set_grad_enabled(False):
@@ -175,25 +186,28 @@ class AudioNetTrainer:
                         local_batch, local_labels = local_batch.to(self.device), local_labels.to(self.device)
                         
                         # Zero the gradients for this batch
-                        self.optimizer.zero_grad()
+                        for j in range(self.net_count):
+                            optimizer = self.optimizers[j]
+                            net = self.nets[j]
+                            optimizer.zero_grad()
                             
-                        # Calculating loss
-                        output = self.net(local_batch)
-                        correct += ( local_labels == output.max(dim = 1)[1] ).sum().item()
-                        loss = self.criterion(output, local_labels)
-                        epoch_validation_loss += output.shape[0] * loss.item()
-                        
-                        # Calculate the percentages
-                        for index, label in enumerate(local_labels):
-                            local_label_string = self.dataset_labels[label]
-                            accuracy_batch['total'][local_label_string] += 1
-                            if( output[index].argmax() == label ):
-                                accuracy_batch['correct'][local_label_string] += 1
-                            accuracy_batch['percent'][local_label_string] = accuracy_batch['correct'][local_label_string] / accuracy_batch['total'][local_label_string]            
+                            # Calculating loss
+                            output = net(local_batch)
+                            correct += ( local_labels == output.max(dim = 1)[1] ).sum().item()
+                            loss = self.criterion(output, local_labels)
+                            epoch_validation_loss += output.shape[0] * loss.item()
+                            
+                            # Calculate the percentages
+                            for index, label in enumerate(local_labels):
+                                local_label_string = self.dataset_labels[label]
+                                accuracy_batch['total'][local_label_string] += 1
+                                if( output[index].argmax() == label ):
+                                    accuracy_batch['correct'][local_label_string] += 1
+                                accuracy_batch['percent'][local_label_string] = accuracy_batch['correct'][local_label_string] / accuracy_batch['total'][local_label_string]            
                      
 
                 epoch_loss = epoch_validation_loss / ( self.dataset_size * self.validation_split )
-                accuracy = correct / ( self.dataset_size * self.validation_split )
+                accuracy = correct / ( self.dataset_size * self.validation_split * self.net_count )
                 print('Validation loss: {:.4f} accuracy {:.3f}'.format(epoch_loss, accuracy))
                 
                 csv_row = { 'epoch': epoch, 'loss': epoch_loss, 'validation_accuracy': accuracy }
@@ -202,17 +216,18 @@ class AudioNetTrainer:
                 writer.writerow( csv_row )
                 csvfile.flush()
                 
-                current_filename = filename
-                if( accuracy > best_accuracy ):
-                    best_accuracy = accuracy
-                    current_filename = filename + '-BEST'
-                    
-                torch.save({'state_dict': self.net.state_dict(), 
-                    'labels': self.dataset_labels,
-                    'accuracy': accuracy,
-                    'last_row': csv_row,
-                    'loss': epoch_loss,
-                    'epoch': epoch
-                    }, os.path.join(CLASSIFIER_FOLDER, current_filename) + '-weights.pth.tar')    
+                for j in range(self.net_count):                
+                    current_filename = filename + '_' + str(j+1)
+                    if( accuracy > best_accuracy ):
+                        best_accuracy = accuracy
+                        current_filename = filename + '-BEST'
+                        
+                    torch.save({'state_dict': self.nets[j].state_dict(), 
+                        'labels': self.dataset_labels,
+                        'accuracy': accuracy,
+                        'last_row': csv_row,
+                        'loss': epoch_loss,
+                        'epoch': epoch
+                        }, os.path.join(CLASSIFIER_FOLDER, current_filename) + '-weights.pth.tar')    
 
         

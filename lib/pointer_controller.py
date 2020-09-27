@@ -8,8 +8,9 @@ pyautogui.PAUSE = 0.0
 # Manages controls based on a pointer coordinate like a mouse pointer or an eyetracker
 class PointerController:
 
-    coords: [0,0]
-    screenSize: [0,0]
+    coords = [0,0]
+    screenSize = [0,0]
+    origin_coords = [0,0]
     
     def __init__(self):
         self.screenSize = pyautogui.size()
@@ -29,11 +30,18 @@ class PointerController:
         else:
             x, y = pyautogui.position()
             coords = [x,y]
-            self.update_coords( coords )    
+            self.update_coords( coords )
 
     # Updates the current coordinates of our pointer
     def update_coords( self, coords ):
         self.coords = coords
+        
+    def update_origin_coords( self ):
+        self.set_origin_coords( self.coords )
+        
+    # Set the origin point from which to do relative movements
+    def set_origin_coords( self, coords ):
+        self.origin_coords = coords
         
     # Detects in which quadrant the pointer is currently in
     # Counting goes as followed -
@@ -72,6 +80,20 @@ class PointerController:
             edges.append( "right" )
             
         return edges
+        
+    # Detect in which direction the pointer is relative to the origin coordinate
+    def detect_origin_directions( self, radius ):
+        x_diff = self.coords[0] - self.origin_coords[0]
+        y_diff = self.coords[1] - self.origin_coords[1]
+        directions = []
+        if( abs( x_diff ) > radius ):
+            directions.append( "left" if x_diff < 0 else "right" )
+
+        if( abs( y_diff ) > radius ):
+            directions.append( "up" if y_diff < 0 else "down" )
+            
+        return directions
+        
 
     # Detect if our pointer is inside an area
     def detect_area( self, x, y, width, height ):
