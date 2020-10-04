@@ -36,6 +36,33 @@ class AudioNet(nn.Module):
         else:
             return self.softmax(x)
 
+class TinyAudioNet2(nn.Module):
+
+    def __init__(self, inputsize, outputsize, only_logsoftmax=False):
+        super(TinyAudioNet, self).__init__()
+        self.only_logsoftmax = only_logsoftmax
+        self.softmax = nn.Softmax(dim=-1)
+        self.log_softmax = nn.LogSoftmax(dim=1)
+        self.relu = nn.ReLU()
+        self.dropOut = nn.Dropout(p=0.1)
+        
+        self.fc1 = nn.Linear(inputsize, 512)
+        self.fc2 = nn.Linear(512, 512)
+        self.fc3 = nn.Linear(512, 512)
+        self.fc4 = nn.Linear(512, 256)
+        self.fc5 = nn.Linear(256, outputsize)
+		
+    def forward(self, x):
+        x = self.dropOut(self.relu( self.fc1(x) ))
+        x = self.dropOut(self.relu( self.fc2(x) ))
+        x = self.dropOut(self.relu( self.fc3(x) ))
+        x = self.dropOut(self.relu( self.fc4(x) ))
+        x = self.fc5(x)
+        if( self.training or self.only_logsoftmax ):
+            return self.log_softmax(x)
+        else:
+            return self.softmax(x)
+
 class TinyAudioNet(nn.Module):
 
     def __init__(self, inputsize, outputsize, only_logsoftmax=False):
@@ -100,7 +127,7 @@ class AudioNetTrainer:
         
         for i in range(self.net_count):
             self.nets.append(TinyAudioNet(len(x), len(self.dataset_labels), True))
-            self.optimizers.append(optim.Adam(self.nets[i].parameters(), lr=0.003))
+            self.optimizers.append(optim.SGD(self.nets[i].parameters(), lr=0.003, momentum=0.9, nesterov=True))
  
         # Split the dataset into validation and training data loaders
         indices = list(range(self.dataset_size))
@@ -116,14 +143,14 @@ class AudioNetTrainer:
         
         
     def train(self, filename):
+        best_accuracy = []
         for i in range(self.net_count):
             self.nets[i] = self.nets[i].to(self.device)
+            best_accuracy.append(0)
         starttime = int(time.time())
         
-        best_accuracy = 0
-        
         with open(REPLAYS_FOLDER + "/model_training_" + filename + str(starttime) + ".csv", 'a', newline='') as csvfile:	
-            headers = ['epoch', 'loss', 'validation_accuracy']
+            headers = ['epoch', 'loss', 'avg_validation_accuracy']
             headers.extend(self.dataset_labels)
             writer = csv.DictWriter(csvfile, fieldnames=headers, delimiter=',')
             writer.writeheader()
@@ -172,14 +199,20 @@ class AudioNetTrainer:
                     self.nets[j].train(False)
                 
                 # Validation
-                epoch_validation_loss = 0.0
-                correct = 0
+                epoch_validation_loss = []
+                correct = []
+                epoch_loss = []
+                accuracy = []                
+                for j in range(self.net_count):
+                    epoch_validation_loss.append(0.0)
+                    correct.append(0)
+                
                 with torch.set_grad_enabled(False):
                     accuracy_batch = {'total': {}, 'correct': {}, 'percent': {}}
                     for dataset_label in self.dataset_labels:
                         accuracy_batch['total'][dataset_label] = 0
                         accuracy_batch['correct'][dataset_label] = 0
-                        accuracy_batch['percent'][dataset_label] = 0            
+                        accuracy_batch['percent'][dataset_label] = 0
                 
                     for local_batch, local_labels in self.validation_loader:
                         # Transfer to GPU
@@ -193,9 +226,9 @@ class AudioNetTrainer:
                             
                             # Calculating loss
                             output = net(local_batch)
-                            correct += ( local_labels == output.max(dim = 1)[1] ).sum().item()
+                            correct[j] += ( local_labels == output.max(dim = 1)[1] ).sum().item()
                             loss = self.criterion(output, local_labels)
-                            epoch_validation_loss += output.shape[0] * loss.item()
+                            epoch_validation_loss[j] += output.shape[0] * loss.item()
                             
                             # Calculate the percentages
                             for index, label in enumerate(local_labels):
@@ -204,13 +237,14 @@ class AudioNetTrainer:
                                 if( output[index].argmax() == label ):
                                     accuracy_batch['correct'][local_label_string] += 1
                                 accuracy_batch['percent'][local_label_string] = accuracy_batch['correct'][local_label_string] / accuracy_batch['total'][local_label_string]            
-                     
 
-                epoch_loss = epoch_validation_loss / ( self.dataset_size * self.validation_split )
-                accuracy = correct / ( self.dataset_size * self.validation_split * self.net_count )
-                print('Validation loss: {:.4f} accuracy {:.3f}'.format(epoch_loss, accuracy))
-                
-                csv_row = { 'epoch': epoch, 'loss': epoch_loss, 'validation_accuracy': accuracy }
+                for j in range(self.net_count):
+                    epoch_loss.append(epoch_validation_loss[j] / ( self.dataset_size * self.validation_split ) )
+                    accuracy.append( correct[j] / ( self.dataset_size * self.validation_split ) )
+                    print('[Net: %d] Validation loss: %.4f accuracy %.3f' % (j + 1, epoch_loss[j], accuracy[j]))
+
+                print('[Combined] Sum validation loss: %.4f average accuracy %.3f' % (np.sum(epoch_loss), np.average(accuracy)))
+                csv_row = { 'epoch': epoch, 'loss': np.sum(epoch_loss), 'avg_validation_accuracy': np.average(accuracy) }
                 for dataset_label in self.dataset_labels:
                     csv_row[dataset_label] = accuracy_batch['percent'][dataset_label]
                 writer.writerow( csv_row )
@@ -218,15 +252,15 @@ class AudioNetTrainer:
                 
                 for j in range(self.net_count):                
                     current_filename = filename + '_' + str(j+1)
-                    if( accuracy > best_accuracy ):
-                        best_accuracy = accuracy
-                        current_filename = filename + '-BEST'
+                    if( accuracy[j] > best_accuracy[j] ):
+                        best_accuracy[j] = accuracy[j]
+                        current_filename = filename + '_' + str(j+1) + '-BEST'
                         
                     torch.save({'state_dict': self.nets[j].state_dict(), 
                         'labels': self.dataset_labels,
-                        'accuracy': accuracy,
+                        'accuracy': accuracy[j],
                         'last_row': csv_row,
-                        'loss': epoch_loss,
+                        'loss': epoch_loss[j],
                         'epoch': epoch
                         }, os.path.join(CLASSIFIER_FOLDER, current_filename) + '-weights.pth.tar')    
 

@@ -279,7 +279,7 @@ def test_accuracy( available_models, available_sounds ):
             print( "----- " + str(sound) + " -----" )
             i = 0
             for wavindex, wav_file in enumerate(wav_files):
-                if( wav_file.endswith(".wav") and i < 1000 ):
+                if( wav_file.endswith(".wav") and i < 5000 ):
                     file_path = os.path.join(recordings_dir, wav_file )
                     full_wav_files.append( file_path )
                     i += 1
@@ -320,7 +320,8 @@ def plot_replay( replay_data ):
 
     colors = ['darkviolet','red', 'gold', 'green', 'deepskyblue', 'navy', 'gray', 'black', 'pink',
         'firebrick', 'orange', 'lawngreen', 'darkturquoise', 'khaki', 'indigo', 'blue', 'teal',
-        'cyan', 'seagreen', 'silver', 'saddlebrown', 'tomato', 'steelblue', 'lavenderblush', 'orangered', 'gray', 'blue', 'red', 'gold', 'pink']
+        'cyan', 'seagreen', 'silver', 'saddlebrown', 'tomato', 'steelblue', 'lavenderblush', 'orangered', 'gray', 'blue', 'red', 'gold', 'pink', 
+        'purple', 'indigo', 'khaki', 'darkgray', 'black', 'darkgreen', 'deepskyblue', 'orange']
     
     # Add percentage plot
     plt.subplot(2, 1, 1)
