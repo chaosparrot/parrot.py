@@ -15,6 +15,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from lib.listen import start_nonblocking_listen_loop, predict_wav_files
 from lib.machinelearning import feature_engineering, get_highest_intensity_of_wav_file
+import csv
 
 def test_data( with_intro ):
     available_models = []
@@ -213,22 +214,33 @@ def audio_analysis( available_models ):
         predictions = predict_wav_files( classifier, full_wav_files )
         
         dataRows = []
-        for index, prediction in enumerate( predictions ):
-            timeString = full_wav_files[ index ].replace( REPLAYS_AUDIO_FOLDER + os.sep, "" ).replace( ".wav", "" )
-            dataRow = {'time': int(float(timeString) * 1000) / 1000, 'intensity': 0, 'power': 0, 'actions': [], 'buffer': 0 }
-            for column in prediction:
-                dataRow[column] = prediction[ column ]['percent']
-                if( prediction[ column ]['winner'] ):
-                    dataRow['winner'] = column
-                    dataRow['frequency'] = prediction[column]['frequency']
-                    dataRow['intensity'] = prediction[column]['intensity']         
-                    dataRow['power'] = prediction[column]['power']
+        with open(REPLAYS_FOLDER + '/analysis-replay-' + str(time.time()) + '.csv', 'a', newline='') as csvfile:    
+            headers = ['time', 'winner', 'intensity', 'frequency', 'power', 'actions', 'buffer']
+            headers.extend( classifier.classes_ )
+            if ('silence' not in classifier.classes_):
+                headers.extend(['silence'])
+            writer = csv.DictWriter(csvfile, fieldnames=headers, delimiter=',')
+            writer.writeheader()
+                    
+            for index, prediction in enumerate( predictions ):
+                timeString = full_wav_files[ index ].replace( REPLAYS_AUDIO_FOLDER + os.sep, "" ).replace( ".wav", "" )
+                dataRow = {'time': int(float(timeString) * 1000) / 1000, 'intensity': 0, 'power': 0, 'actions': [], 'buffer': 0 }
+                for column in prediction:
+                    dataRow[column] = prediction[ column ]['percent']
+                    if( prediction[ column ]['winner'] ):
+                        dataRow['winner'] = column
+                        dataRow['frequency'] = prediction[column]['frequency']
+                        dataRow['intensity'] = prediction[column]['intensity']         
+                        dataRow['power'] = prediction[column]['power']
 
-            dataRows.append( dataRow )
+                writer.writerow( dataRow )
+                csvfile.flush()
+                dataRows.append( dataRow )
 
         classifier = None
         print( "-------------------------" )
         print( "Analyzing replay!" )
+        
         plot_replay( pd.DataFrame(data=dataRows) )
             
     # Go back to main menu afterwards
@@ -317,23 +329,61 @@ def plot_replay( replay_data ):
     plt.style.use('seaborn-darkgrid')
     num = 0
     bottom=0
-
-    colors = ['darkviolet','red', 'gold', 'green', 'deepskyblue', 'navy', 'gray', 'black', 'pink',
-        'firebrick', 'orange', 'lawngreen', 'darkturquoise', 'khaki', 'indigo', 'blue', 'teal',
-        'cyan', 'seagreen', 'silver', 'saddlebrown', 'tomato', 'steelblue', 'lavenderblush', 'orangered', 'gray', 'blue', 'red', 'gold', 'pink', 
-        'purple', 'indigo', 'khaki', 'darkgray', 'black', 'darkgreen', 'deepskyblue', 'orange']
     
-    # Add percentage plot
-    plt.subplot(2, 1, 1)
-    plt.title("Percentage distribution of predicted sounds", loc='left', fontsize=12, fontweight=0, color='black')
-    plt.ylabel("Percentage")
+    if ('expected' in replay_data.drop([], axis=1)):    
+        plt.subplot(2, 1, 1)
+        plt.title("Percentage correct vs incorrect", loc='left', fontsize=12, fontweight=0, color='black')
+        plt.ylabel("Percentage")
+        
+        correct_frames = []
+        wrong_frames = []
+        silence_frames = []
+        for index, row in replay_data.iterrows():
+            correct = 0
+            silence = 0
+            wrong = 0
+            if (row['winner'] == 'silence'):
+                silence = 100
+            elif (row['winner'] != 'silence'):
+                if (row['expected'] in row):
+                    correct = row[row['expected']]
+                else:
+                    correct = 0
+                wrong = 100 - correct
+            correct_frames.append(correct)
+            wrong_frames.append(wrong)
+            silence_frames.append(silence)            
+        
+        expected_actual_frame = pd.DataFrame({'correct': correct_frames, 'wrong': wrong_frames, 'silence': silence_frames})
+        
+        for column in expected_actual_frame:
+            if( column != "silence" ):
+                if ( column == "wrong" ):
+                    color = 'red'
+                    label = 'Incorrect'
+                elif ( column == "correct" ):
+                    color = 'green'
+                    label = 'Correct'
+                num+=1
+                plt.bar(np.arange(replay_data['time'].size), expected_actual_frame[column], color=color, linewidth=1, alpha=0.9, label=label, bottom=bottom)
+                bottom += np.array( expected_actual_frame[column] )
+    else:
+        colors = ['darkviolet','red', 'gold', 'green', 'deepskyblue', 'navy', 'gray', 'black', 'pink',
+            'firebrick', 'orange', 'lawngreen', 'darkturquoise', 'khaki', 'indigo', 'blue', 'teal',
+            'cyan', 'seagreen', 'silver', 'saddlebrown', 'tomato', 'steelblue', 'lavenderblush', 'orangered', 'gray', 'blue', 'red', 'gold', 'pink', 
+            'purple', 'indigo', 'khaki', 'darkgray', 'black', 'darkgreen', 'deepskyblue', 'orange']
+        
+        # Add percentage plot
+        plt.subplot(2, 1, 1)
+        plt.title("Percentage distribution of predicted sounds", loc='left', fontsize=12, fontweight=0, color='black')
+        plt.ylabel("Percentage")
 
-    for column in replay_data.drop(['winner', 'intensity', 'time', 'frequency', 'actions', 'buffer', 'power'], axis=1):
-        if( column != "silence" ):
-            color = colors[num]        
-            num+=1
-            plt.bar(np.arange(replay_data['time'].size), replay_data[column], color=color, linewidth=1, alpha=0.9, label=column, bottom=bottom)
-            bottom += np.array( replay_data[column] )
+        for column in replay_data.drop(['winner', 'intensity', 'time', 'frequency', 'actions', 'buffer', 'power'], axis=1):
+            if( column != "silence" ):
+                color = colors[num]        
+                num+=1
+                plt.bar(np.arange(replay_data['time'].size), replay_data[column], color=color, linewidth=1, alpha=0.9, label=column, bottom=bottom)
+                bottom += np.array( replay_data[column] )
             
     plt.legend(loc=1, bbox_to_anchor=(1, 1.3), ncol=4)
 
