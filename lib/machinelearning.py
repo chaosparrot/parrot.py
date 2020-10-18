@@ -13,6 +13,7 @@ import matplotlib.pyplot as plt
 from config.config import *
 import wave
 import audioop
+from audiomentations import Compose, AddGaussianNoise, Shift, PitchShift
 
 def feature_engineering( wavFile ):
     fs, rawWav = scipy.io.wavfile.read( wavFile )
@@ -21,22 +22,40 @@ def feature_engineering( wavFile ):
     return feature_engineering_raw( rawWav[:,0], fs, intensity )
     
 def feature_engineering_raw( wavData, sampleRate, intensity ):
-    mfcc_result1 = mfcc( wavData, samplerate=sampleRate, nfft=1103, numcep=13, appendEnergy=True )
+    #mfcc_result1 = mfcc( wavData, samplerate=sampleRate, nfft=1103, numcep=13, appendEnergy=True )
+    #mfcc_result1 = mfcc( wavData, samplerate=sampleRate, nfft=1103, numcep=30, preemph=0.5, winstep=0.003, winlen=0.02, appendEnergy=False )
+    mfcc_result1 = mfcc( wavData, samplerate=sampleRate, nfft=1103, numcep=30, nfilt=40, preemph=0.5, winstep=0.005, winlen=0.015, appendEnergy=False )
     data_row = []
     data_row.extend( mfcc_result1.ravel() )
     freq = get_loudest_freq( wavData, RECORD_SECONDS )
-    data_row.append( freq )
-    data_row.append( intensity )
+    #data_row.append( freq )
+    #data_row.append( intensity )
         
     return data_row, freq
     
 def training_feature_engineering( wavFile ):
     fs, rawWav = scipy.io.wavfile.read( wavFile )
     wavData = rawWav[:,0]
-    mfcc_result1 = mfcc( wavData, samplerate=fs, nfft=1103, numcep=3, preemph=0.5, winstep=0.003, appendEnergy=False )
+    mfcc_result1 = mfcc( wavData, samplerate=fs, nfft=1103, numcep=30, nfilt=40, preemph=0.5, winstep=0.005, winlen=0.015, appendEnergy=False )
     data_row = []
     data_row.extend( mfcc_result1.ravel() )
     return data_row
+
+def augmented_feature_engineering( wavFile ):
+    fs, rawWav = scipy.io.wavfile.read( wavFile )
+    wavData = rawWav[:,0]
+    
+    augmenter = Compose([
+        AddGaussianNoise(min_amplitude=0.001, max_amplitude=0.015, p=0.5),
+        Shift(min_fraction=-0.5, max_fraction=0.5, p=0.5),
+    ])
+
+    wavData = augmenter(samples=np.array(wavData, dtype="float32"), sample_rate=fs)
+    mfcc_result1 = mfcc( wavData, samplerate=fs, nfft=1103, numcep=30, nfilt=40, preemph=0.5, winstep=0.005, winlen=0.015, appendEnergy=False )
+    data_row = []
+    data_row.extend( mfcc_result1.ravel() )
+    return data_row
+
     
 def get_label_for_directory( setdir ):
     return float( int(hashlib.sha256( setdir.encode('utf-8')).hexdigest(), 16) % 10**8 )

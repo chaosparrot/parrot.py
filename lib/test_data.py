@@ -371,7 +371,8 @@ def plot_replay( replay_data ):
         colors = ['darkviolet','red', 'gold', 'green', 'deepskyblue', 'navy', 'gray', 'black', 'pink',
             'firebrick', 'orange', 'lawngreen', 'darkturquoise', 'khaki', 'indigo', 'blue', 'teal',
             'cyan', 'seagreen', 'silver', 'saddlebrown', 'tomato', 'steelblue', 'lavenderblush', 'orangered', 'gray', 'blue', 'red', 'gold', 'pink', 
-            'purple', 'indigo', 'khaki', 'darkgray', 'black', 'darkgreen', 'deepskyblue', 'orange']
+            'purple', 'indigo', 'khaki', 'darkgray', 'black', 'darkgreen', 'deepskyblue', 'orange',
+            'cyan', 'seagreen', 'silver', 'saddlebrown', 'tomato', 'steelblue', 'lavenderblush', 'orangered', 'gray', 'blue', 'red', 'gold', 'pink']
         
         # Add percentage plot
         plt.subplot(2, 1, 1)

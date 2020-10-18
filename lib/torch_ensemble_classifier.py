@@ -33,7 +33,8 @@ class TorchEnsembleClassifier:
         for index, key in enumerate(classifier_map):
             state_dict = torch.load(classifier_map[key], map_location=self.device)
             self.classes_ = state_dict['labels']            
-            model = TinyAudioNet(28,len(state_dict['labels']))
+            model = TinyAudioNet(120,len(state_dict['labels']))            
+            #model = TinyAudioNet(130,len(state_dict['labels']))
             model.load_state_dict(state_dict['state_dict'])
             model.to( self.device )
             model.eval()
@@ -55,7 +56,9 @@ class TorchEnsembleClassifier:
     # This will ask all the classifiers for a prediction
     # The one with the highest prediction wins
     def predict_single_proba( self, data_row ):
-        data_row = torch.from_numpy(np.asarray(data_row, dtype=np.float32)).to( self.device )
+        #reshaped_input = np.reshape(data_row, (-1, 13))
+        data_row = torch.from_numpy(np.asarray([data_row])).double()#.unsqueeze(0)
+        data_row = data_row.to( self.device )
         totalProbabilities = []
         
         with torch.no_grad():
@@ -77,4 +80,4 @@ class TorchEnsembleClassifier:
             #for probindex, probability in enumerate( totalProbabilities ):
             #    totalProbabilities[ probindex ] = totalProbabilities[ probindex ] * ( 1 / len( self.classifiers.keys() ) )
                                                 
-        return np.asarray( totalProbabilities, dtype=np.float64 )
+        return np.asarray( totalProbabilities[0], dtype=np.float64 )
