@@ -31,7 +31,7 @@ class HollowknightMode(VisualMode):
         },
         {
             'name': 'press_arrowkeys',
-            'sounds': ['general_vowel_aa', 'vowel_ah'],
+            'sounds': ['vowel_aa', 'vowel_ah'],
             'threshold': {
                 'percentage': 90,
                 'power': 10000
@@ -39,16 +39,56 @@ class HollowknightMode(VisualMode):
             'throttle': {
                 'press_arrowkeys': 0.2
             }
+        },
+        {
+            'name': 'hold_arrowkeys',
+            'sounds': ['nasal_m', 'nasal_n'],
+            'threshold': {
+                'percentage': 90,
+                'power': 40000
+            },
+            'continual_threshold': {
+                'percentage': 40,
+                'power': 10000
+            }
         },        
         {
-            'name': 'attack',
+            'name': 'slash',
             'sounds': ['click_alveolar'],
             'threshold': {
                 'percentage': 82,
                 'power': 12000
             },
             'throttle': {
-                'attack': 0.1
+                'slash': 0.1
+            }
+        },
+        {
+            'name': 'up_slash',
+            'sounds': ['click_dental'],
+            'threshold': {
+                'percentage': 90,
+                'power': 12000
+            },
+            'throttle': {
+                'jump': 0.1,
+                'up_slash': 0.15,
+                'down_slash': 0.15,
+                'menu': 0.5                
+            }
+        },
+        {
+            'name': 'down_slash',
+            'sounds': ['click_lateral'],
+            'threshold': {
+                'percentage': 90,
+                'power': 12000
+            },
+            'throttle': {
+                'jump': 0.1,            
+                'down_slash': 0.15,
+                'up_slash': 0.15,
+                'menu': 0.5
             }
         },
         {
@@ -63,12 +103,12 @@ class HollowknightMode(VisualMode):
                 'power': 3000                
             },
             'throttle': {
-                'attack': 0.1
+                'slash': 0.1
             }
         },
         {
             'name': 'jump',
-            'sounds': ['sibilant_s'],
+            'sounds': ['sibilant_s', 'sibilant_z'],
             'threshold': {
                 'percentage': 90,
                 'power': 4000
@@ -82,13 +122,13 @@ class HollowknightMode(VisualMode):
             'name': 'menu',
             'sounds': ['sound_finger_snap'],
             'threshold': {
-                'percentage': 90,
+                'percentage': 99 ,
                 'power': 80000
             },
             'throttle': {
                 'menu': 0.5
             }
-        }        
+        }
     ]
     
     def start(self):
@@ -100,8 +140,16 @@ class HollowknightMode(VisualMode):
     hold_arrow_keys = []
         
     def handle_sounds( self, dataDicts ):
-        if (self.detect('attack')):
+        if (self.detect('slash')):
             self.press('x')
+        elif (self.detect('up_slash')):
+            self.hold('up')
+            self.press('x')
+            self.release('up')
+        elif (self.detect('down_slash')):
+            self.hold('down')
+            self.press('x')
+            self.release('down')
         elif (self.detect('menu')):
             self.press('esc')
             self.toggle_singlepress()
@@ -118,7 +166,6 @@ class HollowknightMode(VisualMode):
                 self.inputManager.keyUp('tab')
     
         # Make it possible to jump for various lengths of time
-        
         if (self.detect('jump')):
             if (self.detect('space-held') == False):
                 self.inputManager.keyDown('space')
@@ -138,17 +185,29 @@ class HollowknightMode(VisualMode):
             self.inputManager.keyUp('a')
             self.disable('charge-held')
             
-        if (self.detect('single-press-grid')):
+        # Movement types
+        if (self.detect('precision_movement') and not self.detect('space-held')):
             if (self.detect('press_arrowkeys')):
                 self.press_arrowkeys(dataDicts)
+            elif (self.detect('hold_arrowkeys')):
+                self.handle_arrowkeys(dataDicts)
+            else:
+                if ( len(self.hold_arrow_keys) > 0 ):
+                    for key in self.hold_arrow_keys:
+                        self.release( key )
+                self.hold_arrow_keys = []
+                
+        # Arial movement
         elif(self.detect('space-held')):
             self.handle_arrowkeys(dataDicts, "relative")
+            
+        # Fast movement
         else:
             self.handle_arrowkeys(dataDicts)    
                 
     def toggle_singlepress( self ):
         print( 'Toggling arrowkey mode' ) 
-        self.toggle('single-press-grid')
+        self.toggle('precision_movement')
         if ( len(self.hold_arrow_keys) > 0 ):
             for key in self.hold_arrow_keys:
                 self.release( key )

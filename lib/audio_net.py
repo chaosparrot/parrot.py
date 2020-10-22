@@ -9,6 +9,7 @@ import numpy as np
 import csv
 from config.config import *
 import torch.optim as optim
+import time 
 
 class AudioNet(nn.Module):
 
@@ -89,8 +90,8 @@ class TinyAudioNet(nn.Module):
         self.fc2 = nn.Linear(512, 512)
         self.fc3 = nn.Linear(512, 512)
         self.fc4 = nn.Linear(512, 512)
-        self.fc5 = nn.Linear(512, 512)
-        self.fc6 = nn.Linear(512, outputsize)
+        self.fc5 = nn.Linear(512, 256)
+        self.fc6 = nn.Linear(256, outputsize)
 		
     def forward(self, x):
         x = self.dropOut(self.selu( self.fc1(self.batchNorm(x))))
@@ -344,20 +345,21 @@ class AudioNetTrainer:
     train_loader = None
     criterion = nn.NLLLoss()
     batch_size = 256
-    validation_split = .2
+    validation_split = .1
     max_epochs = 300
     random_seed = 42
     use_cuda = torch.cuda.is_available()
     device = torch.device("cuda" if use_cuda else "cpu")
     dataset = False
+    train_indecis = []
     
     def __init__(self, dataset, net_count = 1):
         self.net_count = net_count
         x, y = dataset[0]
-        self.dataset_size = len(dataset)
         self.dataset_labels = dataset.get_labels()
         self.dataset = dataset
-        
+        self.dataset_size = len(dataset)
+
         for i in range(self.net_count):
             self.nets.append(TinyAudioNet(len(x), len(self.dataset_labels), True))
             self.optimizers.append(optim.SGD(self.nets[i].parameters(), lr=0.003, momentum=0.9, nesterov=True))
@@ -368,9 +370,14 @@ class AudioNetTrainer:
         np.random.seed(self.random_seed)
         np.random.shuffle(indices)
         train_indices, val_indices = indices[split:], indices[:split]
-        train_sampler = SubsetRandomSampler(train_indices)
+        
+        # Append augmentations to the training indexes and recalculate the actual validation split
+        self.train_indecis = dataset.append_augmentation_ids( train_indices, 0.5 )
+        self.dataset_size = len(dataset)
+        self.validation_split = split / self.dataset_size
+        
+        train_sampler = SubsetRandomSampler(self.train_indecis)
         valid_sampler = SubsetRandomSampler(val_indices)
-
         self.train_loader = torch.utils.data.DataLoader(dataset, batch_size=self.batch_size, sampler=train_sampler)
         self.validation_loader = torch.utils.data.DataLoader(dataset, batch_size=self.batch_size, sampler=valid_sampler)
         
@@ -389,8 +396,13 @@ class AudioNetTrainer:
             writer.writeheader()
 
             for epoch in range(self.max_epochs):
+                # Reshuffle the indexes in the training batch to ensure the net does not memories the order of data being fed in
+                np.random.shuffle(self.train_indecis)
+                train_sampler = SubsetRandomSampler(self.train_indecis)
+                self.train_loader = torch.utils.data.DataLoader(self.dataset, batch_size=self.batch_size, sampler=train_sampler)                
+            
                 # Training
-                self.dataset.set_training(True)
+                #self.dataset.set_training(True)
                 epoch_loss = 0.0
                 running_loss = []                
                 for j in range(self.net_count):
@@ -433,7 +445,7 @@ class AudioNetTrainer:
                     self.nets[j].train(False)
                 
                 # Validation
-                self.dataset.set_training(False)                
+                #self.dataset.set_training(False)                
                 epoch_validation_loss = []
                 correct = []
                 epoch_loss = []

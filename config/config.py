@@ -17,10 +17,10 @@ SILENCE_INTENSITY_THRESHOLD = 400
 INPUT_DEVICE_INDEX = 1
 SLIDING_WINDOW_AMOUNT = 2
 INPUT_TESTING_MODE = False
-USE_COORDINATE_FILE = False
+USE_COORDINATE_FILE = True
 
-DATASET_FOLDER = "data/recordings/30mscold"
-RECORDINGS_FOLDER = "data/recordings/30mscold"
+DATASET_FOLDER = "data/recordings/30ms"
+RECORDINGS_FOLDER = "data/recordings/30ms"
 REPLAYS_FOLDER = "data/replays"
 REPLAYS_AUDIO_FOLDER = "data/replays/audio"
 REPLAYS_FILE = REPLAYS_FOLDER + "/run.csv"
@@ -30,8 +30,9 @@ OVERLAY_FILE = "config/current-overlay-image.txt"
 COORDINATE_FILEPATH = "config/current-coordinate.txt"
 COMMAND_FILE = "config/current-log.txt"
 
-DEFAULT_CLF_FILE = "tiny_gold_league_trio"
-STARTING_MODE = "heroes"
+#DEFAULT_CLF_FILE = "tiny_gold_league_trio"
+DEFAULT_CLF_FILE = "platinum_league_augmented"
+STARTING_MODE = "mode_hollowknight"
 
 SAVE_REPLAY_DURING_PLAY = True
 SAVE_FILES_DURING_PLAY = False

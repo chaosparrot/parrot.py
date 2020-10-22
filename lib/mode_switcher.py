@@ -29,6 +29,7 @@ class ModeSwitcher(object):
                 'starcraft': StarcraftMode(ModeSwitcher.__instance, is_testing),
                 'phonemes': PhonemesMode(ModeSwitcher.__instance),
                 'hollowknight': HollowknightMode(ModeSwitcher.__instance),
+                'among_us': AmongUsMode(ModeSwitcher.__instance),
                 'testing': TestMode(ModeSwitcher.__instance),
                 'worklog': ExcelMode(ModeSwitcher.__instance, ''),
                 'excel': ExcelMode(ModeSwitcher.__instance, ''),

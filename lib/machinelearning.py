@@ -13,7 +13,7 @@ import matplotlib.pyplot as plt
 from config.config import *
 import wave
 import audioop
-from audiomentations import Compose, AddGaussianNoise, Shift, PitchShift
+from audiomentations import Compose, AddGaussianNoise, Shift, TimeStretch
 
 def feature_engineering( wavFile ):
     fs, rawWav = scipy.io.wavfile.read( wavFile )
@@ -47,6 +47,7 @@ def augmented_feature_engineering( wavFile ):
     
     augmenter = Compose([
         AddGaussianNoise(min_amplitude=0.001, max_amplitude=0.015, p=0.5),
+        TimeStretch(min_rate=0.8, max_rate=1.25, p=0.5),
         Shift(min_fraction=-0.5, max_fraction=0.5, p=0.5),
     ])
 
