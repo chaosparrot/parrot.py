@@ -80,16 +80,23 @@ class PatternDetector:
     # Generate the detection lambda functions based on the threshold configuration given
     def generate_detection_functions( self, thresholds, sounds ):
         detection_calls = []
-        if( 'percentage' in thresholds ):
-            detection_calls.append( lambda self, threshold=thresholds['percentage'], sounds=sounds: sum( self.lastDict[sound]['percent'] for sound in sounds) >= threshold )
-        if( 'power' in thresholds ):
-            detection_calls.append( lambda self, threshold=thresholds['power']: self.lastDict['silence']['power'] >= threshold )
-        if( 'ratio' in thresholds and len(sounds) > 1 ):
-            detection_calls.append( lambda self, threshold=thresholds['ratio'], sounds=sounds: ( self.lastDict[sounds[0]]['percent'] / self.lastDict[sounds[1]]['percent'] >= threshold ) )
-        if( 'intensity' in thresholds ):
-            detection_calls.append( lambda self, threshold=thresholds['intensity']: self.lastDict['silence']['intensity'] >= threshold )
-        if( 'frequency' in thresholds ):
-            detection_calls.append( lambda self, threshold=thresholds['frequency']: self.lastDict['silence']['frequency'] >= threshold )
+        
+        times = 1
+        if ('times' in thresholds):
+            times = thresholds['times']
+        
+        for i in range(times):
+            index = 0 - ( i + 1 )
+            if( 'percentage' in thresholds ):
+                detection_calls.append( lambda self, dictIndex=index, threshold=thresholds['percentage'], sounds=sounds: sum( self.predictionDicts[dictIndex][sound]['percent'] for sound in sounds) >= threshold )
+            if( 'power' in thresholds ):
+                detection_calls.append( lambda self, dictIndex=index, threshold=thresholds['power']: self.predictionDicts[dictIndex]['silence']['power'] >= threshold )
+            if( 'ratio' in thresholds and len(sounds) > 1 ):
+                detection_calls.append( lambda self, dictIndex=index, threshold=thresholds['ratio'], sounds=sounds: ( self.predictionDicts[dictIndex][sounds[0]]['percent'] / self.predictionDicts[dictIndex][sounds[1]]['percent'] >= threshold ) )
+            if( 'intensity' in thresholds ):
+                detection_calls.append( lambda self, dictIndex=index, threshold=thresholds['intensity']: self.predictionDicts[dictIndex]['silence']['intensity'] >= threshold )
+            if( 'frequency' in thresholds ):
+                detection_calls.append( lambda self, dictIndex=index, threshold=thresholds['frequency']: self.predictionDicts[dictIndex]['silence']['frequency'] >= threshold )
             
         ## These will check whether a threshold is below the given value
         if( 'below_percentage' in thresholds ):
@@ -105,7 +112,6 @@ class PatternDetector:
         
         return detection_calls
         
-
     # Update the timestamp used for throttle detection
     # And set the prediction dicts to be used for detection
     def tick( self, predictionDicts, timestamp=None ):

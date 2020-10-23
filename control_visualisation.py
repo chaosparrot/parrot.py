@@ -74,10 +74,10 @@ def loop_overlay():
         filepath = COMMAND_FILE
                 
         with open(filepath) as fp:  
-            held_keys = fp.readline()
             sound = fp.readline()
-            command = fp.readline()
             times = fp.readline()
+            command = fp.readline()
+            held_keys = fp.readline()            
             
             text.delete('1.0', END)
             text.insert(INSERT, sound)

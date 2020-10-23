@@ -122,8 +122,9 @@ class HollowknightMode(VisualMode):
             'name': 'menu',
             'sounds': ['sound_finger_snap'],
             'threshold': {
-                'percentage': 99 ,
-                'power': 80000
+                'percentage': 99,
+                'power': 60000,
+                'times': 4
             },
             'throttle': {
                 'menu': 0.5
@@ -136,6 +137,15 @@ class HollowknightMode(VisualMode):
         self.enable('single-press-grid')
         update_overlay_image('coords-overlay')
         
+    def handle_input( self, dataDicts ):
+        super().handle_input( dataDicts )
+        
+        if ("X-" in self.detector.tickActions ):
+            self.release('down')
+        elif ("X+" in self.detector.tickActions):
+            self.release('up')
+
+        return self.detector.tickActions
     
     hold_arrow_keys = []
         
@@ -145,11 +155,11 @@ class HollowknightMode(VisualMode):
         elif (self.detect('up_slash')):
             self.hold('up')
             self.press('x')
-            self.release('up')
+            self.print_key('X+')            
         elif (self.detect('down_slash')):
             self.hold('down')
             self.press('x')
-            self.release('down')
+            self.print_key('X-')
         elif (self.detect('menu')):
             self.press('esc')
             self.toggle_singlepress()
@@ -166,12 +176,12 @@ class HollowknightMode(VisualMode):
                 self.inputManager.keyUp('tab')
     
         # Make it possible to jump for various lengths of time
-        if (self.detect('jump')):
+        if (self.detect('jump')):        
             if (self.detect('space-held') == False):
                 self.inputManager.keyDown('space')
                 self.enable('space-held')
                 self.detector.pointerController.update_origin_coords()
-            
+                self.print_key('SPACE')
         elif (self.detect('space-held')):
             self.inputManager.keyUp('space')
             self.disable('space-held')
@@ -180,6 +190,7 @@ class HollowknightMode(VisualMode):
         if (self.detect('charge')):
             if (self.detect('charge-held') == False):
                 self.inputManager.keyDown('a')
+                self.print_key('a')
                 self.enable('charge-held')
         elif (self.detect('charge-held')):
             self.inputManager.keyUp('a')
