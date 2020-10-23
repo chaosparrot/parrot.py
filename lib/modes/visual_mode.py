@@ -15,11 +15,7 @@ class VisualMode(BaseMode):
     def press( self, key, print_key = False ):
         super().press( key )
         self.print_key( key, print_key )
-        
-    def hold( self, key, print_key = False ):
-        super().hold( key )
-        self.print_key( key, print_key )
-        
+                        
     def leftclick( self ):
         super().leftclick()
         self.print_key( "LMB", "LMB" )
@@ -42,7 +38,7 @@ class VisualMode(BaseMode):
         
         if (detected and key not in self.toggles):
             sound = self.detector.patterns[key]["sounds"][0]
-            self.latest_sound = "/" + sound.replace("general_", "").replace("vowel_", "")\
+            self.latest_sound = "/" + sound.replace("general_", "").replace("vowel_", "").replace("stop_", "").replace("vowel_", "")\
                 .replace("sibilant_", "").replace("thrill_", "").replace("sound_", "").replace("fricative_", "").replace("_alveolar", "").replace("approximant_", "") + "/"
         
         return detected
@@ -51,18 +47,18 @@ class VisualMode(BaseMode):
         with open(COMMAND_FILE, "r+") as fp:
         
             # Read initial data first
-            held_keys = fp.readline()
             sound = fp.readline().rstrip("\n")
-            command = fp.readline().rstrip("\n")
             times = fp.readline().rstrip("\n")
             times = re.sub('[^0-9]','', times)
+            command = fp.readline().rstrip("\n")
+            held_keys = fp.readline().rstrip("\n")
             if (times == ""):
-                times = 0                
+                times = 0
 
             held_keys = ""
             if (self.inputManager.toggle_keys["ctrl"]):
                 held_keys = "ctrl"
-            if (self.inputManager.toggle_keys["shift"]):
+            if (self.inputManager.toggle_keys["shift"]): 
                 held_keys = held_keys + "shift"
             if (self.inputManager.toggle_keys["alt"]):
                 held_keys = held_keys + "alt"
@@ -88,8 +84,8 @@ class VisualMode(BaseMode):
 
             # Start writing new information
             fp.seek(0)
-            fp.write(held_keys + "\n")
             fp.write(sound + "\n")
+            fp.write(str(times) + "\n")
             fp.write(command + "\n")
-            fp.write(str(times))
+            fp.write(held_keys)
             fp.close()

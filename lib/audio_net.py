@@ -345,7 +345,7 @@ class AudioNetTrainer:
     train_loader = None
     criterion = nn.NLLLoss()
     batch_size = 256
-    validation_split = .1
+    validation_split = .2
     max_epochs = 300
     random_seed = 42
     use_cuda = torch.cuda.is_available()
