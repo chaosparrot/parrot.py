@@ -43,6 +43,14 @@ class PointerController:
     def set_origin_coords( self, coords ):
         self.origin_coords = coords
         
+    # Set the origin point from which to do relative movements all the way to the right side of the screen
+    def set_origin_coords_center_right( self ):
+        self.origin_coords = [self.screenSize[0] + 400, self.screenSize[1] / 2]
+        
+    # Set the origin point from which to do relative movements all the way to the left side of the screen        
+    def set_origin_coords_center_left( self ):
+        self.origin_coords = [0 - 400, self.screenSize[1] / 2]
+        
     # Detects in which quadrant the pointer is currently in
     # Counting goes as followed -
     # 1, 2, 3
@@ -82,18 +90,36 @@ class PointerController:
         return edges
         
     # Detect in which direction the pointer is relative to the origin coordinate
-    def detect_origin_directions( self, radius ):
+    def detect_origin_directions( self, radius, y_radius=False ):
         x_diff = self.coords[0] - self.origin_coords[0]
         y_diff = self.coords[1] - self.origin_coords[1]
         directions = []
         if( abs( x_diff ) > radius ):
             directions.append( "left" if x_diff < 0 else "right" )
 
-        if( abs( y_diff ) > radius ):
+        if (y_radius == False):
+            y_radius = radius
+
+        if( abs( y_diff ) > y_radius ):
             directions.append( "up" if y_diff < 0 else "down" )
             
         return directions
         
+    def detect_origin_difference( self, dimension='x'):
+        if (dimension == 'x'):
+            return self.coords[0] - self.origin_coords[0]
+        else:
+            return self.coords[1] - self.origin_coords[1]            
+        
+    # Detect the coarse distance without using powers or square roots for performance optimalisations
+    def detect_origin_coarse_distance( self, dimensions='xy' ):
+        if (dimensions == 'xy'):
+            x_diff = self.coords[0] - self.origin_coords[0]
+            y_diff = self.coords[1] - self.origin_coords[1]
+            
+            return max( abs(x_diff), abs(y_diff) )
+        else:
+            return abs(self.detect_origin_difference(dimensions))
 
     # Detect if our pointer is inside an area
     def detect_area( self, x, y, width, height ):

@@ -38,7 +38,7 @@ class VisualMode(BaseMode):
         
         if (detected and key not in self.toggles):
             sound = self.detector.patterns[key]["sounds"][0]
-            self.latest_sound = "/" + sound.replace("general_", "").replace("vowel_", "").replace("stop_", "").replace("vowel_", "")\
+            self.latest_sound = "/" + sound.replace("general_", "").replace("vowel_", "").replace("stop_", "").replace("nasal_", "")\
                 .replace("sibilant_", "").replace("thrill_", "").replace("sound_", "").replace("fricative_", "").replace("_alveolar", "").replace("approximant_", "") + "/"
         
         return detected
