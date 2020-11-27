@@ -414,7 +414,9 @@ def predict_wav_files( classifier, wav_files ):
         
 def predict_raw_data( wavData, classifier, intensity, power ):
     # FEATURE ENGINEERING
-    first_channel_data = np.frombuffer( wavData, dtype=np.int16 )[::2]
+    first_channel_data = np.frombuffer( wavData, dtype=np.int16 )
+    if( CHANNELS == 2 ):
+        first_channel_data = first_channel_data[::2]
     data_row, frequency = feature_engineering_raw( first_channel_data, RATE, intensity )    
     data = [ data_row ]
 

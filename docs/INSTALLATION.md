@@ -39,6 +39,7 @@ pip3 install joblib;
 pip3 install scikit-learn;
 pip3 install pywin32;
 pip3 install dragonfly2;
+pip3 install audiomentations;
 ```
 
 Step three - Download and extract the zipfile from this github repository
@@ -82,3 +83,15 @@ Pytorch offers a vast array of machinelearning techniques that might be useful t
 
 But setting up Pytorch might be complicated because you will also need CUDA support and a decent graphics card.
 If you're just playing around for the first time - You can just stick to the regular installation until you require more accuracy.
+
+Optional - Install FFMPEG for recording file conversion
+----------------
+
+It is handy to be able to convert already recorded audio files in case you want to tweak the channels or rate after having recorded the audio files.
+For this reason, FFMPEG is required if you desire to convert existing files.
+If you already have it installed, simply point to the place where it is installed inside the config/config.py file.
+
+Installing ffmpeg on windows is as easy as downloading it and unzipping it somewhere on your computer. The executable should be inside the bin folder in there.
+By default, the program assumes the ffmpeg executable is placed in ffmpeg/bin inside parrot.
+Therefore, it is recommended to move the whole ffmpeg folder over to the parrot root directory and rename the ffmpeg root directory name to ffmpeg. 
+That way it should work out of the box without having to go into configuration.

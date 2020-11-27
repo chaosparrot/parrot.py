@@ -75,7 +75,7 @@ def loop_overlay():
                 
         with open(filepath) as fp:  
             sound = fp.readline()
-            times = fp.readline()
+            times = fp.readline().rstrip("\n")
             command = fp.readline()
             held_keys = fp.readline()            
             
@@ -132,7 +132,7 @@ def loop_overlay():
             else:
                 holdText.tag_configure("ALT", background="#000000", foreground="#000000")
             
-            if (times!="1"):
+            if (times != "1"):
                 commandText.insert(INSERT,command.rstrip("\n"),"","*" + times,"times")
             else:
                 commandText.insert(INSERT,command.rstrip("\n"))                

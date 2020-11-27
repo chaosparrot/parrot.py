@@ -3,6 +3,7 @@ from lib.record_data import record_sound
 from lib.learn_data import learn_data
 from lib.test_data import test_data
 from lib.setup_config import setup_config
+from lib.convert_files import convert_files
 from lib.combine_models import combine_models
 
 def root_navigation( first):
@@ -13,10 +14,10 @@ def root_navigation( first):
         print( "----------------------------" )
     print( "Enter one of the buttons below and press enter to start" )
     print( " - [R] for recording" )
+    print( " - [V] for converting audio files to different formats" )    
     print( " - [L] for learning the data" )
     print( " - [C] for combining multiple models into one model" )
     print( " - [A] for analyzing the performance of the models" )
-    print( " - [S] for changing settings" )
     print( " - [X] for exiting setup" )
     
     select_mode()
@@ -35,8 +36,8 @@ def select_mode():
     elif( setup_mode.lower() == 'a' ):
         test_data( True )
         root_navigation( False )
-    elif( setup_mode.lower() == 's' ):
-        setup_config( True )
+    elif( setup_mode.lower() == 'v' ):
+        convert_files( True )
         root_navigation( False )
     elif( setup_mode.lower() == 'x' ):
         print( "Goodbye." )

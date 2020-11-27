@@ -4,7 +4,10 @@ data/recordings/*
 !data/recordings/.gitkeep
 data/models/*
 !data/models/.gitkeep
+data/output/*
+!data/output/.gitkeep
 lib/__pycache__/*
 lib/modes/__pycache__/*
 config/__pycache__/*
 __pycache__*
+ffmpeg

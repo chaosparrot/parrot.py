@@ -44,7 +44,8 @@ class HollowknightMode(VisualMode):
                 'power': 10000
             },            
             'throttle': {
-                'movement_modes': 0.2
+                'movement_modes': 0.2,
+                'spell': 0.2
             }
         },
         {
@@ -55,14 +56,14 @@ class HollowknightMode(VisualMode):
                 'power': 10000
             },            
             'throttle': {
-                'set_coordinate': 0.1
+                'set_coordinate': 0.2
             }
         },
         {
             'name': 'set_coordinate_right',
-            'sounds': ['vowel_ow', 'vowel_u'],
+            'sounds': ['vowel_ow', 'approximant_l'],
             'threshold': {
-                'percentage': 90,
+                'percentage': 87,
                 'power': 10000,
             },
             'throttle': {
@@ -72,9 +73,9 @@ class HollowknightMode(VisualMode):
         },
         {
             'name': 'set_coordinate_left',
-            'sounds': ['vowel_aa'],
+            'sounds': ['vowel_aa', 'thrill_r'],
             'threshold': {
-                'percentage': 90,
+                'percentage': 87,
                 'power': 10000,
             },            
             'throttle': {
@@ -95,14 +96,10 @@ class HollowknightMode(VisualMode):
         },
         {
             'name': 'hold_arrowkeys',
-            'sounds': ['nasal_m', 'nasal_n'],
+            'sounds': ['nasal_n', 'nasal_m'],
             'threshold': {
-                'percentage': 80,
+                'percentage': 70,
                 'power': 20000
-            },
-            'continual_threshold': {
-                'percentage': 40,
-                'power': 10000
             }
         },        
         {
@@ -113,7 +110,7 @@ class HollowknightMode(VisualMode):
                 'power': 12000
             },
             'throttle': {
-                'slash': 0.1
+                'slash': 0.12
             }
         },
         {
@@ -145,18 +142,96 @@ class HollowknightMode(VisualMode):
             }
         },
         {
+            'name': 'dream_nail',
+            'sounds': ['sound_pop'],
+            'threshold': {
+                'percentage': 90,
+                'power': 10000
+            },
+            'throttle': {
+                'dream_nail': 0.1,
+                'down_slash': 0.1,
+                'up_slash': 0.1
+            }
+        },
+        {
             'name': 'charge',
             'sounds': ['approximant_r'],
             'threshold': {
                 'percentage': 90,
-                'power': 12000
+                'power': 12000,
+                'times': 4
             },
             'continual_threshold': {
-                'percentage': 30,
-                'power': 3000                
+                'power': 3000,
             },
             'throttle': {
-                'slash': 0.1
+                'slash': 0.1,
+                'spell': 0.2
+            }
+        },
+        {
+            'name': 'attack_charge',
+            'sounds': ['vowel_e'],
+            'threshold': {
+                'percentage': 90,
+                'power': 20000,
+                'times': 3
+            },
+            'continual_threshold': {
+                'power': 3000,
+            },
+            'throttle': {
+                'movement_modes': 0.2
+            }
+        },
+        {
+            'name': 'spell',
+            'sounds': ['thrill_thr'],
+            'threshold': {
+                'percentage': 95,
+                'power': 12000
+            },
+            'throttle': {
+                'spell': 0.2
+            }
+        },
+        {
+            'name': 'directional_spell',
+            'sounds': ['stop_implosive_velar'],
+            'threshold': {
+                'percentage': 95,
+                'power': 100000,
+                'times': 2
+            },
+            'throttle': {
+                'directional_spell': 0.3
+            }
+        },        
+        {
+            'name': 'dash',
+            'sounds': ['fricative_f'],
+            'threshold': {
+                'percentage': 96,
+                'power': 12000
+            },
+            'throttle': {
+                'dash': 0.3
+            }
+        },
+        {
+            'name': 'hyper_dash',
+            'sounds': ['sibilant_zh'],
+            'threshold': {
+                'percentage': 90,
+                'power': 12000,
+                'times': 4
+            },
+            'continual_threshold': {
+                'power': 3000,
+            },
+            'throttle': {
+                'jump': 0.2
             }
         },
         {
@@ -170,6 +245,16 @@ class HollowknightMode(VisualMode):
                 'percentage': 30,
                 'power': 2000
             }
+        },        
+        {
+            'name': 'jump_horizontal',
+            'sounds': ['sibilant_s'],
+            'threshold': {
+                'power': 40000
+            },
+            'continual_threshold': {
+                'power': 20000
+            }            
         },
         {
             'name': 'menu',
@@ -189,7 +274,7 @@ class HollowknightMode(VisualMode):
             'threshold': {
                 'percentage': 95,
                 'power': 50000,
-                'times': 5
+                'times': 3
             },
             'throttle': {
                 'mute': 0.5
@@ -212,14 +297,14 @@ class HollowknightMode(VisualMode):
         if (not self.detect("actions-muted")):
             self.file_skip_number = self.file_skip_number + 1
         
-            if ("X-" in self.detector.tickActions ):
+            if ("X-" in self.detector.tickActions or "A-" in self.detector.tickActions ):
                 self.release('down')
                 
                 # Reapply the horizontal movement afterwards
                 for key in self.hold_arrow_keys:
                     if ( key in ['left', 'right'] ):
                         self.hold( key )
-            elif ("X+" in self.detector.tickActions):
+            elif ("X+" in self.detector.tickActions or "A+" in self.detector.tickActions):
                 self.release('up')
 
                 # Reapply the horizontal movement afterwards
@@ -227,9 +312,9 @@ class HollowknightMode(VisualMode):
                     if ( key in ['left', 'right'] ):
                         self.hold( key )
 
-            # Only update the overlay file every 10 frames
+            # Only update the overlay file every 15 frames
             # For performance reasons
-            if (self.file_skip_number > 10):
+            if (self.file_skip_number > 15):
                 self.file_skip_number = 0
                 x_diff = self.detector.pointerController.detect_origin_difference('x')
                 x_distance = abs(x_diff)
@@ -261,6 +346,12 @@ class HollowknightMode(VisualMode):
         if (self.detect('slash')):
             self.press('x')
             return
+        elif (self.detect('spell')):
+            self.press('a')
+            return
+        elif (self.detect('dash')):
+            self.press('c')
+            return
         elif (self.detect('up_slash')):
             # Release horizontal movement temporarily
             for key in self.hold_arrow_keys:
@@ -280,6 +371,23 @@ class HollowknightMode(VisualMode):
             self.press('x')
             self.print_key('X-')
             disable_movement = True
+        elif (self.detect('directional_spell')):
+            # Release horizontal movement temporarily
+            for key in self.hold_arrow_keys:
+                if ( key in ['left', 'right'] ):
+                    self.release( key )
+
+            # Do a spell cast depend on the location where the user is looking
+            if (self.quadrant3x3 <= 3 ):
+                self.hold('up')
+                self.press('a')
+                self.print_key('A+')
+            elif (self.quadrant3x3 >= 7 ):
+                self.hold('down')
+                self.press('a')
+                self.print_key('A-')
+                
+            disable_movement = True            
         elif (self.detect('menu')):
             self.press('esc')
             self.toggle_singlepress(True)
@@ -297,7 +405,7 @@ class HollowknightMode(VisualMode):
         elif (self.detect('set_coordinate_right')):
             self.detector.pointerController.set_origin_coords_center_right()
             self.print_key('Point>')
-            return            
+            return
         elif (self.detect("mute")):
             self.enable('actions-muted')
             self.print_key('MUTE')
@@ -305,16 +413,25 @@ class HollowknightMode(VisualMode):
             self.current_overlay_image = 'coords-overlay'
             update_overlay_image(self.current_overlay_image)            
             return
+        elif (self.detect('dream_nail')):
+            self.toggle('dream_nail_held')
+            if (self.detect('dream_nail_held')):
+                self.inputManager.keyDown('d')
+                self.print_key('D')
+            else:
+                self.inputManager.keyUp('d')
              
         # Toggle the map open
         elif (self.detect('map')):
             self.toggle('tab')
             if (self.detect('tab')):
                 self.inputManager.keyDown('tab')
+                self.print_key('TAB')                
             else:
-                self.inputManager.keyUp('tab')
+                self.inputManager.keyUp('tab')                
         elif (self.detect('inventory')):
             self.press('i')
+            self.toggle_singlepress(True)            
     
         # Make it possible to jump for various lengths of time
         if (self.detect('jump')):        
@@ -337,6 +454,27 @@ class HollowknightMode(VisualMode):
         elif (self.detect('charge-held')):
             self.inputManager.keyUp('a')
             self.disable('charge-held')
+            
+        # Make it possible to charge X
+        if (self.detect('attack_charge')):
+            if (self.detect('attack-held') == False):
+                self.inputManager.keyDown('x')
+                self.print_key('x')
+                self.enable('attack-held')
+        elif (self.detect('attack-held')):
+            self.inputManager.keyUp('x')
+            self.disable('attack-held')
+            
+        # Make it possible to charge S
+        if (self.detect('hyper_dash')):
+            disable_movement = True
+            if (self.detect('dash-held') == False):
+                self.inputManager.keyDown('s')
+                self.print_key('S')
+                self.enable('dash-held')
+        elif (self.detect('dash-held')):
+            self.inputManager.keyUp('s')
+            self.disable('dash-held')
 
         if (self.detect('hold_arrowkeys')):
             if (self.detect('manual-movement') == False):
@@ -349,7 +487,13 @@ class HollowknightMode(VisualMode):
         # Movement types
         # Aerial movement
         if (self.detect('aerial-movement')):
+            #if (self.detect('jump_horizontal')):
             self.handle_arrowkeys(dataDicts, "relative", False, 100, ['left', 'right'])
+            #else:
+            #    if ( len(self.hold_arrow_keys) > 0 ):
+            #        for key in self.hold_arrow_keys:
+            #            self.release( key )
+            #        self.hold_arrow_keys = []
             
         # Manual movement
         elif (self.detect('manual-movement')):

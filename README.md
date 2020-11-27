@@ -38,7 +38,7 @@ This repository contains a settings.py file for recording, training and analytic
 This will allow you to tweak and improve the recognition of sounds and activation accuracy and speed of keys.
 
 In order to map a sound to a key, you will have to go through a certain process:
-* Step 1 - [Recording the sound](docs/RECORDING.md)
+* Step 1 - [Recording the sound](docs/RECORDING.md) or [Converting the sound](docs/CONVERTING.md)
 * Step 2 - [Training a model on the sound for recognition](docs/TRAINING.md)
 * Step 3 - [Analyse whether or not the sound is properly recognized](docs/ANALYSING.md)
 * Step 4 - [Connecting sounds to keyboard and mouse inputs](docs/TUTORIAL_MODE.md)
@@ -52,9 +52,3 @@ You can run the program by executing `py play.py`. This process might crash if y
 Sometimes if windows speech rec isnt started before the program, there appears to be a weird caching bug that shows the following error:
 Exception while initializing sapi5 engine: module 'win32com.gen_py' has no attribute 'CLSIDToClassMap'
 You can fix that by starting windows speech rec, going to your C:\Users\YOURUSER\AppData\Local\Temp directory and rename gen_py to gen_py2 or something. This will rebuild the cache for gen_py the next time the program is run.
-
-### Todos
-
- - Add examples of how to use the program
- - Seperate out the eyetracker and speech recognition parts, in order to allow the users not to have to install and configure all the different parts in order to get set up properly. 
- - Make a dummy mode for rapid testing without having to train a model yourself
