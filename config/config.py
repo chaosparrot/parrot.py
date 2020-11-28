@@ -21,7 +21,7 @@ INPUT_TESTING_MODE = False
 USE_COORDINATE_FILE = True
 
 DATASET_FOLDER = "data/recordings/30ms"
-RECORDINGS_FOLDER = "data/recordings/30ms"
+RECORDINGS_FOLDER = "data/recordings/flac"
 REPLAYS_FOLDER = "data/replays"
 REPLAYS_AUDIO_FOLDER = "data/replays/audio"
 REPLAYS_FILE = REPLAYS_FOLDER + "/run.csv"

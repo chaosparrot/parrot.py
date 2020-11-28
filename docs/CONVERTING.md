@@ -38,10 +38,11 @@ Segmenting or augmenting audio into recognizable files
 
 Parrot ultimately relies on wav files of a fixed length to do its learning. As such, all the wav files need to be segmented properly.
 
-This segmentation is still being built as of this moment, but it will use the exact same flow as the recording process where you are able to select thresholds to filter out silence.
-For a more indepth view of that process, take a look at the recording documentation: [Recording sounds](RECORDING.md)
+For this purpose there is a segmentation option in the conversion menu, which can be activated by [S]. This segmentation menu will allow you to selected the sounds to segment and its filtering thresholds.
+For a more indepth view of that process, take a look at the recording documentation: [Recording sounds](RECORDING.md). I recommend playing around with the thresholds to see what works, you want a clean as possible divide between your sound and silence.
 
-( TODO )
+The segmented files will be placed in the output folder in the same folder structure as your recording folder, but containing the segmented files.
+You can then either move the contents over to the DATASET_FOLDER designated in the config/config.py file, or you can change that config setting around to point to the output folder of the segmentations.
 
 You can also augment your recordings with more samples without having to record new ones. This will give your models a lot more data to work with, however, real recorded data is almost always better than synthetic data created using augmentation.
 The augmentation process takes the existing .wav files and adds various amounts of noise, timeshifting and stretching to produce new audio files.

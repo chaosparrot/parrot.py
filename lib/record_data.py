@@ -130,7 +130,7 @@ def record_consumer(threshold, power_threshold, frequency_threshold, begin_thres
 	try:
 		while( True ):
 			if( not recordQueue.empty() ):
-				audioFrames.append( recordQueue.get() )		
+				audioFrames.append( recordQueue.get() )
 				if( len( audioFrames ) >= SLIDING_WINDOW_AMOUNT ):
 					j+=1
 					audioFrames = audioFrames[-SLIDING_WINDOW_AMOUNT:]
