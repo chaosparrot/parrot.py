@@ -36,7 +36,7 @@ class BaseMode:
         self.modeSwitcher = modeSwitcher
         self.detector = PatternDetector(self.patterns)
         self.pressed_keys = {}
-        self.should_drag = False
+        self.should_drag = {}
         self.ctrlKey = False
         self.shiftKey = False
         self.altKey = False
@@ -66,7 +66,8 @@ class BaseMode:
         self.quadrant4x3 = self.detector.detect_mouse_quadrant( 4, 3 )
         
         if( self.detect_silence() ):
-            self.stop_drag_mouse()
+            for key in self.should_drag:
+                self.stop_drag_mouse(button=key)
             self.inputManager.release_non_toggle_keys()
                 
         # Recognize speech commands in speech mode
@@ -134,11 +135,11 @@ class BaseMode:
     def detect_silence( self ):
         return self.detector.detect_silence()        
         
-    def drag_mouse( self ):
-        self.toggle_drag_mouse( True )
+    def drag_mouse( self, button="left" ):
+        self.toggle_drag_mouse( True, button=button )
 
-    def stop_drag_mouse( self ):
-        self.toggle_drag_mouse( False )
+    def stop_drag_mouse( self, button="left" ):
+        self.toggle_drag_mouse( False, button=button )
                 
     def leftclick( self ):
         self.inputManager.click(button='left')
@@ -170,14 +171,14 @@ class BaseMode:
         toggle_speechrec()
 
     # Drag mouse for selection purposes
-    def toggle_drag_mouse( self, should_drag ):
-        if( self.should_drag != should_drag ):
+    def toggle_drag_mouse( self, should_drag, button="left" ):
+        if( self.should_drag.get(button, False) != should_drag ):
             if( should_drag == True ):
-                self.inputManager.mouseDown()
+                self.inputManager.mouseDown(button=button)
             else:
-                self.inputManager.mouseUp()
+                self.inputManager.mouseUp(button=button)
                 
-        self.should_drag = should_drag
+        self.should_drag[button] = should_drag
         
     # Detect when the cursor is inside an area
     def detect_inside_area( self, x, y, width, height ):
