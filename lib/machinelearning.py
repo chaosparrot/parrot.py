@@ -19,7 +19,10 @@ def feature_engineering( wavFile ):
     fs, rawWav = scipy.io.wavfile.read( wavFile )
     intensity = get_highest_intensity_of_wav_file( wavFile )
     
-    return feature_engineering_raw( rawWav[:,0], fs, intensity )
+    if( CHANNELS == 2 ):
+        return feature_engineering_raw( rawWav[:,0], fs, intensity )
+    else:
+        return feature_engineering_raw( rawWav, fs, intensity )        
     
 def feature_engineering_raw( wavData, sampleRate, intensity ):
     #mfcc_result1 = mfcc( wavData, samplerate=sampleRate, nfft=1103, numcep=13, appendEnergy=True )
@@ -35,7 +38,10 @@ def feature_engineering_raw( wavData, sampleRate, intensity ):
     
 def training_feature_engineering( wavFile ):
     fs, rawWav = scipy.io.wavfile.read( wavFile )
-    wavData = rawWav[:,0]
+    wavData = rawWav
+    if ( CHANNELS == 2 ):
+        wavData = rawWav[:,0]
+
     mfcc_result1 = mfcc( wavData, samplerate=fs, nfft=1103, numcep=30, nfilt=40, preemph=0.5, winstep=0.005, winlen=0.015, appendEnergy=False )
     data_row = []
     data_row.extend( mfcc_result1.ravel() )
@@ -43,7 +49,9 @@ def training_feature_engineering( wavFile ):
 
 def augmented_feature_engineering( wavFile ):
     fs, rawWav = scipy.io.wavfile.read( wavFile )
-    wavData = rawWav[:,0]
+    wavData = rawWav
+    if ( CHANNELS == 2 ):
+        wavData = rawWav[:,0]
     
     augmenter = Compose([
         AddGaussianNoise(min_amplitude=0.001, max_amplitude=0.015, p=0.5),
@@ -112,11 +120,13 @@ def plot_confusion_matrix(cm, classes,
 def get_highest_intensity_of_wav_file( wav_file ):
     intensity = []
     with wave.open( wav_file ) as fd:
-        params = fd.getparams()
-        for i in range( 0, int(RATE / CHUNK * RECORD_SECONDS)):
-            data = fd.readframes(CHUNK)
-            peak = audioop.maxpp( data, 4 ) / 32767
-            intensity.append( peak )
+        number_channels = fd.getnchannels()
+        total_frames = fd.getnframes()
+        frame_rate = fd.getframerate()
+        frames_to_read = round( frame_rate * RECORD_SECONDS)
+        data = fd.readframes(frames_to_read)
+        peak = audioop.maxpp( data, 4 ) / 32767
+        intensity.append( peak )
     
     return np.amax( intensity )
         
