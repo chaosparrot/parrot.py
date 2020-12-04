@@ -52,3 +52,8 @@ You can run the program by executing `py play.py`. This process might crash if y
 Sometimes if windows speech rec isnt started before the program, there appears to be a weird caching bug that shows the following error:
 Exception while initializing sapi5 engine: module 'win32com.gen_py' has no attribute 'CLSIDToClassMap'
 You can fix that by starting windows speech rec, going to your C:\Users\YOURUSER\AppData\Local\Temp directory and rename gen_py to gen_py2 or something. This will rebuild the cache for gen_py the next time the program is run.
+
+# Other related stuff
+
+I have a seperated doc page filled with research, notes, acknowledgements and showcases over on ![this page](docs/NOTES_AND_ACKNOWLEDGEMENTS.md).
+I will expand this document once I learn more during the development. In the meantime, you can use that knowledge to your own advantage.
