@@ -75,7 +75,7 @@ class HollowknightMode(VisualMode):
         },
         {
             'name': 'set_coordinate_left',
-            'sounds': ['vowel_aa', 'thrill_r'],
+            'sounds': ['vowel_aa', 'thrill_r', 'vowel_ah'],
             'threshold': {
                 'percentage': 87,
                 'power': 10000,
@@ -212,7 +212,7 @@ class HollowknightMode(VisualMode):
         },
         {
             'name': 'directional_spell',
-            'sounds': ['stop_implosive_velar'],
+            'sounds': ['stop_implosive_velar', 'thrill_bilabial'],
             'threshold': {
                 'percentage': 95,
                 'power': 100000,
@@ -230,7 +230,8 @@ class HollowknightMode(VisualMode):
                 'power': 12000
             },
             'throttle': {
-                'dash': 0.3
+                'dash': 0.3,
+                'invert_movement': 0.3
             }
         },
         {
@@ -256,9 +257,27 @@ class HollowknightMode(VisualMode):
                 'power': 4000
             },
             'continual_threshold': {
-                'percentage': 30,
-                'power': 2000
+                'percentage': 32,
+                'power': 2500
+            },
+            'throttle': {
+                'up_slash': 0.05
             }
+        },
+        {
+            'name': 'inverse_jump',
+            'sounds': ['fricative_v'],
+            'threshold': {
+                'percentage': 95,
+                'power': 20000,
+                'times': 3
+            },
+            'continual_threshold': {
+                'power': 2000
+            },
+            'throttle': {
+                'jump': 0.13
+            }            
         },        
         {
             'name': 'jump_horizontal',
@@ -288,7 +307,7 @@ class HollowknightMode(VisualMode):
             'threshold': {
                 'percentage': 95,
                 'power': 50000,
-                'times': 3
+                'times': 5
             },
             'throttle': {
                 'mute': 0.5
@@ -311,19 +330,19 @@ class HollowknightMode(VisualMode):
         if (not self.detect("actions-muted")):
             self.file_skip_number = self.file_skip_number + 1
         
-            if ("X-" in self.detector.tickActions or "A-" in self.detector.tickActions ):
+            if ("X-" in self.detector.tickActions or "F-" in self.detector.tickActions ):
                 self.release('down')
                 
                 # Reapply the horizontal movement afterwards
                 for key in self.hold_arrow_keys:
-                    if ( key in ['left', 'right'] ):
+                    if ( key in ['left', 'right', 'down'] ):
                         self.hold( key )
-            elif ("X+" in self.detector.tickActions or "A+" in self.detector.tickActions):
+            elif ("X+" in self.detector.tickActions or "F+" in self.detector.tickActions):
                 self.release('up')
 
                 # Reapply the horizontal movement afterwards
                 for key in self.hold_arrow_keys:
-                    if ( key in ['left', 'right'] ):
+                    if ( key in ['left', 'right', 'up'] ):
                         self.hold( key )
 
             # Only update the overlay file every 15 frames
@@ -331,6 +350,8 @@ class HollowknightMode(VisualMode):
             if (self.file_skip_number > 15):
                 self.file_skip_number = 0
                 x_diff = self.detector.pointerController.detect_origin_difference('x')
+                if (self.detect('movement_inverted')):
+                    x_diff = x_diff * -1
                 x_distance = abs(x_diff)
                 new_overlay_image = self.current_overlay_image
                 if (x_distance < 50):
@@ -346,8 +367,6 @@ class HollowknightMode(VisualMode):
                 if (new_overlay_image != self.current_overlay_image):
                     update_overlay_image(new_overlay_image)
                     self.current_overlay_image = new_overlay_image
-
-                    
         return self.detector.tickActions
             
     def handle_sounds( self, dataDicts ):
@@ -364,7 +383,7 @@ class HollowknightMode(VisualMode):
             self.press('x')
             return
         elif (self.detect('spell')):
-            self.press('a')
+            self.press('f')
             return
         elif (self.detect('dash')):
             self.press('c')
@@ -372,7 +391,7 @@ class HollowknightMode(VisualMode):
         elif (self.detect('up_slash')):
             # Release horizontal movement temporarily
             for key in self.hold_arrow_keys:
-                if ( key in ['left', 'right'] ):
+                if ( key in ['left', 'right', 'down'] ):
                     self.release( key )
             self.hold('up')
             self.press('x')
@@ -381,7 +400,7 @@ class HollowknightMode(VisualMode):
         elif (self.detect('down_slash')):
             # Release horizontal movement temporarily
             for key in self.hold_arrow_keys:
-                if ( key in ['left', 'right'] ):
+                if ( key in ['left', 'right', 'up'] ):
                     self.release( key )
                                   
             self.hold('down')
@@ -396,13 +415,15 @@ class HollowknightMode(VisualMode):
 
             # Do a spell cast depend on the location where the user is looking
             if (self.quadrant3x3 <= 3 ):
+                self.release('down')
                 self.hold('up')
-                self.press('a')
-                self.print_key('A+')
+                self.press('f')
+                self.print_key('F+')
             elif (self.quadrant3x3 >= 7 ):
+                self.release('up') 
                 self.hold('down')
-                self.press('a')
-                self.print_key('A-')
+                self.press('f')
+                self.print_key('F-')
             else:
                 self.detector.clear_throttle('directional_spell')
             disable_movement = True            
@@ -414,17 +435,16 @@ class HollowknightMode(VisualMode):
             self.print_key('Stop')
         elif (self.detect('set_coordinate')):
             self.detector.pointerController.update_origin_coords()
-            self.print_key('Point')
-            
-            # If an attack was stored - Release it
-            self.check_attack_prepared()
+            self.print_key('Point')            
             return
         elif (self.detect('set_coordinate_left')):
             self.detector.pointerController.set_origin_coords_center_left()
+            self.disable('movement_inverted')
             self.print_key('<Point')
             return
         elif (self.detect('set_coordinate_right')):
             self.detector.pointerController.set_origin_coords_center_right()
+            self.disable('movement_inverted')            
             self.print_key('Point>')
             return
         elif (self.detect("mute")):
@@ -432,7 +452,7 @@ class HollowknightMode(VisualMode):
             self.print_key('MUTE')
             self.release_arrowkeys()
             self.current_overlay_image = 'coords-overlay'
-            update_overlay_image(self.current_overlay_image)            
+            update_overlay_image(self.current_overlay_image)
             return
         elif (self.detect('dream_nail')):
             self.toggle('dream_nail_held')
@@ -452,10 +472,17 @@ class HollowknightMode(VisualMode):
                 self.inputManager.keyUp('tab')                
         elif (self.detect('inventory')):
             self.press('i')
-            self.toggle_singlepress(True)            
-    
+            self.toggle_singlepress(True)
+        
         # Make it possible to jump for various lengths of time
-        if (self.detect('jump')):
+        regular_jump_held = self.detect('jump')
+        inverse_jump_held = not regular_jump_held and self.detect('inverse_jump')
+        if (inverse_jump_held):
+            self.enable('movement_inverted')
+        else:
+            self.disable('movement_inverted')
+
+        if (regular_jump_held or inverse_jump_held):
             if (self.detect('aerial-movement') == False):
                 self.inputManager.keyDown('space')
                 self.enable('aerial-movement')
@@ -465,7 +492,7 @@ class HollowknightMode(VisualMode):
             self.disable('aerial-movement')
             self.release_arrowkeys()
             # If an attack was stored - Release it in the up direction
-            self.check_attack_prepared('up')
+            self.check_attack_prepared('down')
             
         # Make it possible to charge A
         if (self.detect('charge')):
@@ -505,10 +532,10 @@ class HollowknightMode(VisualMode):
         elif (self.detect('manual-movement')):
             self.disable('manual-movement')
             self.release_arrowkeys()
-            
+                    
         # Prepare an attack for the future whenever movement changes
         if (self.detect('prepare_attack')):
-            self.toggle('attack_prepared')
+            self.enable('attack_prepared')
             self.print_key('delay X')
             disable_movement = True
             
@@ -516,7 +543,7 @@ class HollowknightMode(VisualMode):
         # Aerial movement
         if (self.detect('aerial-movement')):
             #if (self.detect('jump_horizontal')):
-            self.handle_arrowkeys(dataDicts, "relative", False, 80, ['left', 'right'])
+            self.handle_arrowkeys(dataDicts, "relative", False, 60, ['left', 'right'])
             #else:
             #    if ( len(self.hold_arrow_keys) > 0 ):
             #        for key in self.hold_arrow_keys:
@@ -526,7 +553,7 @@ class HollowknightMode(VisualMode):
         # Manual movement
         elif (self.detect('manual-movement')):
             self.disable('precision-movement')
-            self.handle_arrowkeys(dataDicts, "relative", True, 80, ['left', 'right'])
+            self.handle_arrowkeys(dataDicts, "relative", True, 60, ['left', 'right'])
             
         # Precision movement - Button presses
         elif (self.detect('precision-movement')):
@@ -541,9 +568,15 @@ class HollowknightMode(VisualMode):
         if (self.detect('attack_prepared')):
             if (direction == 'up'):
                 self.inputManager.keyDown('up')
+            elif (direction == 'down'):
+                self.inputManager.keyDown('down')
+
             self.press('x')
             if (direction == 'up'):
-                self.inputManager.keyUp('up')            
+                self.inputManager.keyUp('up')
+            elif (direction == 'down'):
+                self.inputManager.keyUp('down')
+                
             self.disable('attack_prepared')
 
     def toggle_singlepress( self, enable=False ):
@@ -591,6 +624,6 @@ class HollowknightMode(VisualMode):
             elif ('right' not in hold_arrowkeys and ( self.quadrant3x3 == 3 or self.quadrant3x3 == 6 or self.quadrant3x3 == 9 ) ):
                 hold_arrowkeys.append( 'right' )
         elif (mode == "relative"):
-            hold_arrowkeys = self.detector.pointerController.detect_origin_directions( radius, 400 )
+            hold_arrowkeys = self.detector.pointerController.detect_origin_directions( radius, 400, self.detect('movement_inverted'))
             
         return hold_arrowkeys

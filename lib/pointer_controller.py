@@ -90,9 +90,14 @@ class PointerController:
         return edges
         
     # Detect in which direction the pointer is relative to the origin coordinate
-    def detect_origin_directions( self, radius, y_radius=False ):
+    def detect_origin_directions( self, radius, y_radius=False, x_inversed=False, y_inversed=False ):
         x_diff = self.coords[0] - self.origin_coords[0]
         y_diff = self.coords[1] - self.origin_coords[1]
+        if (x_inversed == True):
+            x_diff = x_diff * -1
+        if (y_inversed == True):
+            y_diff = y_diff * -1            
+        
         directions = []
         if( abs( x_diff ) > radius ):
             directions.append( "left" if x_diff < 0 else "right" )

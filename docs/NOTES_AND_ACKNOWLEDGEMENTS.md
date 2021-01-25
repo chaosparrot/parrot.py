@@ -81,13 +81,12 @@ It is better to discard the buffer gradually in that case, which Parrot does by 
 
 Even though I am the main contributor, this project would not have gone this far without the help of other people.
 This section aims to put a spotlight on them in no particular order. Most of these are from the wonderful community centered around Talon Voice, if Parrot.py is something you enjoy, this program will blow your mind.
-Please consider donating some noises for that program with https://noise.talonvoice.com . It greatly helps out the ecosystem of hands-free software.
-
+Please consider donating some noises for that program with ![this link](https://noise.talonvoice.com). It greatly helps out the ecosystem of hands-free software.
 
 The first user other than me ( I forgot their name, shame on me ) - For showing me that this program was usable for other people as well, as well as showing me that I should probably think twice about randomly changing things and dependencies as backwards compatibility is nice to have as well.
 
 Various reddit users in the starcraft subreddit - For pointing out the confusing nature of the program output during demos, making it harder to follow which noises contribute to which actions. This resulted in me making the control visualisation that is visible in the hollow knight demo.
-
+	
 ![feardragon64](https://github.com/feardragon64) - For briefly working on a Hands-Free starcraft project himself, and providing me with the courage to try my program out on the ladder versus actual players.
 
 ![lunixbochs](https://github.com/lunixbochs) - For pointing out computational optimizations with the audio pipeline and providing a slack for a wonderful community.
