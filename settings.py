@@ -2,7 +2,6 @@ from config.config import *
 from lib.record_data import record_sound
 from lib.learn_data import learn_data
 from lib.test_data import test_data
-from lib.setup_config import setup_config
 from lib.convert_files import convert_files
 from lib.combine_models import combine_models
 

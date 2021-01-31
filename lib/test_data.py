@@ -14,8 +14,9 @@ import joblib
 import pandas as pd
 import matplotlib.pyplot as plt
 from lib.listen import start_nonblocking_listen_loop, predict_wav_files
-from lib.machinelearning import feature_engineering, get_highest_intensity_of_wav_file
+from lib.machinelearning import feature_engineering
 import csv
+from lib.audio_model import AudioModel
 
 def test_data( with_intro ):
     available_models = []
@@ -124,7 +125,7 @@ def plot_audio( folder ):
     frequencies = []
             
     for index, wav_file in enumerate( full_wav_files ):
-        features, frequency = feature_engineering( wav_file )
+        features, frequency = feature_engineering( wav_file, RECORD_SECONDS )
         intensity = features[ len( features ) - 1 ]
         frequency = features[ len( features ) - 2 ]
         
@@ -262,7 +263,20 @@ def choose_classifier( available_models ):
     classifier_file = CLASSIFIER_FOLDER + "/" + available_models[ classifier_file_index ]
     print( "Loading model " + classifier_file )
     classifier = joblib.load( classifier_file )
+    
+    if( not isinstance( classifier, AudioModel ) ):
+        settings = {
+            'version': 0,
+            'RATE': RATE,
+            'CHANNELS': CHANNELS,
+            'RECORD_SECONDS': RECORD_SECONDS,
+            'SLIDING_WINDOW_AMOUNT': SLIDING_WINDOW_AMOUNT,
+            'feature_engineering': None
+        }
+        classifier = AudioModel( settings, classifier )
+
     print( "This model can detect the following classes: " + ", ".join( classifier.classes_ ) )
+    
     return classifier
 
 def test_accuracy( available_models, available_sounds ):

@@ -8,7 +8,7 @@ REPEAT_RATE = 33
 SPEECHREC_ENABLED = True
 
 FORMAT = pyaudio.paInt16
-CHANNELS = 2
+CHANNELS = 1#2
 RATE = 44100
 CHUNK = 1024
 RECORD_SECONDS = 0.03
@@ -20,8 +20,8 @@ SLIDING_WINDOW_AMOUNT = 2
 INPUT_TESTING_MODE = False
 USE_COORDINATE_FILE = True
 
-DATASET_FOLDER = "data/recordings/30ms"
-RECORDINGS_FOLDER = "data/recordings/flac"
+DATASET_FOLDER = "data/output/timo3_segmented_10k"#"data/recordings/30ms"
+RECORDINGS_FOLDER = "data/recordings/timo3"
 REPLAYS_FOLDER = "data/replays"
 REPLAYS_AUDIO_FOLDER = "data/replays/audio"
 REPLAYS_FILE = REPLAYS_FOLDER + "/run.csv"
@@ -48,3 +48,5 @@ PYTORCH_AVAILABLE = pytorch_spec is not None
 dragonfly_spec = importlib.util.find_spec("dragonfly")
 if( SPEECHREC_ENABLED == True ):
     SPEECHREC_ENABLED = dragonfly_spec is not None
+    
+    

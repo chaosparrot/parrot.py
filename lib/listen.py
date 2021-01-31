@@ -22,6 +22,8 @@ import traceback
 import sys
 
 def break_loop_controls(audioQueue=None):
+    global currently_recording
+    global stream
     ESCAPEKEY = b'\x1b'
     SPACEBAR = b' '
     
@@ -29,6 +31,9 @@ def break_loop_controls(audioQueue=None):
         character = msvcrt.getch()
         if( character == SPACEBAR ):
             print( "Listening paused                                                          " )
+            
+            if (stream):
+                stream.stop_stream()
             
             # Pause the recording by looping until we get a new keypress
             while( True ):
@@ -39,14 +44,17 @@ def break_loop_controls(audioQueue=None):
                 if( msvcrt.kbhit() ):
                     character = msvcrt.getch()
                     if( character == SPACEBAR ):
-                        print( "Listening resumed!                                                   " )
+                        print( "Listening resumed!" )
+                        stream.start_stream()
                         return True
                     elif( character == ESCAPEKEY ):
-                        print( "Listening stopped                                                    " )
+                        print( "Listening stopped" )
+                        currently_recording = False
                         return False
         elif( character == ESCAPEKEY ):
-            print( "Listening stopped                                                         " )
-            return False            
+            print( "Listening stopped" )
+            currently_recording = False
+            return False
     return True    
     
 def classify_audioframes( audioQueue, audio_frames, classifier, high_speed ):
@@ -71,7 +79,7 @@ def classify_audioframes( audioQueue, audio_frames, classifier, high_speed ):
                 probabilityDict, predicted, frequency = create_empty_probability_dict( classifier, {}, 0, highestintensity, 0 )
             else:
                 power = fftData = np.frombuffer( wavData, dtype=np.int16 )
-                power = get_recording_power( fftData, RECORD_SECONDS )            
+                power = get_recording_power( fftData, classifier.get_setting('RECORD_SECONDS', RECORD_SECONDS) )            
                 probabilityDict, predicted, frequency = predict_raw_data( wavData, classifier, highestintensity, power )
             
             return probabilityDict, predicted, audio_frames, highestintensity, frequency, wavData
@@ -81,6 +89,7 @@ def classify_audioframes( audioQueue, audio_frames, classifier, high_speed ):
 def action_consumer( stream, classifier, dataDicts, persist_replay, replay_file, mode_switcher=False ):
     actions = []
     global classifierQueue
+    global currently_recording
     
     starttime = time.time()
     try:
@@ -93,7 +102,7 @@ def action_consumer( stream, classifier, dataDicts, persist_replay, replay_file,
                 writer = csv.DictWriter(csvfile, fieldnames=headers, delimiter=',')
                 writer.writeheader()
             
-                while( stream.is_active() ):                
+                while( currently_recording == True ):                
                     if( not classifierQueue.empty() ):
                         current_time = time.time()
                         seconds_playing = time.time() - starttime
@@ -122,7 +131,7 @@ def action_consumer( stream, classifier, dataDicts, persist_replay, replay_file,
                     else:
                         time.sleep( RECORD_SECONDS / 3 )
         else:
-            while( stream.is_active() ):
+            while( currently_recording == True ):
                 if( not classifierQueue.empty() ):
                     dataDicts.append( classifierQueue.get() )
                     if( len(dataDicts) > PREDICTION_LENGTH ):
@@ -133,7 +142,7 @@ def action_consumer( stream, classifier, dataDicts, persist_replay, replay_file,
                         if( isinstance( actions, list ) == False ):
                             actions = []
                 else:
-                    time.sleep( RECORD_SECONDS / 3 )                
+                    time.sleep( RECORD_SECONDS / 3 )
     except Exception as e:
         print( "----------- ERROR DURING CONSUMING ACTIONS -------------- " )
         exc_type, exc_value, exc_tb = sys.exc_info()
@@ -153,14 +162,15 @@ def classification_consumer( audio, stream, classifier, persist_files, high_spee
     starttime = time.time()
     global audioQueue
     global classifierQueue
+    global currently_recording
     
     try:    
-        while( stream.is_active() ):
+        while( currently_recording == True ):
             probabilityDict, predicted, audio_frames, highestintensity, frequency, wavData = classify_audioframes( audioQueue, audio_frames, classifier, high_speed )
             
             # Skip if a prediction could not be made
             if( probabilityDict == False ):
-                time.sleep( RECORD_SECONDS / 3 )
+                time.sleep( classifier.get_setting('RECORD_SECONDS', RECORD_SECONDS) / 3 )
                 continue
                 
             seconds_playing = time.time() - starttime
@@ -176,9 +186,9 @@ def classification_consumer( audio, stream, classifier, persist_files, high_spee
             classifierQueue.put( probabilityDict )
             if( persist_files ):        
                 audioFile = wave.open(REPLAYS_AUDIO_FOLDER + "/%0.3f.wav" % (seconds_playing), 'wb')
-                audioFile.setnchannels(CHANNELS)
+                audioFile.setnchannels(classifier.get_setting('CHANNELS', CHANNELS))
                 audioFile.setsampwidth(audio.get_sample_size(FORMAT))
-                audioFile.setframerate(RATE)
+                audioFile.setframerate(classifier.get_setting('RATE', RATE))
                 audioFile.writeframes(wavData)
                 audioFile.close()
     except Exception as e:
@@ -195,6 +205,9 @@ def nonblocking_record( in_data, frame_count, time_info, status ):
     return in_data, pyaudio.paContinue
     
 def start_nonblocking_listen_loop( classifier, mode_switcher = False, persist_replay = False, persist_files = False, amount_of_seconds=-1, high_speed=False ):
+    global currently_recording
+    currently_recording = True
+    global stream
     global audioQueue
     audioQueue = Queue(maxsize=0)
     global classifierQueue
@@ -221,10 +234,10 @@ def start_nonblocking_listen_loop( classifier, mode_switcher = False, persist_re
     print ( "" )
     
     audio = pyaudio.PyAudio()
-    stream = audio.open(format=FORMAT, channels=CHANNELS,
-        rate=RATE, input=True,
+    stream = audio.open(format=FORMAT, channels=classifier.get_setting('CHANNELS', CHANNELS),
+        rate=classifier.get_setting('RATE', RATE), input=True,
         input_device_index=INPUT_DEVICE_INDEX,
-        frames_per_buffer=round( RATE * RECORD_SECONDS / SLIDING_WINDOW_AMOUNT ),
+        frames_per_buffer=round( classifier.get_setting('RATE', RATE) * classifier.get_setting('RECORD_SECONDS', RECORD_SECONDS) / classifier.get_setting('SLIDING_WINDOW_AMOUNT', SLIDING_WINDOW_AMOUNT) ),
         stream_callback=nonblocking_record)
                 
     classificationConsumer = threading.Thread(name='classification_consumer', target=classification_consumer, args=(audio, stream, classifier, persist_files, high_speed) )
@@ -237,10 +250,10 @@ def start_nonblocking_listen_loop( classifier, mode_switcher = False, persist_re
                 
     stream.start_stream()
 
-    while stream.is_active():
-        currenttime = int(time.time())    
+    while currently_recording == True:
+        currenttime = int(time.time())
         if( not infinite_duration and currenttime - starttime > amount_of_seconds or break_loop_controls( audioQueue ) == False ):
-            stream.stop_stream()
+            currently_recording = False
         time.sleep(0.1)
 
     # Stop all the streams and different threads
@@ -251,141 +264,6 @@ def start_nonblocking_listen_loop( classifier, mode_switcher = False, persist_re
     classifierQueue.queue.clear()
     
     return replay_file
-    
-def start_listen_loop( classifier, mode_switcher = False, persist_replay = False, persist_files = False, amount_of_seconds=-1, high_speed=False ):
-    # Get a minimum of these elements of data dictionaries
-    dataDicts = []
-    audio_frames = []
-    for i in range( 0, PREDICTION_LENGTH ):
-        dataDict = {}
-        for directoryname in classifier.classes_:
-            dataDict[ directoryname ] = {'percent': 0, 'intensity': 0, 'frequency': 0, 'winner': False}
-        dataDicts.append( dataDict )
-    
-    continue_loop = True
-    starttime = int(time.time())
-    replay_file = REPLAYS_FOLDER + "/replay_" + str(starttime) + ".csv"
-    
-    infinite_duration = amount_of_seconds == -1
-    if( infinite_duration ):
-        print( "Listening..." )
-    else:
-        print ( "Listening for " + str( amount_of_seconds ) + " seconds..." )
-    print ( "" )
-    
-    audio = pyaudio.PyAudio()
-    stream = audio.open(format=FORMAT, channels=CHANNELS,
-        rate=RATE, input=True,
-        input_device_index=INPUT_DEVICE_INDEX,
-        frames_per_buffer=CHUNK)
-    
-    if( persist_replay ):
-        with open(replay_file, 'a', newline='') as csvfile:
-            headers = ['time', 'winner', 'intensity', 'frequency', 'actions']
-            headers.extend( classifier.classes_ )
-            writer = csv.DictWriter(csvfile, fieldnames=headers, delimiter=',')
-            writer.writeheader()
-            
-            starttime = int(time.time())
-            while( continue_loop ):    
-                seconds_playing = time.time() - starttime            
-            
-                probabilityDict, predicted, audio_frames, intensity, frequency, wavData = listen_loop( audio, stream, classifier, dataDicts, audio_frames, high_speed )
-                winner = classifier.classes_[ predicted ]
-                dataDicts.append( probabilityDict )
-                if( len(dataDicts) > PREDICTION_LENGTH ):
-                    dataDicts.pop(0)
-                    
-                prediction_time = time.time() - starttime - seconds_playing
-                
-                long_comment = "Time: %0.2f - Prediction in: %0.2f - Winner: %s - Percentage: %0d - Frequency %0d                                        " % (seconds_playing, prediction_time, winner, probabilityDict[winner]['percent'], probabilityDict[winner]['frequency'])
-                short_comment = "T: %0.2f - %0d%s - %s " % (seconds_playing, probabilityDict[winner]['percent'], '%', winner)
-                print( short_comment )
-                if( ( infinite_duration == False and seconds_playing > amount_of_seconds ) or break_loop_controls() == False ):
-                    continue_loop = False
-
-                actions = []
-                if( mode_switcher ):
-                    actions = mode_switcher.getMode().handle_input( dataDicts )
-                    if( isinstance( actions, list ) == False ):
-                        actions = []
-                        
-                replay_row = { 'time': int(seconds_playing * 1000) / 1000, 'winner': winner, 'intensity': int(intensity), 'frequency': frequency, 'actions': ':'.join(actions) }
-                for label, labelDict in probabilityDict.items():
-                    replay_row[ label ] = labelDict['percent']
-                writer.writerow( replay_row )
-                csvfile.flush()                    
-                    
-                if( persist_files ):
-                    audioFile = wave.open(REPLAYS_AUDIO_FOLDER + "/%0.3f.wav" % (seconds_playing), 'wb')
-                    audioFile.setnchannels(CHANNELS)
-                    audioFile.setsampwidth(audio.get_sample_size(FORMAT))
-                    audioFile.setframerate(RATE)
-                    audioFile.writeframes(wavData)
-                    audioFile.close()
-                    
-            print("Finished listening!                                                                                   ")
-            stream.close()
-    else:
-        starttime = int(time.time())
-
-        while( continue_loop ):
-            probabilityDict, predicted, audio_frames, intensity, frequency, wavData = listen_loop( audio, stream, classifier, dataDicts, audio_frames, high_speed )
-            dataDicts.append( probabilityDict )
-            if( len(dataDicts) > PREDICTION_LENGTH ):
-                dataDicts.pop(0)
-            
-            seconds_playing = time.time() - starttime;
-            if( ( infinite_duration == False and seconds_playing > amount_of_seconds ) or break_loop_controls() == False ):
-                continue_loop = False
-
-            if( mode_switcher ):
-                mode_switcher.getMode().handle_input( dataDicts )
-            
-            if( persist_files ):
-                audioFile = wave.open(REPLAYS_AUDIO_FOLDER + "/%0.3f.wav" % (seconds_playing), 'wb')
-                audioFile.setnchannels(CHANNELS)
-                audioFile.setsampwidth(audio.get_sample_size(FORMAT))
-                audioFile.setframerate(RATE)
-                audioFile.writeframes(wavData)
-                audioFile.close()
-            
-        stream.close()
-        
-    return replay_file
-
-def listen_loop( audio, stream, classifier, dataDicts, audio_frames, high_speed=False ):
-    audio_frames, intensity = get_stream_wav_segment( stream, [] )    
-    wavData = b''.join(audio_frames)
-    
-    # SKIP FEATURE ENGINEERING COMPLETELY WHEN DEALING WITH SILENCE
-    if( high_speed == True and intensity < SILENCE_INTENSITY_THRESHOLD ):
-        probabilityDict, predicted, frequency = create_probability_dict( classifier, {}, 0, intensity, 0 )
-    else:    
-        fftData = np.frombuffer( byteString, dtype=np.int16 )
-        power = get_recording_power( fftData, RECORD_SECONDS )
-        probabilityDict, predicted, frequency = predict_raw_data( wavData, classifier, intensity, power )
-    
-    return probabilityDict, predicted, audio_frames, intensity, frequency, wavData
-        
-    
-def get_stream_wav_segment( stream, frames ):
-    stream.start_stream()
-    range_length = int(RATE / CHUNK * RECORD_SECONDS)
-    remove_half = int( range_length / 2 )
-    frames = frames[remove_half:]
-    frame_length = len( frames )
-    
-    intensity = []
-    for i in range( frame_length, range_length):
-        data = stream.read(CHUNK)
-        peak = audioop.maxpp( data, 4 ) / 32767
-        intensity.append( peak )
-        frames.append(data)
-        
-    highestintensity = np.amax( intensity )
-    stream.stop_stream()
-    return frames, highestintensity
 
 def predict_wav_files( classifier, wav_files ):
     dataDicts = []
@@ -401,7 +279,7 @@ def predict_wav_files( classifier, wav_files ):
 
     probabilities = []
     for index, wav_file in enumerate( wav_files ):
-        highestintensity = get_highest_intensity_of_wav_file( wav_file )
+        highestintensity = get_highest_intensity_of_wav_file( wav_file, classifier.get_setting('RECORD_SECONDS', RECORD_SECONDS) )
         probabilityDict, predicted, frequency = predict_wav_file( wav_file, classifier, highestintensity )
                 
         winner = classifier.classes_[predicted]
@@ -415,16 +293,16 @@ def predict_wav_files( classifier, wav_files ):
 def predict_raw_data( wavData, classifier, intensity, power ):
     # FEATURE ENGINEERING
     first_channel_data = np.frombuffer( wavData, dtype=np.int16 )
-    if( CHANNELS == 2 ):
+    if( classifier.get_setting('CHANNELS', CHANNELS) == 2 ):
         first_channel_data = first_channel_data[::2]
-    data_row, frequency = feature_engineering_raw( first_channel_data, RATE, intensity )    
+    data_row, frequency = feature_engineering_raw( first_channel_data, classifier.get_setting('RATE', RATE), intensity, classifier.get_setting('RECORD_SECONDS', RECORD_SECONDS) )    
     data = [ data_row ]
 
     return create_probability_dict( classifier, data, frequency, intensity, power )
         
 def predict_wav_file( wav_file, classifier, intensity ):
     # FEATURE ENGINEERING
-    data_row, frequency = feature_engineering( wav_file )
+    data_row, frequency = feature_engineering( wav_file, classifier.get_setting('RECORD_SECONDS', RECORD_SECONDS) )
     data = [ data_row ]
     
     if( intensity < SILENCE_INTENSITY_THRESHOLD ):
