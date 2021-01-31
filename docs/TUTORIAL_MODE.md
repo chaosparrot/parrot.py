@@ -55,6 +55,8 @@ Now we are going to connect our sounds to our keyboard inputs. This can be done 
 Patterns are a combination of activation thresholds and throttles. Every individual pattern must have a name to identify it, sounds which you can detect using your model, and some activation thresholds like power, intensity and frequency.
 Optionally you can add things like throttles to your activation to make sure your pattern doesn't get activated continuously.
 
+If you need more thorough explanation of what patterns can do, go to this link: [Patterns](PATTERNS.md)
+
 In our example file ( mode_tutorial_c.py ) we have two patterns that can be detected. Loud is connected to the noise sound ( which is a sound that is detected by the dummy model ) and will only get activated if the model is above 90 percent certain that the sound is being heard.
 Another pattern is called louder, and this one has a second threshold 'power' of 80.000, and will only get activated if the power of the sound is above 80.000 despite it listening to the same sound.
 There are many complex things you can do with patterns. The example below shows how you can throttle multiple sounds after activation.

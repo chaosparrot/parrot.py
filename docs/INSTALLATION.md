@@ -13,7 +13,10 @@ Step one - Installing python
 ![Installing python](media/install-python.png)
 
 This can be done by following the [Python installation link](https://www.python.org/downloads/release/python-360/) and selecting your desired way of installing - I used the Windows x86 executable installer option.
+Currently, one of the packages ( pyaudio ) relies on Python 3.6, so that is the easiest version to install from.
 Make sure you have the checkbox 'Add Python 3.6 to PATH' enabled and pick the Install Now option. 
+
+If you install from a higher version that will be supported with fixes longer than 2021, for now you will have to install some .whl files manually in the next step.
 
 Step two - Installing all the packages
 ---------
@@ -26,20 +29,7 @@ This can be done by typing 'python -v', this will display the version of your cu
 If all else is well, install the packages below by running the following lines of code in your command line program: 
 
 ```bash
-pip3 install numpy;
-pip3 install scipy;
-pip3 install pandas;
-pip3 install matplotlib;
-pip3 install pyaudio;
-pip3 install pyautogui;
-pip3 install librosa;
-pip3 install python_speech_features;
-pip3 install pythoncom;
-pip3 install joblib;
-pip3 install scikit-learn;
-pip3 install pywin32;
-pip3 install dragonfly2;
-pip3 install audiomentations;
+pip3 install requirements.txt
 ```
 
 Step three - Download and extract the zipfile from this github repository
@@ -81,8 +71,16 @@ Optional - Install PyTorch for advanced neural network usage
 I personally saw a big improvement when I switched to neural networks running in an ensemble. 
 Pytorch offers a vast array of machinelearning techniques that might be useful to get even more recognition strength out of your generated models. 
 
-But setting up Pytorch might be complicated because you will also need CUDA support and a decent graphics card.
+But setting up Pytorch might be complicated because you will also need CUDA support and a decent graphics card if you intend to make large models with it.
 If you're just playing around for the first time - You can just stick to the regular installation until you require more accuracy.
+
+When the time comes you need more accuracy, you can download the pytorch version here: https://pytorch.org/get-started/locally/ 
+Make sure you select Python and pip for installation. After installing, make sure you also install audiomentations with the command below
+
+
+```bash
+pip3 install audiomentations;
+```
 
 Optional - Install FFMPEG for recording file conversion
 ----------------

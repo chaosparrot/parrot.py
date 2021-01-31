@@ -98,6 +98,8 @@ Also for making the recording script for Talon to help boost their dataset.
 
 timotimo - For motivating me to start implementing audio conversion scripts and providing a continuous recording dataset from which I can do some research on.
 
+SuperfluousBrain - For pointing out a problem with the installation on Python 3.7 and up related to pyaudio and asking clarification based on the patterns
+
 You - For reading all the way down this page and showing interest in this program <3
 
 # Showcases

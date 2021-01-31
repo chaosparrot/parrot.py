@@ -19,6 +19,9 @@ Python packages such as
 * dragonfly2 *( For speech recognition purposes )*
 * pythoncom *( for listening to speech recognition commands )*
 * pytorch *( OPTIONAL - Used for improved neural nets )*
+* audiomentations *( OPTIONAL - Used in training for generating more samples to train on ) 
+
+All required packages can be installed using `pip3 install requirements.txt`
 
 # Hardware requirements
 * A decent computer to run machine learning training on
