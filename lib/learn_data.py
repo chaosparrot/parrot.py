@@ -4,7 +4,7 @@ import scipy.io.wavfile
 import os
 from sklearn import metrics
 from sklearn.metrics import confusion_matrix
-from sklearn.ensemble import RandomForestClassifier
+from sklearn.ensemble import RandomForestClassifier, ExtraTreesClassifier
 from sklearn.model_selection import cross_val_score, train_test_split
 import joblib
 import time
@@ -19,7 +19,6 @@ from python_speech_features import mfcc
 from sklearn.manifold import TSNE
 from sklearn import preprocessing
 from lib.machinelearning import *
-from sklearn.ensemble import ExtraTreesClassifier
 from sklearn.neural_network import *
 
 def learn_data():
@@ -71,7 +70,6 @@ def learn_data():
         else:
             net_count = int(net_count)
 
-    
         # Import pytorch related thins here to make sure pytorch isn't a hard requirement
         from lib.audio_net import AudioNet, AudioNetTrainer
         from lib.audio_dataset import AudioDataset

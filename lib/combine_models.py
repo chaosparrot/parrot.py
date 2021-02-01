@@ -5,6 +5,7 @@ from lib.markov_chain_classifier import *
 from lib.change_resistant_classifier import *
 from lib.ensemble_classifier import *
 import os
+from lib.audio_model import *
 
 def combine_models():
     print( "-------------------------" )
@@ -30,36 +31,34 @@ def combine_models():
     if( PYTORCH_AVAILABLE ):
         print( "[ET]- Ensemble for Pytorch" )
     print( "[H]ierarchial" )
-    print( "[C]hange resistant" )
-    print( "[M]arkov chain" )
+    print( "[U]pgrade model to new version" )
     model_type = input("")
     if( model_type == "" or model_type.strip().lower() == "e" ):
         model_type = "ensemble"
     elif( model_type.strip().lower() == "et" and PYTORCH_AVAILABLE ):
-        model_type = "ensemble_torch"        
+        model_type = "ensemble_torch"
     elif( model_type.strip().lower() == "h" ):
         model_type = "hierarchial"        
-    elif( model_type.strip().lower() == "c" ):
-        model_type = "change_resistant"
-    else:
-        model_type = "markov_chain"
+    elif( model_type.strip().lower() == "u" ):
+        model_type = "upgrade"
 
-    default_clf_filename = determine_default_model_name( model_type )
-    clf_filename = input("Insert the model name ( empty is '" + default_clf_filename + "' ) ")
-    if( clf_filename == "" ):
-        clf_filename = default_clf_filename
-    clf_filename += '.pkl'
-    
-    if( model_type == "change_resistant" ):
-        classifier_map = configure_base_model( available_models)
-    elif( model_type == "markov_chain" or model_type == "hierarchial" ):
-        classifier_map = configure_tree_model( available_models )
-    elif( model_type == "ensemble_torch"):
-        classifier_map = configure_single_layer_model( available_state_dicts, True )   
+    if(model_type == "upgrade"):
+        update_model(available_models)
     else:
-        classifier_map = configure_single_layer_model( available_models, False )
-            
-    connect_model( clf_filename, classifier_map, model_type )
+        default_clf_filename = DEFAULT_CLF_FILE + "_combined"
+        clf_filename = input("Insert the model name ( empty is '" + default_clf_filename + "' ) ")
+        if( clf_filename == "" ):
+            clf_filename = default_clf_filename
+        clf_filename += '.pkl'
+        
+        if( model_type == "hierarchial" ):
+            classifier_map = configure_tree_model( available_models )
+        elif( model_type == "ensemble_torch"):
+            classifier_map = configure_single_layer_model( available_state_dicts, True )
+        else:
+            classifier_map = configure_single_layer_model( available_models, False )
+                
+        connect_model( clf_filename, classifier_map, model_type )
     
 def configure_base_model( available_models, text=None ):
     if( text == None ):
@@ -125,15 +124,30 @@ def configure_single_layer_model( available_models, pytorch ):
         print( "Added model " + available_models[ leaf_index ] )
         
     return classifier_map
+
+def update_model( available_models ):
+    classifier_map = configure_base_model( available_models, "Type the number of the model that you want to upgrade")
+    main_classifier = classifier_map['main']
+     
+    #if ( isinstance(main_classifier, AudioModel ):
+    #    main_classifier = AudioModel(main_classifier, get_current_default_settings())
+    #    joblib.dump( classifier, classifier_filename )        
+    #else:
+    #    if (version == 1):
+    #        
+    # 
+    #   classifier = AudioModel()
     
-def determine_default_model_name( model_type ):
-    default_clf_filename = DEFAULT_CLF_FILE + "_combined"
-    if( model_type == "markov_chain" ):
-        default_clf_filename = DEFAULT_CLF_FILE + "_markov"
-    elif( model_type == "change_resistant" ):
-        default_clf_filename = DEFAULT_CLF_FILE
-    
-    return default_clf_filename
+    return classifier_map
+
+def get_current_default_settings():
+    return {
+        'version': 1,
+        'RATE': RATE,
+        'CHANNELS': CHANNELS
+        'RECORD_SECONDS': RECORD_SECONDS
+        'SLIDING_WINDOW_AMOUNT': SLIDING_WINDOW_AMOUNT
+    }
 
 def print_available_models( available_models ):
     print( "Available models:" )
@@ -143,16 +157,13 @@ def print_available_models( available_models ):
 def connect_model( clf_filename, classifier_map, model_type ):
     if( model_type == "hierarchial" ):
         classifier = HierarchialClassifier( classifier_map )
-    elif( model_type == "markov_chain" ):
-        classifier = MarkovChainClassifier( classifier_map )
     elif( model_type == "ensemble" ):
         classifier = EnsembleClassifier( classifier_map )
     elif( model_type == "ensemble_torch" ):
         from lib.torch_ensemble_classifier import TorchEnsembleClassifier    
         classifier = TorchEnsembleClassifier( classifier_map )        
-    else:
-        classifier = ChangeResistantClassifier( classifier_map )
-        
+
+    classifier = AudioModel( classifier, get_current_default_settings() )
     classifier_filename = CLASSIFIER_FOLDER + "/" + clf_filename
     joblib.dump( classifier, classifier_filename )
     print( "-------------------------" )
