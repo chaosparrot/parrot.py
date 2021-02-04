@@ -33,7 +33,7 @@ def main(argv):
                 'CHANNELS': CHANNELS,
                 'RECORD_SECONDS': RECORD_SECONDS,
                 'SLIDING_WINDOW_AMOUNT': SLIDING_WINDOW_AMOUNT,
-                'feature_engineering': None
+                'FEATURE_ENGINEERING_TYPE': FEATURE_ENGINEERING_TYPE
             }
             
             classifier = AudioModel( settings, classifier )

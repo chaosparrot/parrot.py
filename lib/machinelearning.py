@@ -15,24 +15,31 @@ import wave
 import audioop
 from audiomentations import Compose, AddGaussianNoise, Shift, TimeStretch
 
-def feature_engineering( wavFile, record_seconds ):
+def feature_engineering( wavFile, record_seconds, input_type ):
     fs, rawWav = scipy.io.wavfile.read( wavFile )
-    intensity = get_highest_intensity_of_wav_file( wavFile, record_seconds )
+    intensity = get_highest_intensity_of_wav_file( wavFile, record_seconds, input_type )
     
     if( CHANNELS == 2 ):
-        return feature_engineering_raw( rawWav[:,0], fs, intensity, record_seconds )
+        return feature_engineering_raw( rawWav[:,0], fs, intensity, record_seconds, input_type )
     else:
         return feature_engineering_raw( rawWav, fs, intensity, record_seconds )        
     
-def feature_engineering_raw( wavData, sampleRate, intensity, record_seconds ):
-    #mfcc_result1 = mfcc( wavData, samplerate=sampleRate, nfft=1103, numcep=13, appendEnergy=True )
-    #mfcc_result1 = mfcc( wavData, samplerate=sampleRate, nfft=1103, numcep=30, preemph=0.5, winstep=0.003, winlen=0.02, appendEnergy=False )
-    mfcc_result1 = mfcc( wavData, samplerate=sampleRate, nfft=1103, numcep=30, nfilt=40, preemph=0.5, winstep=0.005, winlen=0.015, appendEnergy=False )
-    data_row = []
-    data_row.extend( mfcc_result1.ravel() )
+def feature_engineering_raw( wavData, sampleRate, intensity, record_seconds, input_type ):
     freq = get_loudest_freq( wavData, record_seconds )
-    #data_row.append( freq )
-    #data_row.append( intensity )
+    if (input_type == TYPE_FEATURE_ENGINEERING_RAW_WAVE):
+        data_row = wavData
+    elif(input_type == TYPE_FEATURE_ENGINEERING_OLD_MFCC):
+        mfcc_result1 = mfcc( wavData, samplerate=sampleRate, nfft=1103, numcep=13, appendEnergy=True )
+        data_row = []
+        data_row.extend( mfcc_result1.ravel() )
+        data_row.append( freq )
+        data_row.append( intensity )
+        
+        print(data_row)
+    elif(input_type == TYPE_FEATURE_ENGINEERING_NORM_MFCC):
+        mfcc_result1 = mfcc( wavData, samplerate=sampleRate, nfft=1103, numcep=30, nfilt=40, preemph=0.5, winstep=0.005, winlen=0.015, appendEnergy=False )
+        data_row = []
+        data_row.extend( mfcc_result1.ravel() )
         
     return data_row, freq
     

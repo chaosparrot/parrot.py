@@ -5,7 +5,7 @@ class AudioModel():
         'CHANNELS': 2,
         'RECORD_SECONDS': 0.03,
         'SLIDING_WINDOW_AMOUNT': 2,
-        'feature_engineering': None
+        'FEATURE_ENGINEERING_TYPE': 3
     }
     
     classes_: []
@@ -17,7 +17,7 @@ class AudioModel():
         self.settings['CHANNELS'] = settings['CHANNELS']
         self.settings['RECORD_SECONDS'] = settings['RECORD_SECONDS']
         self.settings['SLIDING_WINDOW_AMOUNT'] = settings['SLIDING_WINDOW_AMOUNT']
-        self.settings['feature_engineering'] = settings['feature_engineering']
+        self.settings['FEATURE_ENGINEERING_TYPE'] = settings['FEATURE_ENGINEERING_TYPE']
         
         self.classifier = classifier
         self.classes_ = classifier.classes_

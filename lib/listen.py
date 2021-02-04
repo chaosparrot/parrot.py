@@ -295,14 +295,15 @@ def predict_raw_data( wavData, classifier, intensity, power ):
     first_channel_data = np.frombuffer( wavData, dtype=np.int16 )
     if( classifier.get_setting('CHANNELS', CHANNELS) == 2 ):
         first_channel_data = first_channel_data[::2]
-    data_row, frequency = feature_engineering_raw( first_channel_data, classifier.get_setting('RATE', RATE), intensity, classifier.get_setting('RECORD_SECONDS', RECORD_SECONDS) )    
+    data_row, frequency = feature_engineering_raw( first_channel_data, classifier.get_setting('RATE', RATE), intensity, classifier.get_setting('RECORD_SECONDS', RECORD_SECONDS), 
+        classifier.get_setting('FEATURE_ENGINEERING_TYPE', FEATURE_ENGINEERING_TYPE) )    
     data = [ data_row ]
 
     return create_probability_dict( classifier, data, frequency, intensity, power )
         
 def predict_wav_file( wav_file, classifier, intensity ):
     # FEATURE ENGINEERING
-    data_row, frequency = feature_engineering( wav_file, classifier.get_setting('RECORD_SECONDS', RECORD_SECONDS) )
+    data_row, frequency = feature_engineering( wav_file, classifier.get_setting('RECORD_SECONDS', RECORD_SECONDS), classifier.get_setting('FEATURE_ENGINEERING_TYPE', FEATURE_ENGINEERING_TYPE) )
     data = [ data_row ]
     
     if( intensity < SILENCE_INTENSITY_THRESHOLD ):

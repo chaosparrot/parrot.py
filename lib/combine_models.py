@@ -1,8 +1,6 @@
 from config.config import *
 import joblib
 from lib.hierarchial_classifier import *
-from lib.markov_chain_classifier import *
-from lib.change_resistant_classifier import *
 from lib.ensemble_classifier import *
 import os
 from lib.audio_model import *
@@ -60,7 +58,7 @@ def combine_models():
                 
         connect_model( clf_filename, classifier_map, model_type )
     
-def configure_base_model( available_models, text=None ):
+def configure_base_model( available_models, text=None, with_filename=False ):
     if( text == None ):
         text = "Type the number of the model that you want to make resistant to changes: "
 
@@ -74,7 +72,12 @@ def configure_base_model( available_models, text=None ):
 
     main_classifier_file = CLASSIFIER_FOLDER + "/" + available_models[ classifier_file_index ]
     main_classifier = joblib.load( main_classifier_file )
-    return {'main': main_classifier}
+    
+    base_model = {'main': main_classifier}
+    if (with_filename):
+        base_model['filename'] = main_classifier_file
+
+    return base_model
     
 def configure_tree_model( available_models ):
     classifier_map = configure_base_model( available_models, "Type the number of the model that you want to use as a base decision layer: ")
@@ -126,27 +129,66 @@ def configure_single_layer_model( available_models, pytorch ):
     return classifier_map
 
 def update_model( available_models ):
-    classifier_map = configure_base_model( available_models, "Type the number of the model that you want to upgrade")
+    classifier_map = configure_base_model( available_models, "Type the number of the model that you want to upgrade: ", True)
     main_classifier = classifier_map['main']
-     
-    #if ( isinstance(main_classifier, AudioModel ):
-    #    main_classifier = AudioModel(main_classifier, get_current_default_settings())
-    #    joblib.dump( classifier, classifier_filename )        
-    #else:
-    #    if (version == 1):
-    #        
-    # 
-    #   classifier = AudioModel()
+    classifier_filename = classifier_map['filename']
+
+    print( "-------------------------" )     
+    if ( not isinstance(main_classifier, AudioModel) ):
+        print( "Current version: v0" )
+        settings = define_settings( get_current_default_settings() )
+        main_classifier = AudioModel(settings, main_classifier)
+        joblib.dump( main_classifier, classifier_filename )
+    else:
+        print( "Current version: v" + str(main_classifier.settings['version']) )    
+        main_classifier.settings = define_settings( main_classifier.settings )
+        joblib.dump( main_classifier, classifier_filename )
+
+def define_settings(settings):
+    print( "Use the current audio settings for this model? Y/N ( Empty is yes )" )
+    use_default = input("")
+    if (use_default == "n"):
+        print("Bitrate: Current " + str(settings['RATE']) )
+        rate = input("")
+        if (rate != "" and int(rate) > 0 ):
+            settings['RATE'] = int(rate)    
     
-    return classifier_map
+        print("Amount of audio channels: Current " + str(settings['CHANNELS']) )
+        channels = input("")
+        if (channels != "" and int(channels) > 0 ):
+            settings['CHANNELS'] = int(channels)
+            
+        print("Sound frame length : Current " + str(settings['RECORD_SECONDS']) + " seconds" )
+        record_seconds = input("")
+        if (record_seconds != "" and float(record_seconds) > 0 ):
+            settings['RECORD_SECONDS'] = float(record_seconds)    
+
+        print("Amount of sliding windows ( split frames ): Current " + str(settings['SLIDING_WINDOW_AMOUNT']))
+        sliding_window_amount = input("")
+        if (sliding_window_amount != "" and int(sliding_window_amount) > 0 ):
+            settings['SLIDING_WINDOW_AMOUNT'] = int(sliding_window_amount)
+            
+        print("Input type: Current " + str(settings['FEATURE_ENGINEERING_TYPE']))
+        print("-------------------------")
+        print("Type the number of the input method that you want to use" )
+        print("[1] - RAW - Raw WAVE input")        
+        print("[2] - V0.8 - MFCC input with frequency and intensity")
+        print("[3] - V0.9 - Normalized MFCC input")
+        feature_engineering = input("")
+        if (feature_engineering != "" and int(feature_engineering) > 0 and int(feature_engineering) < 4 ):
+            settings['FEATURE_ENGINEERING_TYPE'] = int(feature_engineering)
+    print( "-------------------------" )
+    return settings
+
 
 def get_current_default_settings():
     return {
         'version': 1,
         'RATE': RATE,
-        'CHANNELS': CHANNELS
-        'RECORD_SECONDS': RECORD_SECONDS
-        'SLIDING_WINDOW_AMOUNT': SLIDING_WINDOW_AMOUNT
+        'CHANNELS': CHANNELS,
+        'RECORD_SECONDS': RECORD_SECONDS,
+        'SLIDING_WINDOW_AMOUNT': SLIDING_WINDOW_AMOUNT,
+        'FEATURE_ENGINEERING_TYPE': FEATURE_ENGINEERING_TYPE
     }
 
 def print_available_models( available_models ):

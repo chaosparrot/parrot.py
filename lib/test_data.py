@@ -125,7 +125,7 @@ def plot_audio( folder ):
     frequencies = []
             
     for index, wav_file in enumerate( full_wav_files ):
-        features, frequency = feature_engineering( wav_file, RECORD_SECONDS )
+        features, frequency = feature_engineering( wav_file, RECORD_SECONDS, FEATURE_ENGINEERING_TYPE )
         intensity = features[ len( features ) - 1 ]
         frequency = features[ len( features ) - 2 ]
         

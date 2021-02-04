@@ -134,7 +134,7 @@ def load_wav_files( directory, label, int_label, start, end ):
             
             # Load the WAV file and turn it into a onedimensional array of numbers
             feature_engineering_start = time.time() * 1000
-            data_row, frequency = feature_engineering( full_filename )
+            data_row, frequency = feature_engineering( full_filename, RECORD_SECONDS, FEATURE_ENGINEERING_TYPE )
             category_dataset_x.append( data_row )
             category_dataset_labels.append( label )
             totalFeatureEngineeringTime += time.time() * 1000 - feature_engineering_start
