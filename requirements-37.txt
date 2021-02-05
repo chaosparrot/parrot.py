@@ -2,7 +2,6 @@ numpy
 pandas
 matplotlib
 scikit-learn
-pyaudio
 librosa
 python_speech_features
 pyautogui

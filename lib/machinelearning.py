@@ -13,7 +13,8 @@ import matplotlib.pyplot as plt
 from config.config import *
 import wave
 import audioop
-from audiomentations import Compose, AddGaussianNoise, Shift, TimeStretch
+if (PYTORCH_AVAILABLE == True):
+    from audiomentations import Compose, AddGaussianNoise, Shift, TimeStretch
 
 def feature_engineering( wavFile, record_seconds, input_type ):
     fs, rawWav = scipy.io.wavfile.read( wavFile )

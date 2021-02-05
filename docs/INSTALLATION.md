@@ -1,7 +1,7 @@
 # Installation guide
 -----------
 
-For this program to work, you must atleast have access to a microphone and a Windows machine that can run Python 3.6 32 bit.
+For this program to work, you must atleast have access to a microphone and a Windows machine that can run Python 3.6 64 bit.
 
 Do note that this guide only details how to set up the base installation of this program ( i.e. being able to run the program without random crashes ). 
 There are no ready-made audio recognition models added to this installation, you will have to make those yourself using the settings menu.
@@ -12,7 +12,7 @@ Step one - Installing python
 
 ![Installing python](media/install-python.png)
 
-This can be done by following the [Python installation link](https://www.python.org/downloads/release/python-360/) and selecting your desired way of installing - I used the Windows x86 executable installer option.
+This can be done by following the [Python installation link](https://www.python.org/downloads/release/python-368/) and selecting your desired way of installing - I used the Windows x86 executable installer option.
 Currently, one of the packages ( pyaudio ) relies on Python 3.6, so that is the easiest version to install from.
 Make sure you have the checkbox 'Add Python 3.6 to PATH' enabled and pick the Install Now option. 
 
@@ -24,12 +24,27 @@ Step two - Installing all the packages
 ![Installing packages](media/install-libs.png)
 
 Now that you have python installed, you can use it to download packages. Open a command line program ( Search for cmd in your Windows search box ) and test if your python is installed properly.
-This can be done by typing 'python -v', this will display the version of your current python installation.
+This can be done by typing 'python --version', this will display the version of your current python installation.
 
-If all else is well, install the packages below by running the following lines of code in your command line program: 
+For Python 3.6, you can simply run this line of code in your command line program:
 
 ```bash
-pip3 install requirements.txt
+pip3 install -r requirements.txt
+```
+
+If you are running on Python 3.7 and above, use the following commands:
+
+```bash
+pip3 install -r requirements-37.txt
+pip3 install pyaudio
+```
+
+If the installation of pyaudio fails, you have to download a .whl corresponding to your python version installation.
+You can find the .whl files here: https://www.lfd.uci.edu/~gohlke/pythonlibs/#pyaudio
+When you have the .whl file on your computer, rename it to pyaudio.whl, navigate to it in your command line program and type the following command:
+
+```bash
+pip3 install pyaudio.whl
 ```
 
 Step three - Download and extract the zipfile from this github repository
@@ -75,7 +90,8 @@ But setting up Pytorch might be complicated because you will also need CUDA supp
 If you're just playing around for the first time - You can just stick to the regular installation until you require more accuracy.
 
 When the time comes you need more accuracy, you can download the pytorch version here: https://pytorch.org/get-started/locally/ 
-Make sure you select Python and pip for installation. After installing, make sure you also install audiomentations with the command below
+Make sure you select Python and pip for installation, and the CUDA version you have installed. If you do not have a graphics card with CUDA, you can also select the None option there, but training will be a lot slower.
+After installing, make sure you also install audiomentations with the command below
 
 
 ```bash
