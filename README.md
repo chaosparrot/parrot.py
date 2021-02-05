@@ -58,5 +58,6 @@ You can fix that by starting windows speech rec, going to your C:\Users\YOURUSER
 
 # Other related stuff
 
+For instructions on upgrading and the release notes, look on ![this page](docs/RELEASE_NOTES.md).
 I have a seperated doc page filled with research, notes, acknowledgements and showcases over on ![this page](docs/NOTES_AND_ACKNOWLEDGEMENTS.md).
 I will expand this document once I learn more during the development. In the meantime, you can use that knowledge to your own advantage.
