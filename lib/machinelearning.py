@@ -17,12 +17,12 @@ from audiomentations import Compose, AddGaussianNoise, Shift, TimeStretch
 
 def feature_engineering( wavFile, record_seconds, input_type ):
     fs, rawWav = scipy.io.wavfile.read( wavFile )
-    intensity = get_highest_intensity_of_wav_file( wavFile, record_seconds, input_type )
+    intensity = get_highest_intensity_of_wav_file( wavFile, record_seconds )
     
     if( CHANNELS == 2 ):
         return feature_engineering_raw( rawWav[:,0], fs, intensity, record_seconds, input_type )
     else:
-        return feature_engineering_raw( rawWav, fs, intensity, record_seconds )        
+        return feature_engineering_raw( rawWav, fs, intensity, record_seconds, input_type )        
     
 def feature_engineering_raw( wavData, sampleRate, intensity, record_seconds, input_type ):
     freq = get_loudest_freq( wavData, record_seconds )
@@ -77,7 +77,7 @@ def get_label_for_directory( setdir ):
     return float( int(hashlib.sha256( setdir.encode('utf-8')).hexdigest(), 16) % 10**8 )
 
 def cross_validation( classifier, dataset, labels):
-    return cross_val_score(classifier, dataset, labels, cv=5)
+    return cross_val_score(classifier, dataset, labels, cv=3)
 
 def average_prediction_speed( classifier, dataset_x ):
     start_time = time.time() * 1000
@@ -87,7 +87,6 @@ def average_prediction_speed( classifier, dataset_x ):
     
 def create_confusion_matrix(classifier, dataset_x, dataset_labels, all_labels):
     X_train, X_test, y_train, y_test = train_test_split(dataset_x, dataset_labels, random_state=1)
-    classifier.fit( X_train, y_train )
     y_pred = classifier.predict( X_test )
 
     cnf_matrix = confusion_matrix(y_test, y_pred)

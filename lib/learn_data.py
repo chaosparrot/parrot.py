@@ -20,6 +20,8 @@ from sklearn.manifold import TSNE
 from sklearn import preprocessing
 from lib.machinelearning import *
 from sklearn.neural_network import *
+from lib.combine_models import define_settings, get_current_default_settings
+from lib.audio_model import AudioModel
 
 def learn_data():
     print( "-------------------------" )
@@ -27,7 +29,9 @@ def learn_data():
     print( "This script is going to analyze all your generated audio snippets" )
     print( "And attempt to learn the sounds to their folder names" )
     print( "-------------------------" )
-
+    
+    settings = define_settings(get_current_default_settings())
+    
     clf_filename = input("Insert the model name ( empty is '" + DEFAULT_CLF_FILE + "' ) ")
     if( clf_filename == "" ):
         clf_filename = DEFAULT_CLF_FILE
@@ -47,7 +51,7 @@ def learn_data():
         classifier = RandomForestClassifier(n_estimators=100, max_depth=20, random_state=123)
         print( "Selected random forest!")        
         
-        fit_sklearn_classifier( classifier, dir_path, clf_filename )        
+        fit_sklearn_classifier( classifier, dir_path, clf_filename, settings )        
     elif( model_type.lower() == "m" ):
         classifier = MLPClassifier(activation='relu', early_stopping=True,
               epsilon=1e-08, hidden_layer_sizes=(1024, 1024, 1024, 512),
@@ -58,7 +62,7 @@ def learn_data():
               validation_fraction=0.1, verbose=True, warm_start=False)
         print( "Selected multi layer perceptron!")
         
-        fit_sklearn_classifier( classifier, dir_path, clf_filename )
+        fit_sklearn_classifier( classifier, dir_path, clf_filename, settings )
     elif( model_type.lower() == "x" ):
         return
     elif( model_type.lower() == "a" and PYTORCH_AVAILABLE ):
@@ -83,7 +87,7 @@ def learn_data():
         print( "Learning the data..." )
         trainer.train( clf_filename )
 
-def fit_sklearn_classifier( classifier,  dir_path, clf_filename ):
+def fit_sklearn_classifier( classifier,  dir_path, clf_filename, settings ):
     max_files_per_category = input("How many files should we analyze per category? ( empty is all )" )
     if( max_files_per_category == "" ):
         max_files_per_category = 1000000
@@ -91,7 +95,7 @@ def fit_sklearn_classifier( classifier,  dir_path, clf_filename ):
         max_files_per_category = int( max_files_per_category )
     
     print( "--------------------------" )
-    dataX, dataY, directory_names, total_feature_engineering_time = load_data( dir_path, max_files_per_category )
+    dataX, dataY, directory_names, total_feature_engineering_time = load_data( dir_path, max_files_per_category, settings['FEATURE_ENGINEERING_TYPE'] )
     print( "--------------------------" )
 
     print( "Learning the data..." )
@@ -106,13 +110,16 @@ def fit_sklearn_classifier( classifier,  dir_path, clf_filename ):
     print( "- Predicting label speed %0.4f ms" % prediction_speed_ms )
     print( "- Recording length %0.4f ms" % ( RECORD_SECONDS * 1000 ) )
     
+    persisted_classifier = AudioModel( settings, classifier )
+    
     print( "Saving the model to " + CLASSIFIER_FOLDER + "/" + clf_filename )
-    joblib.dump( classifier, CLASSIFIER_FOLDER + "/" + clf_filename )    
+    joblib.dump( persisted_classifier, CLASSIFIER_FOLDER + "/" + clf_filename )
     print( "--------------------------" )
-
-    print( "Predicting recognition accuracy using cross validation...", end="\r" )
-    scores = cross_validation( classifier, dataX, dataY )
-    print( "Accuracy: %0.4f (+/- %0.4f)                               " % (scores.mean(), scores.std() * 2))
+    
+    if ( not isinstance(classifier, MLPClassifier ) ):
+        print( "Predicting recognition accuracy using cross validation...", end="\r" )
+        scores = cross_validation( classifier, dataX, dataY )
+        print( "Accuracy: %0.4f (+/- %0.4f)                               " % (scores.mean(), scores.std() * 2))
     
     detailed_analysis = input("Should we do a detailed analysis of the model? Y/n" ).lower() == 'y'
     if( detailed_analysis ):
@@ -120,7 +127,7 @@ def fit_sklearn_classifier( classifier,  dir_path, clf_filename ):
         print( "--------------------------" )
     
     
-def load_wav_files( directory, label, int_label, start, end ):
+def load_wav_files( directory, label, int_label, start, end, input_type ):
     category_dataset_x = []
     category_dataset_labels = []
     first_file = False
@@ -134,7 +141,7 @@ def load_wav_files( directory, label, int_label, start, end ):
             
             # Load the WAV file and turn it into a onedimensional array of numbers
             feature_engineering_start = time.time() * 1000
-            data_row, frequency = feature_engineering( full_filename, RECORD_SECONDS, FEATURE_ENGINEERING_TYPE )
+            data_row, frequency = feature_engineering( full_filename, RECORD_SECONDS, input_type )
             category_dataset_x.append( data_row )
             category_dataset_labels.append( label )
             totalFeatureEngineeringTime += time.time() * 1000 - feature_engineering_start
@@ -158,7 +165,7 @@ def determine_labels( dir_path ):
             
     return filtered_data_directory_names
              
-def load_data( dir_path, max_files ):
+def load_data( dir_path, max_files, input_type ):
     filtered_data_directory_names = determine_labels( dir_path )
 
     data_directories = list( map( lambda n: (DATASET_FOLDER + "/" + n).lower(), filtered_data_directory_names) )
@@ -176,7 +183,7 @@ def load_data( dir_path, max_files ):
     for index, directory in enumerate( data_directories ):
         id_label = data_directories_label[ index ]
         str_label = filtered_data_directory_names[ index ]
-        cat_dataset_x, cat_dataset_labels, featureEngineeringTime = load_wav_files( directory, str_label, id_label, 0, max_files )
+        cat_dataset_x, cat_dataset_labels, featureEngineeringTime = load_wav_files( directory, str_label, id_label, 0, max_files, input_type )
         totalFeatureEngineeringTime += featureEngineeringTime
         dataset_x.extend( cat_dataset_x )
         dataset_labels.extend( cat_dataset_labels )
