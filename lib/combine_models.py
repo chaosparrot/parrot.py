@@ -29,7 +29,7 @@ def combine_models():
     if( PYTORCH_AVAILABLE ):
         print( "[ET]- Ensemble for Pytorch" )
     print( "[H]ierarchial" )
-    print( "[U]pgrade model to new version" )
+    print( "[U]pgrade model to new version, or change audio settings" )
     model_type = input("")
     if( model_type == "" or model_type.strip().lower() == "e" ):
         model_type = "ensemble"
@@ -205,7 +205,8 @@ def connect_model( clf_filename, classifier_map, model_type ):
         from lib.torch_ensemble_classifier import TorchEnsembleClassifier    
         classifier = TorchEnsembleClassifier( classifier_map )        
 
-    classifier = AudioModel( classifier, get_current_default_settings() )
+    settings = define_settings( get_current_default_settings() )
+    classifier = AudioModel( settings, classifier )
     classifier_filename = CLASSIFIER_FOLDER + "/" + clf_filename
     joblib.dump( classifier, classifier_filename )
     print( "-------------------------" )

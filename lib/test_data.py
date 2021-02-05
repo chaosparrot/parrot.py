@@ -98,10 +98,11 @@ def recording_statistics( available_sounds ):
 
     print( "Select an audio folder to analyze statistically:" )        
     audio_folder_index = input("")
+    if( audio_folder_index.lower() == "x" ):
+        test_data( True )
+        return   
     while( int( audio_folder_index ) <= 0 ):
         audio_folder_index = input("")
-        if( audio_folder_index.lower() == "x" ):
-            return
 
     audio_folder_index = int( audio_folder_index ) - 1
                     
@@ -271,7 +272,7 @@ def choose_classifier( available_models ):
             'CHANNELS': CHANNELS,
             'RECORD_SECONDS': RECORD_SECONDS,
             'SLIDING_WINDOW_AMOUNT': SLIDING_WINDOW_AMOUNT,
-            'feature_engineering': None
+            'feature_engineering': FEATURE_ENGINEERING_TYPE
         }
         classifier = AudioModel( settings, classifier )
 
@@ -311,11 +312,11 @@ def test_accuracy( available_models, available_sounds ):
                     i += 1
 
             predictions = predict_wav_files( classifier, full_wav_files )
-            percentage_correct = 0
+            i_correct = 0
             for prediction in predictions:
                 if( sound in prediction and prediction[sound]['winner'] and prediction[sound]['percent'] >= threshold ):
-                    percentage_correct += 0.1
-            print( "Accuracy above threshold %0d - %0.1f " % ( threshold, percentage_correct ) )
+                    i_correct += 1
+            print( "Accuracy above threshold %0d - %0.1f " % ( threshold, round((i_correct / i) * 100.0) ) )
         
     test_data(True)
     

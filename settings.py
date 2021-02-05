@@ -13,7 +13,7 @@ def root_navigation( first):
         print( "----------------------------" )
     print( "Enter one of the buttons below and press enter to start" )
     print( " - [R] for recording" )
-    print( " - [V] for converting audio files to different formats" )    
+    print( " - [V] for converting audio files to different formats" )
     print( " - [L] for learning the data" )
     print( " - [C] for combining multiple models into one model" )
     print( " - [A] for analyzing the performance of the models" )

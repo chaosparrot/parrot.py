@@ -37,44 +37,6 @@ class AudioNet(nn.Module):
         else:
             return self.softmax(x)
 
-class TinyAudioNet20Winstep(nn.Module):
-
-    def __init__(self, inputsize, outputsize, only_logsoftmax=False):
-        super(TinyAudioNet, self).__init__()
-        self.only_logsoftmax = only_logsoftmax
-        self.softmax = nn.Softmax(dim=-1)
-        self.log_softmax = nn.LogSoftmax(dim=1)
-        self.selu = nn.SELU()
-        self.dropOut = nn.Dropout(p=0.15)
-        
-        self.batchNorm = nn.BatchNorm1d(inputsize)        
-        self.fc1 = nn.Linear(inputsize, 512)
-        self.fc2 = nn.Linear(512, 512)
-        self.fc3 = nn.Linear(512, 512)
-        self.fc4 = nn.Linear(512, 512)
-        self.fc5 = nn.Linear(512, 512)
-        self.fc6 = nn.Linear(512, 512)
-        self.fc7 = nn.Linear(512, 512)
-        self.fc8 = nn.Linear(512, 512)
-        self.fc9 = nn.Linear(512, 512)        
-        self.fc10 = nn.Linear(512, outputsize)
-		
-    def forward(self, x):
-        x = self.dropOut(self.selu( self.fc1(self.batchNorm(x))))
-        x = self.dropOut(self.selu( self.fc2(x) ))
-        x = self.dropOut(self.selu( self.fc3(x) ))
-        x = self.dropOut(self.selu( self.fc4(x) ))
-        x = self.dropOut(self.selu( self.fc5(x) ))
-        x = self.dropOut(self.selu( self.fc6(x) ))
-        x = self.dropOut(self.selu( self.fc7(x) ))
-        x = self.dropOut(self.selu( self.fc8(x) ))
-        x = self.dropOut(self.selu( self.fc9(x) ))        
-        x = self.fc10(x)
-        if( self.training or self.only_logsoftmax ):
-            return self.log_softmax(x)
-        else:
-            return self.softmax(x)
-
 class TinyAudioNet(nn.Module):
 
     def __init__(self, inputsize, outputsize, only_logsoftmax=False):
@@ -100,218 +62,6 @@ class TinyAudioNet(nn.Module):
         x = self.dropOut(self.selu( self.fc4(x) ))
         x = self.dropOut(self.selu( self.fc5(x) ))
         x = self.fc6(x)
-        if( self.training or self.only_logsoftmax ):
-            return self.log_softmax(x)
-        else:
-            return self.softmax(x)
-
-
-class TinySELUAudioNet(nn.Module):
-
-    def __init__(self, inputsize, outputsize, only_logsoftmax=False):
-        super(TinyAudioNet, self).__init__()
-        self.only_logsoftmax = only_logsoftmax
-        self.softmax = nn.Softmax(dim=-1)
-        self.log_softmax = nn.LogSoftmax(dim=1)
-        self.selu = nn.SELU()
-        self.dropOut = nn.Dropout(p=0.15)
-        
-        self.batchNorm = nn.BatchNorm1d(inputsize)        
-        self.fc1 = nn.Linear(inputsize, 512)
-        self.fc2 = nn.Linear(512, 512)
-        self.fc3 = nn.Linear(512, 512)
-        self.fc4 = nn.Linear(512, 512)        
-        self.fc5 = nn.Linear(512, 512)
-        self.fc6 = nn.Linear(512, 512)
-        self.fc7 = nn.Linear(512, 512)
-        self.fc8 = nn.Linear(512, 512)
-        self.fc9 = nn.Linear(512, 512)        
-        self.fc10 = nn.Linear(512, outputsize)
-		
-    def forward(self, x):
-        x = self.dropOut(self.selu( self.fc1(self.batchNorm(x))))
-        x = self.dropOut(self.selu( self.fc2(x) ))
-        x = self.dropOut(self.selu( self.fc3(x) ))
-        x = self.dropOut(self.selu( self.fc4(x) ))
-        x = self.dropOut(self.selu( self.fc5(x) ))
-        x = self.dropOut(self.selu( self.fc6(x) ))
-        x = self.dropOut(self.selu( self.fc7(x) ))
-        x = self.dropOut(self.selu( self.fc8(x) ))
-        x = self.dropOut(self.selu( self.fc9(x) ))
-        x = self.fc10(x)
-        if( self.training or self.only_logsoftmax ):
-            return self.log_softmax(x)
-        else:
-            return self.softmax(x)
-
-
-class TinyHybridNet(nn.Module):
-
-    def __init__(self, inputsize, outputsize, only_logsoftmax=False):
-        super(TinyAudioNet, self).__init__()
-        self.only_logsoftmax = only_logsoftmax
-        self.softmax = nn.Softmax(dim=-1)
-        self.log_softmax = nn.LogSoftmax(dim=1)
-        self.relu = nn.ReLU()
-        self.dropOut = nn.Dropout(p=0.1)
-
-        self.conv1 = nn.Conv2d(1, 32, kernel_size=3)
-        self.batchnorm1 = nn.BatchNorm2d(32)
-        self.conv2 = nn.Conv2d(32, 64, kernel_size=2)
-        self.batchnorm2 = nn.BatchNorm2d(64)
-        self.conv3 = nn.Conv2d(64, 32, kernel_size=1)
-        self.maxp = nn.MaxPool2d(2, stride=1)
-        
-        self.batchNormY = nn.BatchNorm1d(78)
-        self.fc1 = nn.Linear(654, 512)
-        self.fc2 = nn.Linear(512, 512)
-        self.fc3 = nn.Linear(512, 512)
-        self.fc4 = nn.Linear(512, 256)
-        self.fc5 = nn.Linear(256, outputsize)
-		
-    def forward(self, xInput):
-        # Inspired by soundnet
-        x = self.relu(self.batchnorm1(self.conv1(xInput)))
-        x = self.relu(self.batchnorm2(self.conv2(x)))
-        x = self.maxp(self.relu(self.conv3(x)))
-        x = x.view(x.size(0), -1)
-        
-        y = self.batchNormY(torch.flatten(xInput, start_dim=1))
-        # print( x.size(), y.size() )
-        z = torch.cat([x, y], dim=1)
-        z = self.dropOut(self.relu( self.fc1(z) ))
-        z = self.dropOut(self.relu( self.fc2(z) ))        
-        z = self.dropOut(self.relu( self.fc3(z) ))
-        z = self.dropOut(self.relu( self.fc4(z) ))        
-        z = self.fc5(z)
-        if( self.training or self.only_logsoftmax ):
-            return self.log_softmax(z)
-        else:
-            return self.softmax(z)
-
-            
-class TinySoundNet1D(nn.Module):
-
-    def __init__(self, inputsize, outputsize, only_logsoftmax=False):
-        super(TinyAudioNet, self).__init__()
-        self.only_logsoftmax = only_logsoftmax
-        self.softmax = nn.Softmax(dim=-1)
-        self.log_softmax = nn.LogSoftmax(dim=1)
-        self.relu = nn.ReLU()
-
-        self.conv1 = nn.Conv1d(1, 32, kernel_size=3)
-        self.batchnorm1 = nn.BatchNorm1d(32)
-        self.conv2 = nn.Conv1d(32, 64, kernel_size=3)
-        self.batchnorm2 = nn.BatchNorm1d(64)
-        self.conv3 = nn.Conv1d(64, 128, kernel_size=3)
-        self.batchnorm3 = nn.BatchNorm1d(128)
-        self.conv4 = nn.Conv1d(128, 64, kernel_size=3)
-        self.maxp = nn.MaxPool1d(3, stride=3)
-        self.fc3 = nn.Linear(1472, 256)
-        self.fc4 = nn.Linear(256, outputsize)
-		
-    def forward(self, x):
-        # Inspired by soundnet
-        x = self.relu(self.batchnorm1(self.conv1(x)))
-        x = self.relu(self.batchnorm2(self.conv2(x)))
-        x = self.relu(self.batchnorm3(self.conv3(x)))        
-        x = self.maxp(self.relu(self.conv4(x)))
-        x = x.view(x.size(0), -1)
-        x = self.relu( self.fc3(x) )
-        x = self.fc4(x)
-        if( self.training or self.only_logsoftmax ):
-            return self.log_softmax(x)
-        else:
-            return self.softmax(x)            
-
-class TinySoundNet(nn.Module):
-
-    def __init__(self, inputsize, outputsize, only_logsoftmax=False):
-        super(TinyAudioNet, self).__init__()
-        self.only_logsoftmax = only_logsoftmax
-        self.softmax = nn.Softmax(dim=-1)
-        self.log_softmax = nn.LogSoftmax(dim=1)
-        self.relu = nn.ReLU()
-        self.dropOut = nn.Dropout(p=0.2)
-
-        self.conv1 = nn.Conv2d(1, 32, kernel_size=3)
-        self.batchnorm1 = nn.BatchNorm2d(32)
-        self.conv2 = nn.Conv2d(32, 64, kernel_size=2)
-        self.batchnorm2 = nn.BatchNorm2d(64)        
-        self.conv3 = nn.Conv2d(64, 128, kernel_size=2)
-        self.batchnorm3 = nn.BatchNorm2d(128)
-        self.maxp = nn.MaxPool2d(2, stride=2)
-        self.fc3 = nn.Linear(512, 512)
-        self.fc4 = nn.Linear(512, 256)
-        self.fc5 = nn.Linear(256, outputsize)
-		
-    def forward(self, x):
-        # Inspired by soundnet
-        x = self.relu(self.batchnorm1(self.conv1(x)))
-        x = self.relu(self.batchnorm2(self.conv2(x)))
-        x = self.maxp(self.relu(self.batchnorm3(self.conv3(x))))
-        x = x.view(x.size(0), -1)
-        x = self.dropOut(self.relu( self.fc3(x) ))
-        x = self.dropOut(self.relu( self.fc4(x) ))        
-        x = self.fc5(x)
-        if( self.training or self.only_logsoftmax ):
-            return self.log_softmax(x)
-        else:
-            return self.softmax(x)
-            
-class TinyAudioNetConv5(nn.Module):
-
-    def __init__(self, inputsize, outputsize, only_logsoftmax=False):
-        super(TinyAudioNet, self).__init__()
-        self.only_logsoftmax = only_logsoftmax
-        self.softmax = nn.Softmax(dim=-1)
-        self.log_softmax = nn.LogSoftmax(dim=1)
-        self.relu = nn.ReLU()
-        self.dropOut = nn.Dropout(p=0.3)
-
-        self.conv1 = nn.Conv2d(1, 32, kernel_size=3)
-        self.conv2 = nn.Conv2d(32, 64, kernel_size=2)
-        self.conv3 = nn.Conv2d(64, 64, kernel_size=2)
-        self.conv4 = nn.Conv2d(64, 64, kernel_size=2)
-        self.conv5 = nn.Conv2d(64, 64, kernel_size=1)
-        self.fc3 = nn.Linear(512, 256)
-        self.fc4 = nn.Linear(256, outputsize)
-		
-    def forward(self, x):
-        x = self.relu(self.conv1(x))
-        x = self.relu(self.conv2(x))
-        x = self.relu(self.conv3(x))
-        x = self.relu(self.conv4(x))
-        x = self.relu(self.conv5(x))
-        x = x.view(x.size(0), -1)
-        x = self.dropOut(self.relu( self.fc3(x) ))
-        x = self.fc4(x)
-        if( self.training or self.only_logsoftmax ):
-            return self.log_softmax(x)
-        else:
-            return self.softmax(x)
-
-class TinyAudioNet2(nn.Module):
-
-    def __init__(self, inputsize, outputsize, only_logsoftmax=False):
-        super(TinyAudioNet, self).__init__()
-        self.only_logsoftmax = only_logsoftmax
-        self.softmax = nn.Softmax(dim=-1)
-        self.log_softmax = nn.LogSoftmax(dim=1)
-        self.relu = nn.ReLU()
-        
-        self.fc1 = nn.Linear(inputsize, 512)
-        self.fc2 = nn.Linear(512, 512)
-        self.fc3 = nn.Linear(512, 512)
-        self.fc4 = nn.Linear(512, 256)
-        self.fc5 = nn.Linear(256, outputsize)
-		
-    def forward(self, x):
-        x = self.relu( self.fc1(x) )
-        x = self.relu( self.fc2(x) )
-        x = self.relu( self.fc3(x) )
-        x = self.relu( self.fc4(x) )
-        x = self.fc5(x)
         if( self.training or self.only_logsoftmax ):
             return self.log_softmax(x)
         else:
@@ -352,16 +102,18 @@ class AudioNetTrainer:
     device = torch.device("cuda" if use_cuda else "cpu")
     dataset = False
     train_indecis = []
+    input_size = 120
     
     def __init__(self, dataset, net_count = 1):
         self.net_count = net_count
         x, y = dataset[0]
+        self.input_size = len(x)
         self.dataset_labels = dataset.get_labels()
         self.dataset = dataset
         self.dataset_size = len(dataset)
 
         for i in range(self.net_count):
-            self.nets.append(TinyAudioNet(len(x), len(self.dataset_labels), True))
+            self.nets.append(TinyAudioNet(self.input_size, len(self.dataset_labels), True))
             self.optimizers.append(optim.SGD(self.nets[i].parameters(), lr=0.003, momentum=0.9, nesterov=True))
  
         # Split the dataset into validation and training data loaders
@@ -381,13 +133,14 @@ class AudioNetTrainer:
         self.train_loader = torch.utils.data.DataLoader(dataset, batch_size=self.batch_size, sampler=train_sampler)
         self.validation_loader = torch.utils.data.DataLoader(dataset, batch_size=self.batch_size, sampler=valid_sampler)
         
-        
     def train(self, filename):
         best_accuracy = []
         for i in range(self.net_count):
             self.nets[i] = self.nets[i].to(self.device)
             best_accuracy.append(0)
         starttime = int(time.time())
+        
+        input_size = 120
         
         with open(REPLAYS_FOLDER + "/model_training_" + filename + str(starttime) + ".csv", 'a', newline='') as csvfile:	
             headers = ['epoch', 'loss', 'avg_validation_accuracy']
@@ -504,6 +257,7 @@ class AudioNetTrainer:
                         current_filename = filename + '_' + str(j+1) + '-BEST'
                         
                     torch.save({'state_dict': self.nets[j].state_dict(), 
+                        'input_size': self.input_size,
                         'labels': self.dataset_labels,
                         'accuracy': accuracy[j],
                         'last_row': csv_row,

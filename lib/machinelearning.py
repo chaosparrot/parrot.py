@@ -34,8 +34,6 @@ def feature_engineering_raw( wavData, sampleRate, intensity, record_seconds, inp
         data_row.extend( mfcc_result1.ravel() )
         data_row.append( freq )
         data_row.append( intensity )
-        
-        print(data_row)
     elif(input_type == TYPE_FEATURE_ENGINEERING_NORM_MFCC):
         mfcc_result1 = mfcc( wavData, samplerate=sampleRate, nfft=1103, numcep=30, nfilt=40, preemph=0.5, winstep=0.005, winlen=0.015, appendEnergy=False )
         data_row = []
@@ -43,21 +41,28 @@ def feature_engineering_raw( wavData, sampleRate, intensity, record_seconds, inp
         
     return data_row, freq
     
-def training_feature_engineering( wavFile ):
+def training_feature_engineering( wavFile, settings):
     fs, rawWav = scipy.io.wavfile.read( wavFile )
     wavData = rawWav
-    if ( CHANNELS == 2 ):
+    if ( settings['CHANNELS'] == 2 ):
         wavData = rawWav[:,0]
 
-    mfcc_result1 = mfcc( wavData, samplerate=fs, nfft=1103, numcep=30, nfilt=40, preemph=0.5, winstep=0.005, winlen=0.015, appendEnergy=False )
     data_row = []
-    data_row.extend( mfcc_result1.ravel() )
+    input_type = settings['FEATURE_ENGINEERING_TYPE']    
+    if ( input_type == TYPE_FEATURE_ENGINEERING_NORM_MFCC ):
+        mfcc_result1 = mfcc( wavData, samplerate=fs, nfft=1103, numcep=30, nfilt=40, preemph=0.5, winstep=0.005, winlen=0.015, appendEnergy=False )
+        data_row.extend( mfcc_result1.ravel() )
+    elif ( input_type == TYPE_FEATURE_ENGINEERING_RAW_WAVE ):
+        data_row = wavData
+    else:
+        print( "OLD MFCC TYPE IS NOT SUPPORTED FOR TRAINING PYTORCH" )
+        
     return data_row
 
-def augmented_feature_engineering( wavFile ):
+def augmented_feature_engineering( wavFile, settings ):
     fs, rawWav = scipy.io.wavfile.read( wavFile )
     wavData = rawWav
-    if ( CHANNELS == 2 ):
+    if ( settings['CHANNELS'] == 2 ):
         wavData = rawWav[:,0]
     
     augmenter = Compose([
@@ -65,11 +70,17 @@ def augmented_feature_engineering( wavFile ):
         TimeStretch(min_rate=0.8, max_rate=1.25, p=0.5),
         Shift(min_fraction=-0.5, max_fraction=0.5, p=0.5),
     ])
-
     wavData = augmenter(samples=np.array(wavData, dtype="float32"), sample_rate=fs)
-    mfcc_result1 = mfcc( wavData, samplerate=fs, nfft=1103, numcep=30, nfilt=40, preemph=0.5, winstep=0.005, winlen=0.015, appendEnergy=False )
+    
     data_row = []
-    data_row.extend( mfcc_result1.ravel() )
+    input_type = settings['FEATURE_ENGINEERING_TYPE']
+    if ( input_type == TYPE_FEATURE_ENGINEERING_NORM_MFCC ):
+        mfcc_result1 = mfcc( wavData, samplerate=fs, nfft=1103, numcep=30, nfilt=40, preemph=0.5, winstep=0.005, winlen=0.015, appendEnergy=False )
+        data_row.extend( mfcc_result1.ravel() )
+    elif ( input_type == TYPE_FEATURE_ENGINEERING_RAW_WAVE ):
+        data_row = wavData
+    else:
+        print( "OLD MFCC TYPE IS NOT SUPPORTED FOR TRAINING PYTORCH" )    
     return data_row
 
     
@@ -162,22 +173,3 @@ def get_loudest_freq( fftData, recordLength ):
 
 def get_recording_power( fftData, recordLength ):
     return audioop.rms( fftData, 4 ) / 1000
-    
-    
-#def generate_tnse( dataset_x, dataset_labels ):
-    #tsne = TSNE(n_components=2, verbose=1, perplexity=40, n_iter=300)
-    #tsne_results = tsne.fit_transform( dataset_x, dataset_labels )
-
-    #feat_cols = [ 'pixel'+str(i) for i in range(pandas.DataFrame(dataset_x).shape[1]) ]
-    #df = pandas.DataFrame(dataset_x,columns=feat_cols)
-    #df['label'] = dataset_labels
-    #df['label'].apply(lambda i: str(i))
-
-    #df_tsne = df
-    #df_tsne['x-tsne'] = tsne_results[:,0]
-    #df_tsne['y-tsne'] = tsne_results[:,1]
-    #chart = ggplot( df_tsne, aes(x='x-tsne', y='y-tsne', color='label') ) \
-    #        + geom_point(size=70,alpha=1) \
-    #        + ggtitle("tSNE dimensions colored by digit")
-        
-    #print( chart )

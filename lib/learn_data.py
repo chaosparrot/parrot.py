@@ -81,7 +81,7 @@ def learn_data():
         print( "--------------------------" )        
         dataset_labels = determine_labels( dir_path )
         print( "--------------------------" )
-        dataset = AudioDataset(DATASET_FOLDER, dataset_labels)
+        dataset = AudioDataset(DATASET_FOLDER, dataset_labels, settings)
         trainer = AudioNetTrainer(dataset, net_count)
         
         print( "Learning the data..." )

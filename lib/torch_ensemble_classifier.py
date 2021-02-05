@@ -26,14 +26,16 @@ class TorchEnsembleClassifier:
     classes_ = []
         
     # Initialize the classifiers and their leaf classes
-    def __init__( self, classifier_map ):
+    def __init__( self, classifier_map, input_size=120 ):        
         self.classifiers = {}
         self.device = torch.device('cpu')
         classifierArray = []
         for index, key in enumerate(classifier_map):
             state_dict = torch.load(classifier_map[key], map_location=self.device)
-            self.classes_ = state_dict['labels']            
-            model = TinyAudioNet(120,len(state_dict['labels']))            
+            self.classes_ = state_dict['labels']
+            if ('input_size' in state_dict):
+                input_size = state_dict['input_size']
+            model = TinyAudioNet(input_size, len(state_dict['labels']))
             #model = TinyAudioNet(130,len(state_dict['labels']))
             model.load_state_dict(state_dict['state_dict'])
             model.to( self.device )
