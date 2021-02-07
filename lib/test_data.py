@@ -19,6 +19,9 @@ import csv
 from lib.audio_model import AudioModel
 
 def test_data( with_intro ):
+    print( CHANNELS )
+    print( RATE )
+
     available_models = []
     for fileindex, file in enumerate(os.listdir( CLASSIFIER_FOLDER )):
         if ( file.endswith(".pkl") ):

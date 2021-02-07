@@ -13,6 +13,9 @@ That means you might have to rerecord your audio and retrain your models.
 
 My sincerest apologies for this inconvenience. As of version 0.10.0, there is a much better system in place that should avoid these problems in the future.
 
+Legacy classifiers are kept in the legacy_models folder in case you need them for older trained models.
+Simply replace them where you see fit in the corresponding files they refer to.
+
 Version 0.10.0
 -----
 * Added BaseMode and new and improved pattern detector

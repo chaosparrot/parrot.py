@@ -18,7 +18,6 @@ torch.backends.cudnn.enabled = True
 class TorchEnsembleClassifier:
     
     classifiers = {}
-    
     combinedClassifier = None
             
     # A list of all the available classes which will be used as a starting point
@@ -36,13 +35,12 @@ class TorchEnsembleClassifier:
             if ('input_size' in state_dict):
                 input_size = state_dict['input_size']
             model = TinyAudioNet(input_size, len(state_dict['labels']))
-            #model = TinyAudioNet(130,len(state_dict['labels']))
             model.load_state_dict(state_dict['state_dict'])
             model.to( self.device )
             model.eval()
             self.classifiers[key] = model
             classifierArray.append( key )
-        self.combinedClassifier = TinyAudioNetEnsemble( self.classifiers[ classifierArray[0] ], self.classifiers[ classifierArray[1] ], self.classifiers[ classifierArray[2] ] )
+        self.combinedClassifier = TinyAudioNetEnsemble( list(self.classifiers.values()) )
         self.combinedClassifier.eval()
         self.combinedClassifier.to( self.device )
                                     
@@ -67,19 +65,4 @@ class TorchEnsembleClassifier:
             type = None
             totalProbabilities = self.combinedClassifier( data_row ).cpu()
             
-            #startTriple = time.time()
-            #for index in self.classifiers.keys():
-            #    probabilities = self.classifiers[index](data_row).cpu()
-            #    
-            #    if( len( totalProbabilities ) == 0 ):
-            #        totalProbabilities = probabilities
-            #    else:
-            #        for probindex, probability in enumerate( probabilities ):
-            #            totalProbabilities[ probindex ] = totalProbabilities[ probindex ] + probability
-            #print( "TRIPLET", str( time.time() - startTriple ) )
-                        
-            # Normalize the model
-            #for probindex, probability in enumerate( totalProbabilities ):
-            #    totalProbabilities[ probindex ] = totalProbabilities[ probindex ] * ( 1 / len( self.classifiers.keys() ) )
-                                                
         return np.asarray( totalProbabilities[0], dtype=np.float64 )

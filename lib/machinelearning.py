@@ -20,10 +20,12 @@ def feature_engineering( wavFile, record_seconds, input_type ):
     fs, rawWav = scipy.io.wavfile.read( wavFile )
     intensity = get_highest_intensity_of_wav_file( wavFile, record_seconds )
     
-    if( CHANNELS == 2 ):
-        return feature_engineering_raw( rawWav[:,0], fs, intensity, record_seconds, input_type )
-    else:
-        return feature_engineering_raw( rawWav, fs, intensity, record_seconds, input_type )        
+    with wave.open( wavFile ) as fd:
+        number_channels = fd.getnchannels()
+        if( number_channels == 1 ):
+            return feature_engineering_raw( rawWav, fs, intensity, record_seconds, input_type )
+        else:
+            return feature_engineering_raw( rawWav[:,0], fs, intensity, record_seconds, input_type )        
     
 def feature_engineering_raw( wavData, sampleRate, intensity, record_seconds, input_type ):
     freq = get_loudest_freq( wavData, record_seconds )

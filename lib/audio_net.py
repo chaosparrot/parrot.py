@@ -11,32 +11,6 @@ from config.config import *
 import torch.optim as optim
 import time 
 
-class AudioNet(nn.Module):
-
-    def __init__(self, inputsize, outputsize, only_logsoftmax=False):
-        super(AudioNet, self).__init__()
-        self.only_logsoftmax = only_logsoftmax
-        self.softmax = nn.Softmax(dim=-1)
-        self.log_softmax = nn.LogSoftmax(dim=1)
-        self.relu = nn.ReLU()
-        
-        self.fc1 = nn.Linear(inputsize, 1024)
-        self.fc2 = nn.Linear(1024, 1024)
-        self.fc3 = nn.Linear(1024, 1024)
-        self.fc4 = nn.Linear(1024, 512)
-        self.fc5 = nn.Linear(512, outputsize)
-		
-    def forward(self, x):
-        x = self.relu( self.fc1(x) )
-        x = self.relu( self.fc2(x) )
-        x = self.relu( self.fc3(x) )
-        x = self.relu( self.fc4(x) )
-        x = self.fc5(x)
-        if( self.training or self.only_logsoftmax ):
-            return self.log_softmax(x)
-        else:
-            return self.softmax(x)
-
 class TinyAudioNet(nn.Module):
 
     def __init__(self, inputsize, outputsize, only_logsoftmax=False):
@@ -68,21 +42,23 @@ class TinyAudioNet(nn.Module):
             return self.softmax(x)
 
 class TinyAudioNetEnsemble(nn.Module):
-    def __init__(self, modelA, modelB, modelC):
+    def __init__(self, models):
         super(TinyAudioNetEnsemble, self).__init__()
-        modelA.double()
-        modelB.double()
-        modelC.double()
-        self.modelA = modelA
-        self.modelB = modelB
-        self.modelC = modelC
-        
+        self.models = []
+        self.model_length = len(models)
+        for model in models:
+            model.double()
+            self.models.append(model)
+            
     def forward(self, x):
-        x1 = self.modelA(x)
-        x2 = self.modelB(x)
-        x3 = self.modelC(x)
+        out = 0
+        for index, model in enumerate(self.models):
+            if (index == 0):
+                out = model(x)
+            else:
+                out = out + model(x)
         
-        return ( x1 + x2 + x3 ) / 3
+        return out / self.model_length
             
 class AudioNetTrainer:
 
