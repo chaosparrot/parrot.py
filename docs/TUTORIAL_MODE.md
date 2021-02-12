@@ -48,6 +48,9 @@ More interactions, such as scrolling and holding down the middle mouse button, a
 [View the pyautogui documentation and possible keyboard keys here](https://pyautogui.readthedocs.io/en/latest/keyboard.html)
 You can also look in the lib/input_manager file for examples on how pyautogui is used.
 
+If the keycodes aren't being registered in the program you are trying to control, they might be using DirectX keycode captures.
+To switch to DirectX keycodes, add use_direct_keys = True just below the classname. That might resolve the problem
+
 Detection strategies ( uses mode_tutorial_c.py and mode_tutorial_d.py )
 ----
 

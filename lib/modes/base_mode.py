@@ -29,9 +29,10 @@ class BaseMode:
     speech_commands = {}
     patterns = {}
     toggles = {}
+    use_direct_keys = False
                 
     def __init__(self, modeSwitcher, is_testing=False, repeat_delay=REPEAT_DELAY, repeat_rate=REPEAT_RATE):
-        self.inputManager = InputManager(is_testing=is_testing)    
+        self.inputManager = InputManager(is_testing=is_testing, use_direct_keys=self.use_direct_keys)    
         self.mode = "regular"
         self.modeSwitcher = modeSwitcher
         self.detector = PatternDetector(self.patterns)

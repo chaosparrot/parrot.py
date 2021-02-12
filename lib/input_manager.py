@@ -3,6 +3,9 @@ import time
 import pyautogui
 pyautogui.FAILSAFE = False
 pyautogui.PAUSE = 0.0
+import pydirectinput
+pydirectinput.FAILSAFE=False
+pydirectinput.PAUSE = 0.0
 
 # Managers sending inputs to manipulate the keyboard or mouse, or to print out statements in testing mode
 class InputManager:
@@ -30,11 +33,17 @@ class InputManager:
 
     key_hold_timings = {}
     is_testing = False
+    use_direct_keys = False
     
-    def __init__(self, is_testing = False, repeat_delay=REPEAT_DELAY, repeat_rate=REPEAT_RATE):
+    def __init__(self, is_testing = False, repeat_delay=REPEAT_DELAY, repeat_rate=REPEAT_RATE, use_direct_keys=False):
         self.is_testing = is_testing
         self.repeat_delay = repeat_delay
         self.repeat_rate_ms = round(1000 / repeat_rate) / 1000
+        
+        # Use DirectX keys - Needed in some programs that do not capture virtual keycodes
+        self.use_direct_keys = use_direct_keys
+        if (use_direct_keys == True):
+            print("Using DirectX keycodes" )
         
         if( is_testing ):
             self.function_mappings['press'] = self.pressTest
@@ -43,6 +52,13 @@ class InputManager:
             self.function_mappings['click'] = self.clickTest
             self.function_mappings['mouseDown'] = self.mouseDownTest
             self.function_mappings['mouseUp'] = self.mouseUpTest
+        elif (self.use_direct_keys == True):
+            self.function_mappings['press'] = self.pressActionDirect
+            self.function_mappings['keyDown'] = self.keyDownActionDirect
+            self.function_mappings['keyUp'] = self.keyUpActionDirect
+            self.function_mappings['click'] = self.clickActionDirect
+            self.function_mappings['mouseDown'] = self.mouseDownActionDirect
+            self.function_mappings['mouseUp'] = self.mouseUpActionDirect
         else:
             self.function_mappings['press'] = self.pressAction
             self.function_mappings['keyDown'] = self.keyDownAction
@@ -117,13 +133,13 @@ class InputManager:
         pyautogui.keyDown( key )
         
     def keyUpAction(self, key):
-        print( "----------> RELEASING " + key )    
+        print( "----------> RELEASING " + key )
         pyautogui.keyUp( key )
         
     def holdAction( self, key ):    
         if( time.time() - self.last_key_timestamp > throttle ):
             self.last_key_timestamp = time.time()
-            self.cast_ability( key )    
+            self.press( key )    
         
     def clickAction(self, button='left'):
         print( "----------> CLICKING " + button )        
@@ -136,6 +152,37 @@ class InputManager:
     def mouseUpAction( self, button='left' ):
         print( "----------> RELEASING MOUSE " + button )    
         pyautogui.mouseUp( button=button )
+        
+    # --------- ACTUAL PYDIRECTINPUT ACTIONS ---------
+                
+    def pressActionDirect(self, key):
+        print( "----------> PRESSING " + key )
+        pydirectinput.press( key )
+
+    def keyDownActionDirect(self, key):
+        print( "----------> HOLDING DOWN " + key )    
+        pydirectinput.keyDown( key )
+        
+    def keyUpActionDirect(self, key):
+        print( "----------> RELEASING " + key )
+        pydirectinput.keyUp( key )
+        
+    def holdActionDirect( self, key ):    
+        if( time.time() - self.last_key_timestamp > throttle ):
+            self.last_key_timestamp = time.time()
+            self.press( key )
+        
+    def clickActionDirect(self, button='left'):
+        print( "----------> CLICKING " + button )        
+        pydirectinput.click( button=button )
+        
+    def mouseDownActionDirect( self, button='left' ):
+        print( "----------> HOLDING DOWN MOUSE " + button )
+        pydirectinput.mouseDown( button=button )
+        
+    def mouseUpActionDirect( self, button='left' ):
+        print( "----------> RELEASING MOUSE " + button )    
+        pydirectinput.mouseUp( button=button )
         
     # --------- TEST METHODS FOR PRINTING ---------
 
