@@ -48,8 +48,13 @@ More interactions, such as scrolling and holding down the middle mouse button, a
 [View the pyautogui documentation and possible keyboard keys here](https://pyautogui.readthedocs.io/en/latest/keyboard.html)
 You can also look in the lib/input_manager file for examples on how pyautogui is used.
 
-If the keycodes aren't being registered in the program you are trying to control, they might be using DirectX keycode captures.
-To switch to DirectX keycodes, add use_direct_keys = True just below the classname. That might resolve the problem
+Keys aren't being registered in the game
+----
+
+If the keycodes aren't being registered in the program you are trying to control, they might be using DirectX keycode captures, or they might be having trouble with catching the key events on time.
+Both can be tweaked on a mode basis. So if you want to use DirectX keycodes, set use_direct_keys to True instead of False. 
+When you want to keep the keys pressed down for longer to make sure they get picked up by the game, change the input_release_lag value to a higher number like 0.1 ( this will keep the buttons pressed down for a tenth of a second )
+Both of these values can be found as an exemple in the mode_tutorial_b.py file, and can be added to any mode you want.
 
 Detection strategies ( uses mode_tutorial_c.py and mode_tutorial_d.py )
 ----

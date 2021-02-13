@@ -6,6 +6,7 @@ pyautogui.PAUSE = 0.0
 import pydirectinput
 pydirectinput.FAILSAFE=False
 pydirectinput.PAUSE = 0.0
+import threading
 
 # Managers sending inputs to manipulate the keyboard or mouse, or to print out statements in testing mode
 class InputManager:
@@ -30,15 +31,28 @@ class InputManager:
         'left': False,
         'right': False
     }
-
+    
     key_hold_timings = {}
     is_testing = False
     use_direct_keys = False
     
-    def __init__(self, is_testing = False, repeat_delay=REPEAT_DELAY, repeat_rate=REPEAT_RATE, use_direct_keys=False):
+    # Used for input key up delays
+    input_release_lag_ms = 0
+    press_timings = {}
+    input_release_thread = None
+    
+    def __init__(self, is_testing = False, repeat_delay=REPEAT_DELAY, repeat_rate=REPEAT_RATE, use_direct_keys=False, input_release_lag_ms=0):
         self.is_testing = is_testing
         self.repeat_delay = repeat_delay
         self.repeat_rate_ms = round(1000 / repeat_rate) / 1000
+        
+        # When we need to add an input delay to every key press ( because the game we are playing has a lot of input lag )
+        # We start up a new thread to make sure the execution of the program goes as smooth as possible
+        self.input_release_lag_ms = input_release_lag_ms
+        if (self.input_release_lag_ms > 0):
+            self.input_release_thread = threading.Thread(name='input_release_thread', target=input_release_thread, args=(self, self.input_release_lag_ms / 1000 ) )
+            self.input_release_thread.setDaemon( True )
+            self.input_release_thread.start()
         
         # Use DirectX keys - Needed in some programs that do not capture virtual keycodes
         self.use_direct_keys = use_direct_keys
@@ -66,9 +80,18 @@ class InputManager:
             self.function_mappings['click'] = self.clickAction
             self.function_mappings['mouseDown'] = self.mouseDownAction
             self.function_mappings['mouseUp'] = self.mouseUpAction
-                
+
+    def __del__(self):
+        if(self.input_release_thread is not None):
+            for key in self.press_timings:
+                self.keyUp(key)
+
     def press( self, key ):
-        self.function_mappings['press'](key)
+        if (self.input_release_lag_ms == 0):
+            self.function_mappings['press'](key)
+        elif (key not in self.press_timings ):
+            self.press_timings[key] = time.time()
+            self.keyDown(key)
         
     def keyDown( self, key ):
         self.function_mappings['keyDown'](key)
@@ -209,3 +232,18 @@ class InputManager:
         
     def mouseUpTest( self, button='left' ):
         print( "-> Releasing " + button.upper() + " mouse button" )
+        
+def input_release_thread( inputManager, loop_delay):
+    while(True):
+        current_time = time.time()
+        deleted_keys = []
+        for key in inputManager.press_timings:
+            if ( current_time - inputManager.press_timings[key] > loop_delay):
+                inputManager.keyUp(key)
+                deleted_keys.append(key)
+        
+        for key in deleted_keys:
+            del inputManager.press_timings[key]
+
+        time.sleep(loop_delay / 4)
+    
