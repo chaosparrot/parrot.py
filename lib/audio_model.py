@@ -1,17 +1,9 @@
 class AudioModel():
-    settings = {
-        'version': 1,
-        'RATE': 44100,
-        'CHANNELS': 2,
-        'RECORD_SECONDS': 0.03,
-        'SLIDING_WINDOW_AMOUNT': 2,
-        'FEATURE_ENGINEERING_TYPE': 3
-    }
-    
     classes_: []
     classifier: None
     
     def __init__(self, settings, classifier):
+        self.settings = {}
         self.settings['version'] = settings['version']
         self.settings['RATE'] = settings['RATE']
         self.settings['CHANNELS'] = settings['CHANNELS']
