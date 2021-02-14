@@ -4,8 +4,13 @@ from lib.listen import start_nonblocking_listen_loop
 from lib.mode_switcher import ModeSwitcher
 from lib.audio_model import AudioModel
 import sys, getopt
+import lib.ipc_manager as ipc_manager
 
 def main(argv):
+    if (ipc_manager.getParrotState() != "not_running"):
+        print( "Parrot is already running somewhere, aborting launch!" )
+        return
+
     # Process the optional flags
     opts, args = getopt.getopt(argv,"tc:m:",["testing:classifier=:mode="])
        
@@ -37,10 +42,12 @@ def main(argv):
             }
             
             classifier = AudioModel( settings, classifier )
+        ipc_manager.setClassifier(default_classifier_file)            
     else:
         print( "Loading dummy classifier for testing purposes" )
         from lib.dummy_classifier import DummyClassifier
         classifier = DummyClassifier()
+        ipc_manager.setClassifier("dummy")
 
     mode_switcher = ModeSwitcher( input_testing_mode )
     mode_switcher.switchMode( starting_mode )

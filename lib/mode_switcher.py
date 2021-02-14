@@ -8,6 +8,7 @@ from lib.system_toggles import toggle_speechrec
 import sys
 import inspect
 import importlib
+import lib.ipc_manager as ipc_manager
 
 class ModeSwitcher(object):
     __instance = None
@@ -44,6 +45,8 @@ class ModeSwitcher(object):
         self.switchMode( 'switch' )
                 
     def switchMode( self, nextMode ):
+        current_state = ipc_manager.getParrotState()
+        ipc_manager.setParrotState("switching")
         print( "Switching to " + nextMode )
         if( ModeSwitcher.__currentMode is not None ):
             ModeSwitcher.__currentMode.exit()
@@ -62,12 +65,18 @@ class ModeSwitcher(object):
             if( module_found ):
                 ModeSwitcher.__currentMode = self.__modes[nextMode]
                 ModeSwitcher.__currentMode.start()
+                ipc_manager.setMode(nextMode)
+                ipc_manager.setParrotState(current_state)
             else:
                 print( "MODE " + nextMode + " NOT FOUND!" )
         else:
             ModeSwitcher.__currentMode = self.__modes[nextMode]
             ModeSwitcher.__currentMode.start()
+            ipc_manager.setMode(nextMode)            
+            ipc_manager.setParrotState(current_state)
             
     def exit(self):
         if( ModeSwitcher.__currentMode is not None ):
             ModeSwitcher.__currentMode.exit()
+        ipc_manager.setParrotState("stopped")
+            

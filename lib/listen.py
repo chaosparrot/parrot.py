@@ -20,6 +20,7 @@ from queue import *
 import threading
 import traceback
 import sys
+import lib.ipc_manager as ipc_manager
 
 def break_loop_controls(audioQueue=None):
     global currently_recording
@@ -27,12 +28,63 @@ def break_loop_controls(audioQueue=None):
     ESCAPEKEY = b'\x1b'
     SPACEBAR = b' '
     
+    current_state = "running"
+    requested_state = ipc_manager.getRequestedParrotState()
+    if (requested_state is False):
+        if( msvcrt.kbhit() ):
+            character = msvcrt.getch()
+            if (character == SPACEBAR):
+                requested_state = "paused"
+            elif ( character == ESCAPEKEY ):
+                requested_state = "stopped"
+
+    if (requested_state == "paused"):
+        print( "Listening paused!" )
+        if (stream):
+            ipc_manager.setParrotState("paused")
+            stream.stop_stream()
+            
+        # Pause the recording by looping until we get a new keypress or state
+        while( True ):
+        
+            ## If the audio queue exists - make sure to clear it continuously
+            if( audioQueue != None ):
+                audioQueue.queue.clear()
+        
+            requested_state = ipc_manager.getRequestedParrotState()
+            if (requested_state is False):
+                if( msvcrt.kbhit() ):
+                    character = msvcrt.getch()
+                    if (character == SPACEBAR):
+                        requested_state = "running"
+                    elif ( character == ESCAPEKEY ):
+                        requested_state = "stopped"
+        
+            if (requested_state == "running"):
+                print( "Listening resumed!" )
+                stream.start_stream()
+                ipc_manager.requestParrotState("running")
+                ipc_manager.setParrotState("running")
+                return True
+            elif (requested_state == "stopped"):
+                print( "Listening stopped" )
+                currently_recording = False            
+                return False
+
+    if (requested_state == "stopped"):
+        print( "Listening stopped" )
+        currently_recording = False
+        return False        
+        
+    return True
+    
     if( msvcrt.kbhit() ):
         character = msvcrt.getch()
         if( character == SPACEBAR ):
             print( "Listening paused                                                          " )
             
             if (stream):
+                ipc_manager.setParrotState("paused")
                 stream.stop_stream()
             
             # Pause the recording by looping until we get a new keypress
@@ -46,6 +98,7 @@ def break_loop_controls(audioQueue=None):
                     if( character == SPACEBAR ):
                         print( "Listening resumed!" )
                         stream.start_stream()
+                        ipc_manager.setParrotState("running")
                         return True
                     elif( character == ESCAPEKEY ):
                         print( "Listening stopped" )
@@ -249,9 +302,12 @@ def start_nonblocking_listen_loop( classifier, mode_switcher = False, persist_re
     actionConsumer.start()    
                 
     stream.start_stream()
+    ipc_manager.setParrotState("running")    
 
     while currently_recording == True:
         currenttime = int(time.time())
+        
+        # TODO ADD MODE AND CLASSIFIER SWITCHING        
         if( not infinite_duration and currenttime - starttime > amount_of_seconds or break_loop_controls( audioQueue ) == False ):
             currently_recording = False
         time.sleep(0.1)
