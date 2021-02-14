@@ -6,6 +6,8 @@ import pyautogui;
 from config.config import *
 import winsound
 import multiprocessing
+import os
+import lib.ipc_manager as ipc_manager
     
 def loop_overlay():
     time.sleep( 2 )
@@ -40,16 +42,12 @@ def loop_overlay():
                     window.geometry("+" + str( coordsX - 20 ) + "+" + str( coordsY - 20 ))
                 cfp.close()
 
-        filepath = OVERLAY_FILE        
-        with open(filepath) as fp:  
-            overlay_status = fp.readline()
-            
-            if( overlay_status != "" and current_overlay_status != overlay_status ):
-                current_overlay_status = overlay_status
-                img2 = ImageTk.PhotoImage(Image.open(OVERLAY_FOLDER + "/" + current_overlay_status + ".png"))
-                panel.configure(image=img2)
-                panel.image = img2
-            fp.close()
+        overlay_status = ipc_manager.getOverlayImage()
+        if( overlay_status != "" and current_overlay_status != overlay_status and os.path.isfile( OVERLAY_FOLDER + "/" + overlay_status + ".png") ):
+            current_overlay_status = overlay_status
+            img2 = ImageTk.PhotoImage(Image.open(OVERLAY_FOLDER + "/" + current_overlay_status + ".png"))
+            panel.configure(image=img2)
+            panel.image = img2
 
         window.update_idletasks()
         window.update()

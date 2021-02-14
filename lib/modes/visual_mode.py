@@ -1,6 +1,5 @@
-from config.config import *
 from lib.modes.base_mode import *
-import re
+import lib.ipc_manager as ipc_manager
 
 class VisualMode(BaseMode):
 
@@ -44,48 +43,9 @@ class VisualMode(BaseMode):
         return detected
         
     def update_command_file( self, dataDicts ):
-        with open(COMMAND_FILE, "r+") as fp:
-        
-            # Read initial data first
-            sound = fp.readline().rstrip("\n")
-            times = fp.readline().rstrip("\n")
-            times = re.sub('[^0-9]','', times)
-            command = fp.readline().rstrip("\n")
-            held_keys = fp.readline().rstrip("\n")
-            if (times == ""):
-                times = 0
-
-            held_keys = ""
-            if (self.inputManager.toggle_keys["ctrl"]):
-                held_keys = "ctrl"
-            if (self.inputManager.toggle_keys["shift"]): 
-                held_keys = held_keys + "shift"
-            if (self.inputManager.toggle_keys["alt"]):
-                held_keys = held_keys + "alt"
-            if (self.inputManager.toggle_keys["left"]):
-                held_keys = held_keys + "left"
-            if (self.inputManager.toggle_keys["up"]):
-                held_keys = held_keys + "up"
-            if (self.inputManager.toggle_keys["right"]):
-                held_keys = held_keys + "right"
-            if (self.inputManager.toggle_keys["down"]):
-                held_keys = held_keys + "down"
-            
-            if (len(self.detector.tickActions) > 1):
-                sound = self.latest_sound
-                
-                new_command = self.detector.tickActions[-1]
-                if (new_command == command):
-                    times = int(times) + 1
-                else:
-                    times = 1
-                command = new_command
-                fp.truncate(0)
-
-            # Start writing new information
-            fp.seek(0)
-            fp.write(sound + "\n")
-            fp.write(str(times) + "\n")
-            fp.write(command + "\n")
-            fp.write(held_keys)
-            fp.close()
+        for key in self.inputManager.toggle_keys:
+            ipc_manager.setButtonState(key, self.inputManager.toggle_keys[key])
+        ipc_manager.setSoundName(self.latest_sound)
+        if (len(self.detector.tickActions) > 0 ):
+            new_command = self.detector.tickActions[-1]
+            ipc_manager.setActionName(new_command)

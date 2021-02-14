@@ -4,6 +4,7 @@ from PIL import ImageTk, Image
 import time;
 import pyautogui;
 from config.config import *
+import lib.ipc_manager as ipc_manager
 import winsound
 import multiprocessing
     
@@ -71,74 +72,69 @@ def loop_overlay():
     current_overlay_status = ""
     while True:
         time.sleep( 0.032 )
-        filepath = COMMAND_FILE
-                
-        with open(filepath) as fp:  
-            sound = fp.readline()
-            times = fp.readline().rstrip("\n")
-            command = fp.readline()
-            held_keys = fp.readline()            
+        sound = ipc_manager.getSoundName()
+        times = ipc_manager.getActionAmount()
+        command = ipc_manager.getActionName()
+        
+        text.delete('1.0', END)
+        text.insert(INSERT, sound)
+        commandText.delete('1.0', END)
+        
+        canvas.delete( nipple_outer )
+        canvas.delete( nipple_middle )
+        canvas.delete( nipple_inner )
+        canvas.delete( nipple_dot )
+        
+        canvasOffsetX = basePosX
+        canvasOffsetY = basePosY
+        if ( ipc_manager.getButtonState('left') == True ):
+            canvasOffsetX = canvasOffsetX - canvas_size / 5
+        elif ( ipc_manager.getButtonState('right') == True ):
+            canvasOffsetX = canvasOffsetX + canvas_size / 5
             
-            text.delete('1.0', END)
-            text.insert(INSERT, sound)
-            commandText.delete('1.0', END)
-            
-            canvas.delete( nipple_outer )
-            canvas.delete( nipple_middle )
-            canvas.delete( nipple_inner )
-            canvas.delete( nipple_dot )
-            
-            canvasOffsetX = basePosX
-            canvasOffsetY = basePosY
-            if ( 'left' in held_keys ):
-                canvasOffsetX = canvasOffsetX - canvas_size / 5
-            elif ( 'right' in held_keys ):
-                canvasOffsetX = canvasOffsetX + canvas_size / 5
-                
-            if ( 'up' in held_keys ):
-                canvasOffsetY = canvasOffsetY - canvas_size / 5
-            elif ( 'down' in held_keys ):
-                canvasOffsetY = canvasOffsetY + canvas_size / 5                
-            
-            # Draw the controller nipple
-            nipple_outer = canvas.create_oval(canvasOffsetX - 25, canvasOffsetY - 25, canvasOffsetX + 25, canvasOffsetY + 25, outline="#555", fill="#999", width=2)
-            nipple_middle = canvas.create_oval(canvasOffsetX - 18, canvasOffsetY - 18, canvasOffsetX + 18, canvasOffsetY + 18, outline="#555", fill="#999", width=2)
-            nipple_inner = canvas.create_oval(canvasOffsetX - 13, canvasOffsetY - 13, canvasOffsetX + 13, canvasOffsetY + 13, outline="#555", fill="#999", width=2)
-            nipple_dot = canvas.create_oval(canvasOffsetX - 2, canvasOffsetY - 2, canvasOffsetX + 2, canvasOffsetY + 2, outline="#000", fill="#000", width=2)
+        if ( ipc_manager.getButtonState('up') == True ):
+            canvasOffsetY = canvasOffsetY - canvas_size / 5
+        elif ( ipc_manager.getButtonState('down') == True ):
+            canvasOffsetY = canvasOffsetY + canvas_size / 5                
+        
+        # Draw the controller nipple
+        nipple_outer = canvas.create_oval(canvasOffsetX - 25, canvasOffsetY - 25, canvasOffsetX + 25, canvasOffsetY + 25, outline="#555", fill="#999", width=2)
+        nipple_middle = canvas.create_oval(canvasOffsetX - 18, canvasOffsetY - 18, canvasOffsetX + 18, canvasOffsetY + 18, outline="#555", fill="#999", width=2)
+        nipple_inner = canvas.create_oval(canvasOffsetX - 13, canvasOffsetY - 13, canvasOffsetX + 13, canvasOffsetY + 13, outline="#555", fill="#999", width=2)
+        nipple_dot = canvas.create_oval(canvasOffsetX - 2, canvasOffsetY - 2, canvasOffsetX + 2, canvasOffsetY + 2, outline="#000", fill="#000", width=2)
 
-            if( len(command) > 3 ):
-                commandText.configure(font=("Arial Black", 50, "bold"))
-                commandText.tag_configure("times", offset=10, font=('Arial Black', 40, "bold"))
-                commandText.place(x=120, y=230)
-                if( len(command) > 8 ):
-                    commandText.place(x=40, y=230)
-            else:
-                commandText.configure(font=("Arial Black", 120, "bold"))
-                commandText.tag_configure("times", offset=70, font=('Arial Black', 40, "bold"))
-                commandText.place(x=160, y=150)
-                
-            if ("ctrl" in held_keys):
-                holdText.tag_configure("CTRL", background="#FF0000", foreground="#000000")
-            else:
-                holdText.tag_configure("CTRL", background="#000000", foreground="#000000")            
-
-            if ("shift" in held_keys):
-                holdText.tag_configure("SHIFT", background="#0000FF", foreground="#000000")
-            else:
-                holdText.tag_configure("SHIFT", background="#000000", foreground="#000000")
-
-            if ("alt" in held_keys):
-                holdText.tag_configure("ALT", background="#FFF000", foreground="#000000")
-            else:
-                holdText.tag_configure("ALT", background="#000000", foreground="#000000")
+        if( len(command) > 3 ):
+            commandText.configure(font=("Arial Black", 50, "bold"))
+            commandText.tag_configure("times", offset=10, font=('Arial Black', 40, "bold"))
+            commandText.place(x=120, y=230)
+            if( len(command) > 8 ):
+                commandText.place(x=40, y=230)
+        else:
+            commandText.configure(font=("Arial Black", 120, "bold"))
+            commandText.tag_configure("times", offset=70, font=('Arial Black', 40, "bold"))
+            commandText.place(x=160, y=150)
             
-            if (times != "1"):
-                commandText.insert(INSERT,command.rstrip("\n"),"","*" + times,"times")
-            else:
-                commandText.insert(INSERT,command.rstrip("\n"))                
+        if (ipc_manager.getButtonState('ctrl') == True):
+            holdText.tag_configure("CTRL", background="#FF0000", foreground="#000000")
+        else:
+            holdText.tag_configure("CTRL", background="#000000", foreground="#000000")            
 
-            panel.place(x=80, y=20)    
-            fp.close()
+        if (ipc_manager.getButtonState('shift') == True):
+            holdText.tag_configure("SHIFT", background="#0000FF", foreground="#000000")
+        else:
+            holdText.tag_configure("SHIFT", background="#000000", foreground="#000000")
+
+        if (ipc_manager.getButtonState('alt') == True):
+            holdText.tag_configure("ALT", background="#FFF000", foreground="#000000")
+        else:
+            holdText.tag_configure("ALT", background="#000000", foreground="#000000")
+        
+        if (times != "1"):
+            commandText.insert(INSERT,command,"", "*" + str(times),"times")
+        else:
+            commandText.insert(INSERT,command)                
+
+        panel.place(x=80, y=20)
 
         window.update_idletasks()
         window.update()

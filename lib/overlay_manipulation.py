@@ -1,6 +1,7 @@
 from config.config import *
 import os
 import multiprocessing
+import lib.ipc_manager as ipc_manager
 if( OVERLAY_ENABLED ):
 	import tkinter as tk
 	from tkinter import *
@@ -11,13 +12,8 @@ if( OVERLAY_ENABLED ):
 ## Unexpected crashes from occuring during the overlay phase
 def update_overlay_image( overlay_mode ):
 	if( OVERLAY_ENABLED ):
-		filehandle = open(OVERLAY_FILE, 'w')
-		if( os.path.isfile( OVERLAY_FOLDER + "/" + overlay_mode + ".png") ):  
-			filehandle.write(overlay_mode)  
-		else:
-			filehandle.write("default")
-		filehandle.close()
-		
+		ipc_manager.setOverlayImage(overlay_mode)
+	
 def run_overlay():
 	root = tk.Tk()
 	img = ImageTk.PhotoImage(Image.open(OVERLAY_FOLDER + "/default.png" ))

@@ -4,6 +4,7 @@ from config.config import *
 import math
 pyautogui.FAILSAFE = False
 pyautogui.PAUSE = 0.0
+from os import path
 
 # Manages controls based on a pointer coordinate like a mouse pointer or an eyetracker
 class PointerController:
@@ -14,10 +15,14 @@ class PointerController:
     
     def __init__(self):
         self.screenSize = pyautogui.size()
+        if (USE_COORDINATE_FILE == True and path.exists(COORDINATE_FILEPATH) == False):
+            with open(COORDINATE_FILEPATH, 'w') as coordfile:
+                coordfile.write("0,0")
+                coordfile.close()
         
     def tick( self ):
         # Update the current coordinates
-        if (USE_COORDINATE_FILE == True):
+        if (USE_COORDINATE_FILE == True):        
             with open(COORDINATE_FILEPATH, 'r') as coordfile:
                 raw_coords = coordfile.readline()
                 file_coords = raw_coords.split(",")
