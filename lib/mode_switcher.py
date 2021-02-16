@@ -12,7 +12,8 @@ import lib.ipc_manager as ipc_manager
 
 class ModeSwitcher(object):
     __instance = None
-    __currentMode = None    
+    __currentMode = None
+    __currentModeName = ""
     __modes = {}
     __is_testing = False
     
@@ -44,8 +45,15 @@ class ModeSwitcher(object):
     def turnOnModeSwitch(self):
         self.switchMode( 'switch' )
                 
-    def switchMode( self, nextMode ):
+    def switchMode( self, nextMode, run_after_switching = False ):
+        # When no switch is needed - NOOP
+        if (self.__currentModeName == nextMode ):
+            return
+        
         current_state = ipc_manager.getParrotState()
+        if (run_after_switching == True):
+            current_state = "running"
+        
         ipc_manager.setParrotState("switching")
         print( "Switching to " + nextMode )
         if( ModeSwitcher.__currentMode is not None ):
@@ -61,7 +69,7 @@ class ModeSwitcher(object):
                 if( actualclass.__module__ == full_module_name ):
                     module_found = True
                     self.__modes[nextMode] = actualclass(ModeSwitcher.__instance, self.__is_testing)
-                    
+
             if( module_found ):
                 ModeSwitcher.__currentMode = self.__modes[nextMode]
                 ModeSwitcher.__currentMode.start()
@@ -74,7 +82,8 @@ class ModeSwitcher(object):
             ModeSwitcher.__currentMode.start()
             ipc_manager.setMode(nextMode)            
             ipc_manager.setParrotState(current_state)
-            
+        self.__currentModeName = nextMode        
+
     def exit(self):
         if( ModeSwitcher.__currentMode is not None ):
             ModeSwitcher.__currentMode.exit()

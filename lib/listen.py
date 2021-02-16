@@ -22,7 +22,7 @@ import traceback
 import sys
 import lib.ipc_manager as ipc_manager
 
-def break_loop_controls(audioQueue=None):
+def break_loop_controls(audioQueue=None, modeSwitcher=None):
     global currently_recording
     global stream
     ESCAPEKEY = b'\x1b'
@@ -37,6 +37,15 @@ def break_loop_controls(audioQueue=None):
                 requested_state = "paused"
             elif ( character == ESCAPEKEY ):
                 requested_state = "stopped"
+
+    if (requested_state == "switching" or requested_state == "switch_and_run"):
+        if (stream):
+            stream.stop_stream()
+        if( audioQueue != None ):
+            audioQueue.queue.clear()
+        modeSwitcher.switchMode(ipc_manager.getMode(), requested_state == "switch_and_run")
+        if (ipc_manager.getParrotState() == "running"):
+            stream.start_stream()
 
     if (requested_state == "paused"):
         print( "Listening paused!" )
@@ -59,7 +68,10 @@ def break_loop_controls(audioQueue=None):
                         requested_state = "running"
                     elif ( character == ESCAPEKEY ):
                         requested_state = "stopped"
-        
+            if (requested_state == "switching" or requested_state == "switch_and_run"):
+                modeSwitcher.switchMode(ipc_manager.getMode(), requested_state == "switch_and_run")
+                requested_state = ipc_manager.getParrotState()
+                
             if (requested_state == "running"):
                 print( "Listening resumed!" )
                 stream.start_stream()
@@ -302,13 +314,13 @@ def start_nonblocking_listen_loop( classifier, mode_switcher = False, persist_re
     actionConsumer.start()    
                 
     stream.start_stream()
-    ipc_manager.setParrotState("running")    
+    ipc_manager.setParrotState("running")
 
     while currently_recording == True:
         currenttime = int(time.time())
         
         # TODO ADD MODE AND CLASSIFIER SWITCHING        
-        if( not infinite_duration and currenttime - starttime > amount_of_seconds or break_loop_controls( audioQueue ) == False ):
+        if( not infinite_duration and currenttime - starttime > amount_of_seconds or break_loop_controls( audioQueue, mode_switcher ) == False ):
             currently_recording = False
         time.sleep(0.1)
 
