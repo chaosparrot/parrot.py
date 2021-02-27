@@ -9,7 +9,7 @@ from lib.system_toggles import toggle_eyetracker, toggle_speechrec
 from lib.pattern_detector import PatternDetector
 from config.config import *
 import os
-import pythoncom
+# import pythoncom
 from lib.overlay_manipulation import update_overlay_image
 
 # Quadrants

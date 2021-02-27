@@ -15,7 +15,7 @@ import time
 import csv
 from scipy.fftpack import fft
 from scipy.fftpack import fftfreq
-import msvcrt
+# import msvcrt
 from queue import *
 import threading
 import traceback
@@ -27,7 +27,7 @@ def break_loop_controls(audioQueue=None):
     ESCAPEKEY = b'\x1b'
     SPACEBAR = b' '
     
-    if( msvcrt.kbhit() ):
+    if(False):
         character = msvcrt.getch()
         if( character == SPACEBAR ):
             print( "Listening paused                                                          " )

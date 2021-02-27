@@ -7,12 +7,12 @@ from time import sleep
 from subprocess import call
 from lib.system_toggles import toggle_eyetracker, turn_on_sound, mute_sound, toggle_speechrec
 import os
-import pythoncom
+# import pythoncom
 from lib.modes import *
 from config.config import *
 
 if( SPEECHREC_ENABLED == True ):
-    import pythoncom
+    # import pythoncom
     from dragonfly import Grammar, CompoundRule, Integer
 
 class SwitchMode:

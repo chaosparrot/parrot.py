@@ -12,7 +12,7 @@ from scipy.fftpack import fftfreq
 from scipy.signal import blackmanharris
 from lib.machinelearning import get_loudest_freq, get_recording_power
 import os
-import msvcrt
+# import msvcrt
 from queue import *
 import threading
 import traceback
@@ -34,7 +34,7 @@ def record_controls( recordQueue=None ):
     ESCAPEKEY = b'\x1b'
     SPACEBAR = b' '
     
-    if( msvcrt.kbhit() ):
+    if(False):
         character = msvcrt.getch()
         if( character == SPACEBAR ):
             print( "Recording paused!" )

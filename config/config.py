@@ -5,7 +5,7 @@ pyautogui.FAILSAFE = False
 
 REPEAT_DELAY = 0.5
 REPEAT_RATE = 33
-SPEECHREC_ENABLED = True
+SPEECHREC_ENABLED = False
 
 FORMAT = pyaudio.paInt16
 CHANNELS = 1#2
@@ -15,7 +15,7 @@ RECORD_SECONDS = 0.03
 TEMP_FILE_NAME = "play.wav"
 PREDICTION_LENGTH = 10
 SILENCE_INTENSITY_THRESHOLD = 400
-INPUT_DEVICE_INDEX = 1
+INPUT_DEVICE_INDEX = 0
 SLIDING_WINDOW_AMOUNT = 2
 INPUT_TESTING_MODE = False
 USE_COORDINATE_FILE = False
@@ -40,12 +40,12 @@ PATH_TO_FFMPEG = "ffmpeg/bin/ffmpeg"
 
 #DEFAULT_CLF_FILE = "tiny_gold_league_trio"
 DEFAULT_CLF_FILE = "platinum_league"
-STARTING_MODE = "mode_hollowknight"
+STARTING_MODE = "pokey_mode"
 
 SAVE_REPLAY_DURING_PLAY = True
 SAVE_FILES_DURING_PLAY = False
 EYETRACKING_TOGGLE = "f4"
-OVERLAY_ENABLED = True
+OVERLAY_ENABLED = False
 
 pytorch_spec = importlib.util.find_spec("torch")
 PYTORCH_AVAILABLE = pytorch_spec is not None

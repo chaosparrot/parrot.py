@@ -3,9 +3,9 @@ import time
 import pyautogui
 pyautogui.FAILSAFE = False
 pyautogui.PAUSE = 0.0
-import pydirectinput
-pydirectinput.FAILSAFE=False
-pydirectinput.PAUSE = 0.0
+# import pydirectinput
+# pydirectinput.FAILSAFE=False
+# pydirectinput.PAUSE = 0.0
 import threading
 
 # Managers sending inputs to manipulate the keyboard or mouse, or to print out statements in testing mode

@@ -1,5 +1,4 @@
 from dragonfly import Grammar, CompoundRule
-import pythoncom
 from time import sleep
 import pyautogui
 from lib.modes import *
@@ -21,18 +20,18 @@ class ModeSwitcher(object):
             ModeSwitcher.__is_testing = is_testing
             
             ModeSwitcher.__modes = {
-                'browse': BrowseMode(ModeSwitcher.__instance),
-                'youtube': YoutubeMode(ModeSwitcher.__instance),
-                'twitch': TwitchMode(ModeSwitcher.__instance),
-                'switch': SwitchMode(ModeSwitcher.__instance),
-                'heroes': HeroesMode(ModeSwitcher.__instance, is_testing),
-                'starcraft': StarcraftMode(ModeSwitcher.__instance, is_testing),
-                'phonemes': PhonemesMode(ModeSwitcher.__instance),
-                'hollowknight': HollowknightMode(ModeSwitcher.__instance),
-                'among_us': AmongUsMode(ModeSwitcher.__instance),
-                'testing': TestMode(ModeSwitcher.__instance),
-                'worklog': ExcelMode(ModeSwitcher.__instance, ''),
-                'excel': ExcelMode(ModeSwitcher.__instance, ''),
+                # 'browse': BrowseMode(ModeSwitcher.__instance),
+                # 'youtube': YoutubeMode(ModeSwitcher.__instance),
+                # 'twitch': TwitchMode(ModeSwitcher.__instance),
+                # 'switch': SwitchMode(ModeSwitcher.__instance),
+                # 'heroes': HeroesMode(ModeSwitcher.__instance, is_testing),
+                # 'starcraft': StarcraftMode(ModeSwitcher.__instance, is_testing),
+                # 'phonemes': PhonemesMode(ModeSwitcher.__instance),
+                # 'hollowknight': HollowknightMode(ModeSwitcher.__instance),
+                # 'among_us': AmongUsMode(ModeSwitcher.__instance),
+                # 'testing': TestMode(ModeSwitcher.__instance),
+                # 'worklog': ExcelMode(ModeSwitcher.__instance, ''),
+                # 'excel': ExcelMode(ModeSwitcher.__instance, ''),
             }
             
         return ModeSwitcher.__instance
