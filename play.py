@@ -1,15 +1,13 @@
 from config.config import *
-import joblib
-from lib.listen import start_nonblocking_listen_loop
+from lib.listen import start_nonblocking_listen_loop, load_running_classifier
 from lib.mode_switcher import ModeSwitcher
-from lib.audio_model import AudioModel
 import sys, getopt
 import lib.ipc_manager as ipc_manager
 
 def main(argv):
-    #if (ipc_manager.getParrotState() != "not_running"):
-    #    print( "Parrot is already running somewhere, aborting launch!" )
-    #    return
+    if (ipc_manager.getParrotState() != "not_running"):
+        print( "Parrot might already be running somewhere, stopping that instance..." )
+        ipc_manager.requestParrotState("stopped")
 
     # Process the optional flags
     opts, args = getopt.getopt(argv,"tc:m:",["testing:classifier=:mode="])
@@ -26,31 +24,11 @@ def main(argv):
         elif opt in ("-m", "--mode"):
             starting_mode = arg
     
-    # Load the trained classifier
-    if( default_classifier_file != "dummy" ):
-        print( "Loading classifier " + CLASSIFIER_FOLDER + "/" + default_classifier_file + ".pkl" )
-        classifier = joblib.load( CLASSIFIER_FOLDER + "/" + default_classifier_file + ".pkl" )
-        
-        if( not isinstance( classifier, AudioModel ) ):
-            settings = {
-                'version': 0,
-                'RATE': RATE,
-                'CHANNELS': CHANNELS,
-                'RECORD_SECONDS': RECORD_SECONDS,
-                'SLIDING_WINDOW_AMOUNT': SLIDING_WINDOW_AMOUNT,
-                'FEATURE_ENGINEERING_TYPE': FEATURE_ENGINEERING_TYPE
-            }
-            
-            classifier = AudioModel( settings, classifier )
-        ipc_manager.setClassifier(default_classifier_file)            
-    else:
-        print( "Loading dummy classifier for testing purposes" )
-        from lib.dummy_classifier import DummyClassifier
-        classifier = DummyClassifier()
-        ipc_manager.setClassifier("dummy")
-
+    classifier = load_running_classifier(default_classifier_file)
     mode_switcher = ModeSwitcher( input_testing_mode )
+    ipc_manager.requestParrotState("running")    
     mode_switcher.switchMode( starting_mode )
+    
     start_nonblocking_listen_loop( classifier, mode_switcher, SAVE_REPLAY_DURING_PLAY, SAVE_FILES_DURING_PLAY, -1, True )
     mode_switcher.exit()
 

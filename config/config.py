@@ -37,8 +37,8 @@ CONVERSION_OUTPUT_FOLDER = "data/output"
 PATH_TO_FFMPEG = "ffmpeg/bin/ffmpeg"
 
 #DEFAULT_CLF_FILE = "tiny_gold_league_trio"
-DEFAULT_CLF_FILE = "platinum_league"
-STARTING_MODE = "mode_hollowknight"
+DEFAULT_CLF_FILE = "diamond_league_combined"
+STARTING_MODE = "mode_mouse"
 
 SAVE_REPLAY_DURING_PLAY = True
 SAVE_FILES_DURING_PLAY = False
