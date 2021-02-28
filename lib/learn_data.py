@@ -75,7 +75,7 @@ def learn_data():
             net_count = int(net_count)
 
         # Import pytorch related thins here to make sure pytorch isn't a hard requirement
-        from lib.audio_net import AudioNet, AudioNetTrainer
+        from lib.audio_net import AudioNetTrainer
         from lib.audio_dataset import AudioDataset
         
         print( "--------------------------" )        

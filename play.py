@@ -7,9 +7,9 @@ import sys, getopt
 import lib.ipc_manager as ipc_manager
 
 def main(argv):
-    if (ipc_manager.getParrotState() != "not_running"):
-        print( "Parrot is already running somewhere, aborting launch!" )
-        return
+    #if (ipc_manager.getParrotState() != "not_running"):
+    #    print( "Parrot is already running somewhere, aborting launch!" )
+    #    return
 
     # Process the optional flags
     opts, args = getopt.getopt(argv,"tc:m:",["testing:classifier=:mode="])

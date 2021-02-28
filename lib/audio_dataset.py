@@ -33,7 +33,6 @@ class AudioDataset(Dataset):
                     # When the input length changes due to a different input type being used, we need to rebuild the cache from scratch
                     if (index == 0 and file_index == 0):
                         rebuild_cache = len(self.feature_engineering_cached(full_filename, False)) != len(self.feature_engineering_augmented(full_filename))
-                        print( "SHOULD REBUILD? " + str(rebuild_cache) )
                         
                     self.samples.append([full_filename, index, torch.tensor(self.feature_engineering_cached(full_filename, rebuild_cache)).float()])
 
@@ -55,10 +54,14 @@ class AudioDataset(Dataset):
         self.training = training
 
     def feature_engineering_cached(self, filename, rebuild_cache=False):
-        cached_filename = filename + "_fe";
-        if (os.path.isfile(cached_filename) == False or rebuild_cache == True):
-            data_row = training_feature_engineering(filename, self.settings)
-            np.savetxt( cached_filename, data_row )
+        # Only build a filesystem cache of feature engineering results if we are dealing with non-raw wave form
+        if (self.settings['FEATURE_ENGINEERING_TYPE'] != 1):
+            cached_filename = filename + "_fe";
+            if (os.path.isfile(cached_filename) == False or rebuild_cache == True):
+                data_row = training_feature_engineering(filename, self.settings)
+                np.savetxt( cached_filename, data_row )
+        else:
+            cached_filename = filename
         
         return np.loadtxt( cached_filename, dtype='float' )
         
