@@ -59,6 +59,7 @@ def record_controls(key_poller, recordQueue=None ):
                         print( "Recording stopped" )
                         currently_recording = False
                         return False
+                sleep(0.05)
         elif( character == ESCAPEKEY ):
             print( "Recording stopped" )
             currently_recording = False
