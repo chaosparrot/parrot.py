@@ -74,13 +74,15 @@ class ModeSwitcher(object):
                 ModeSwitcher.__currentMode = self.__modes[nextMode]
                 ModeSwitcher.__currentMode.start()
                 ipc_manager.setMode(nextMode)
+                ipc_manager.requestParrotState(current_state)
                 ipc_manager.setParrotState(current_state)
             else:
                 print( "MODE " + nextMode + " NOT FOUND!" )
         else:
             ModeSwitcher.__currentMode = self.__modes[nextMode]
             ModeSwitcher.__currentMode.start()
-            ipc_manager.setMode(nextMode)            
+            ipc_manager.setMode(nextMode)
+            ipc_manager.requestParrotState(current_state)
             ipc_manager.setParrotState(current_state)
         self.__currentModeName = nextMode        
 

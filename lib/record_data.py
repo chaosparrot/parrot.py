@@ -17,6 +17,7 @@ from queue import *
 import threading
 import traceback
 import sys
+from lib.listen import validate_microphone_input
 
 # Countdown from seconds to 0
 def countdown( seconds ):
@@ -67,7 +68,11 @@ def record_controls( recordQueue=None ):
         print( character )
     return True    
     
-def record_sound():    
+def record_sound():
+    audio = pyaudio.PyAudio()
+    if (validate_microphone_input(audio) == False):
+        return;
+
     print( "-------------------------" )
     print( "Let's record some sounds!")
     print( "This script is going to listen to your microphone input" )

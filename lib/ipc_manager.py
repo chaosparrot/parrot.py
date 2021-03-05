@@ -17,6 +17,7 @@ IPC_STATE_PARROTPY_PAUSED = 2
 IPC_STATE_PARROTPY_SWITCHING = 3
 IPC_STATE_PARROTPY_SWITCH_AND_RUN = 4
 IPC_STATE_PARROTPY_STOPPED = 5
+IPC_STATE_PARROTPY_DISCONNECTED = 6
 
 # --------- INPUT LOCATIONS ( 0 to 1023 ) ---------
 # These memory locations and values can be changed by other programs
@@ -81,7 +82,8 @@ _ipc_parrotpy_strings_to_state = {
     'paused': IPC_STATE_PARROTPY_PAUSED,
     'switching': IPC_STATE_PARROTPY_SWITCHING,
     'switch_and_run': IPC_STATE_PARROTPY_SWITCH_AND_RUN,    
-    'stopped': IPC_STATE_PARROTPY_STOPPED
+    'stopped': IPC_STATE_PARROTPY_STOPPED,
+    'disconnected': IPC_STATE_PARROTPY_DISCONNECTED
 }
 _ipc_parrotpy_states_to_string = dict((v,k) for k, v in _ipc_parrotpy_strings_to_state.items())
 

@@ -23,89 +23,8 @@ import sys
 import lib.ipc_manager as ipc_manager
 import joblib
 from lib.audio_model import AudioModel
-
-def break_loop_controls(audioQueue=None, modeSwitcher=None):
-    global listening_state
-    ESCAPEKEY = b'\x1b'
-    SPACEBAR = b' '
-    
-    current_state = "running"
-    requested_state = ipc_manager.getRequestedParrotState()
-    if (requested_state is False):
-        if( msvcrt.kbhit() ):
-            character = msvcrt.getch()
-            if (character == SPACEBAR):
-                requested_state = "paused"
-            elif ( character == ESCAPEKEY ):
-                requested_state = "stopped"
-
-    if (requested_state == "switching" or requested_state == "switch_and_run"):
-        if (listening_state['stream']):
-            listening_state['stream'].stop_stream()
-        if( listening_state['audioQueue'] != None ):
-            listening_state['audioQueue'].queue.clear()
-        modeSwitcher.switchMode(ipc_manager.getMode(), requested_state == "switch_and_run")
-        if ( listening_state['classifier_name'] != ipc_manager.getClassifier() ):
-            print( "Switching classifier to " + ipc_manager.getClassifier() )
-            print( "Listening stopped" )
-            print( "-----------------" )
-            listening_state['classifier_name'] = ipc_manager.getClassifier()            
-            listening_state['stream'].stop_stream()
-            listening_state['restart_listen_loop'] = True
-            return False
-        elif (ipc_manager.getParrotState() == "running"):
-            listening_state['stream'].start_stream()
-
-    if (requested_state == "paused"):
-        print( "Listening paused!" )
-        if (listening_state['stream']):
-            ipc_manager.requestParrotState("paused")
-            ipc_manager.setParrotState("paused")
-            listening_state['stream'].stop_stream()
-            
-        # Pause the recording by looping until we get a new keypress or state
-        while( True ):
-            ## If the audio queue exists - make sure to clear it continuously
-            if( listening_state['audioQueue'] != None ):
-                listening_state['audioQueue'].queue.clear()
-        
-            requested_state = ipc_manager.getRequestedParrotState()
-            if (requested_state is False):
-                if( msvcrt.kbhit() ):
-                    character = msvcrt.getch()
-                    if (character == SPACEBAR):
-                        requested_state = "running"
-                    elif ( character == ESCAPEKEY ):
-                        requested_state = "stopped"
-            if (requested_state == "switching" or requested_state == "switch_and_run"):
-                modeSwitcher.switchMode(ipc_manager.getMode(), requested_state == "switch_and_run")
-                requested_state = ipc_manager.getParrotState()
-                if ( listening_state['classifier_name'] != ipc_manager.getClassifier() ):
-                    print( "Switching classifier to " + ipc_manager.getClassifier() )
-                    print( "Listening stopped" )
-                    print( "-----------------" )
-                    listening_state['classifier_name'] = ipc_manager.getClassifier()
-                    listening_state['restart_listen_loop'] = True
-                    return False
-            if (requested_state == "running"):
-                print( "Listening resumed!" )
-                listening_state['stream'].start_stream()
-                ipc_manager.requestParrotState("running")
-                ipc_manager.setParrotState("running")
-                return True
-            elif (requested_state == "stopped"):
-                print( "Listening stopped" )
-                listening_state['currently_recording'] = False
-                return False
-            
-            time.sleep(0.1)
-
-    if (requested_state == "stopped"):
-        print( "Listening stopped" )
-        listening_state['currently_recording'] = False
-        return False        
-        
-    return True
+from lib.stream_controls import manage_loop_state
+STATE_POLLING_THRESHOLD = 0.2
     
 def classify_audioframes( audioQueue, audio_frames, classifier, high_speed ):
     if( not audioQueue.empty() ):
@@ -155,7 +74,8 @@ def action_consumer( stream, classifier, dataDicts, persist_replay, replay_file,
                     if( not listening_state['classifierQueue'].empty() ):
                         current_time = time.time()
                         seconds_playing = time.time() - starttime
-                    
+                        
+                        listening_state['last_audio_update'] = current_time                    
                         probabilityDict = listening_state['classifierQueue'].get()
                         dataDicts.append( probabilityDict )
                         if( len(dataDicts) > PREDICTION_LENGTH ):
@@ -261,7 +181,8 @@ def start_nonblocking_listen_loop( classifier, mode_switcher = False, persist_re
         'audioQueue': Queue(maxsize=0),
         'classifierQueue': Queue(maxsize=0),
         'classifier_name': ipc_manager.getClassifier(),
-        'restart_listen_loop': False
+        'restart_listen_loop': False,
+        'last_audio_update': time.time()
     }
     
     # Get a minimum of these elements of data dictionaries
@@ -273,17 +194,20 @@ def start_nonblocking_listen_loop( classifier, mode_switcher = False, persist_re
             dataDict[ directoryname ] = {'percent': 0, 'intensity': 0, 'frequency': 0, 'winner': False}
         dataDicts.append( dataDict )
     
-    starttime = int(time.time())
-    replay_file = REPLAYS_FOLDER + "/replay_" + str(starttime) + ".csv"
+    starttime = time.time()
+    replay_file = REPLAYS_FOLDER + "/replay_" + str(int(starttime)) + ".csv"
     
     infinite_duration = amount_of_seconds == -1
+    audio = pyaudio.PyAudio()
+    if ( validate_microphone_input(audio) == False ):
+        return None
+    
     if( infinite_duration ):
         print( "Listening..." )
     else:
         print ( "Listening for " + str( amount_of_seconds ) + " seconds..." )
     print ( "" )
     
-    audio = pyaudio.PyAudio()
     listening_state['stream'] = audio.open(format=FORMAT, channels=classifier.get_setting('CHANNELS', CHANNELS),
         rate=classifier.get_setting('RATE', RATE), input=True,
         input_device_index=INPUT_DEVICE_INDEX,
@@ -297,16 +221,17 @@ def start_nonblocking_listen_loop( classifier, mode_switcher = False, persist_re
     actionConsumer = threading.Thread(name='action_consumer', target=action_consumer, args=(listening_state['stream'], classifier, dataDicts, persist_replay, replay_file, mode_switcher) )
     actionConsumer.setDaemon( True )
     actionConsumer.start()
-                
+    
+    listening_state['last_audio_update'] = time.time()
     listening_state['stream'].start_stream()
     ipc_manager.setParrotState("running")
 
     while listening_state['currently_recording'] == True and listening_state['restart_listen_loop'] == False:
-        currenttime = int(time.time())
+        currenttime = time.time()
         
-        if( not infinite_duration and currenttime - starttime > amount_of_seconds or break_loop_controls( listening_state['audioQueue'], mode_switcher ) == False ):
+        if( not infinite_duration and currenttime - starttime > amount_of_seconds or manage_loop_state( "running", listening_state, mode_switcher, currenttime, STATE_POLLING_THRESHOLD ) == False ):
             listening_state['currently_recording'] = False
-        time.sleep(0.1)
+        time.sleep(STATE_POLLING_THRESHOLD)
 
     # Stop all the streams and different threads
     listening_state['stream'].stop_stream()
@@ -440,3 +365,23 @@ def load_running_classifier( classifier_name ):
         ipc_manager.setClassifier("dummy")
 
     return classifier
+    
+# Validate and print the currently used microphone
+def validate_microphone_input( audio ):
+    try:
+        micDict = audio.get_device_info_by_index( INPUT_DEVICE_INDEX )
+        if (micDict and micDict['maxInputChannels'] > 0):
+            print( "Using input from " + micDict['name'] )
+            return True
+        else:
+            raise IOError( "Invalid number of channels" )
+    except IOError as e:
+        print( "------ ERROR - NO VALID MICROPHONE FOUND DURING START UP ------ " )
+        print( "Make sure your microphone is connected before starting up Parrot" )
+        print( "or change the INPUT_DEVICE_INDEX in the config/config.py file.")
+        print( "And rerun Parrot to have the proper connection" )
+        print( "---------------------------------------------------------------")
+        
+    return False
+
+    

@@ -13,15 +13,13 @@ import os
 import joblib
 import pandas as pd
 import matplotlib.pyplot as plt
-from lib.listen import start_nonblocking_listen_loop, predict_wav_files
+import pyaudio
+from lib.listen import start_nonblocking_listen_loop, predict_wav_files, validate_microphone_input
 from lib.machinelearning import feature_engineering
 import csv
 from lib.audio_model import AudioModel
 
 def test_data( with_intro ):
-    print( CHANNELS )
-    print( RATE )
-
     available_models = []
     for fileindex, file in enumerate(os.listdir( CLASSIFIER_FOLDER )):
         if ( file.endswith(".pkl") ):
@@ -171,6 +169,10 @@ def audio_analysis( available_models ):
         new_or_existing = input("")
     
     if( new_or_existing.lower() == "n" ):
+        audio = pyaudio.PyAudio()
+        if (validate_microphone_input(audio) == False):
+            return
+    
         for wav_file in wav_files:
             file_path = os.path.join(REPLAYS_AUDIO_FOLDER, wav_file)
             if( file_path.endswith(".wav") ):
