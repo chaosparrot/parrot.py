@@ -26,9 +26,10 @@ def main(argv):
     
     classifier = load_running_classifier(default_classifier_file)
     mode_switcher = ModeSwitcher( input_testing_mode )
-    ipc_manager.requestParrotState("running")    
+    ipc_manager.requestParrotState("running")
     mode_switcher.switchMode( starting_mode )
     
+    ipc_manager.setParrotState("running")    
     start_nonblocking_listen_loop( classifier, mode_switcher, SAVE_REPLAY_DURING_PLAY, SAVE_FILES_DURING_PLAY, -1, True )
     mode_switcher.exit()
 
