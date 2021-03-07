@@ -6,10 +6,11 @@ import struct
 # ----------------- NOTICE -------------------
 # THIS FILE IS USED TO ENABLE OTHER PROGRAMS TO INTERACT OR TO READ OUT STATES FROM PARROT.PY
 # CHANGE THESE MEMORY ADDRESSES AS LITTLE AS POSSIBLE TO PREVENT ISSUES ARISING
-# Currently a single block of 4kb shared memory is used for inter-process communication
+# Currently a single block of 8kb shared memory is used for inter-process communication
 # -------------------------------------------
 
 IPC_MAX_MEMLENGTH_STRING = 255
+IPC_MAX_MEMLENGTH_COMMAND = 128
 IPC_MEMBLOCK_INPUT = 0
 IPC_STATE_PARROTPY_NOT_RUNNING = 0
 IPC_STATE_PARROTPY_RUNNING = 1
@@ -29,14 +30,10 @@ IPC_MEMLOC_CLASSIFIER = IPC_MEMBLOCK_INPUT + 3 # 3 to 257 - UTF8 String contents
 IPC_MEMLOC_CURRENT_MODE_LENGTH = IPC_MEMBLOCK_INPUT + 258 # 8bit integer of the length of the current running mode
 IPC_MEMLOC_CURRENT_MODE = IPC_MEMBLOCK_INPUT + 259 # 259 to 513 - UTF8 String contents ( max unicode length of 255 )
 
-# ----- INTERACTION LOCATIONS ( 1024 to 2047 ) -----
-# These memory locations and values are reserved to send key bindings and inputs to other programs
-IPC_MEMBLOCK_INTERACTION = 1024
-
-# ------ OVERLAY LOCATIONS ( 2048 to 3071 ) --------
+# ------ OVERLAY LOCATIONS ( 1024 to 2047 ) --------
 # These memory locations are used to read out the current state of keys in Parrot.PY
 # These values are considered read-only 
-IPC_MEMBLOCK_OVERLAY = 2048
+IPC_MEMBLOCK_OVERLAY = 1024
 IPC_MEMLOC_CTRL_STATE = IPC_MEMBLOCK_OVERLAY + 0 # Ctrl pressed down = 1, else 0
 IPC_MEMLOC_SHIFT_STATE = IPC_MEMBLOCK_OVERLAY + 1 # Shift pressed down = 1, else 0
 IPC_MEMLOC_ALT_STATE = IPC_MEMBLOCK_OVERLAY + 2 # Alt pressed down = 1, else 0
@@ -52,18 +49,42 @@ IPC_MEMLOC_ACTIONNAME_LENGTH = IPC_MEMBLOCK_OVERLAY + 520 # 8bit integer of the 
 IPC_MEMLOC_ACTIONNAME = IPC_MEMBLOCK_OVERLAY + 521 # 521 to 775 - UTF8 String contents ( max unicode length of 255 )
 IPC_MEMLOC_ACTION_AMOUNT = IPC_MEMBLOCK_OVERLAY + 776 # 776 to 777 - 16bit integer of the amount of times this action has been repeated
 
-# ------ FREE ALLOCATION ( 3072 to 4095 ) ------
-# This block of 1 kilobyte memory can be used to send any state over to ParrotPy from outside programs
+# ------ FREE ALLOCATION ( 2048 to 4095 ) ------
+# This block of 2 kilobyte memory can be used to send any state over to ParrotPy from outside programs
 # You can use this state dynamically in your models
-IPC_MEMBLOCK_FREE_ALLOC = 3072
+IPC_MEMBLOCK_FREE_ALLOC = 2048
+
+# ---- COMMAND CIRCLE BUFFER ( 4096 to 8192 ) ------
+# This block of 4 kilobyte memory is used to send commands to a circle buffer
+# Other programs can read from this buffer and manipulate one of the read pointers to maintain their own state
+IPC_MEMBLOCK_COMMANDS = 4096
+
+IPC_MEMLOC_COMMAND_WRITE_POINTER = IPC_MEMBLOCK_COMMANDS + 0 # 8bit integer displaying the current block location of the writing pointer
+IPC_MEMLOC_COMMAND_READ_POINTER_1 = IPC_MEMBLOCK_COMMANDS + 1 # 8bit integer displaying the current block location of the first reading pointer
+IPC_MEMLOC_COMMAND_READ_POINTER_2 = IPC_MEMBLOCK_COMMANDS + 2 # 8bit integer displaying the current block location of the second reading pointer
+IPC_MEMLOC_COMMAND_READ_POINTER_3 = IPC_MEMBLOCK_COMMANDS + 3 # 8bit integer displaying the current block location of the third reading pointer
+IPC_MEMLOC_COMMAND_SIZE = IPC_MEMBLOCK_COMMANDS + 4 # 8bit integer displaying the maximum amount of bytes a block has
+IPC_MEMLOC_COMMAND_CIRCLEBUFFER_LENGTH = IPC_MEMBLOCK_COMMANDS + 5 # 8bit integer displaying the maximum amount of circle buffer blocks until the pointers need to wrap around again
+IPC_MEMLOC_COMMAND_CIRCLEBUFFER_START = IPC_MEMBLOCK_COMMANDS + 6 # Start of the actual circle buffer memory contents
+IPC_MEMBLOCK_COMMAND_CIRCLEBUFFER_END = 8191
+
+# Available read pointers
+_read_pointers = [
+    IPC_MEMLOC_COMMAND_READ_POINTER_1,
+    IPC_MEMLOC_COMMAND_READ_POINTER_2,
+    IPC_MEMLOC_COMMAND_READ_POINTER_3
+]
 
 _shm = None
 _buffer = None
 try:
-    _shm = shared_memory.SharedMemory(create=True, name="parrotpy_ipc", size=4096)
+    _shm = shared_memory.SharedMemory(create=True, name="parrotpy_ipc", size=8192)
 except FileExistsError:
-    _shm = shared_memory.SharedMemory(create=False, name="parrotpy_ipc", size=4096)
+    _shm = shared_memory.SharedMemory(create=False, name="parrotpy_ipc", size=8192)
 _buffer = _shm.buf
+
+_buffer[IPC_MEMLOC_COMMAND_SIZE] = IPC_MAX_MEMLENGTH_COMMAND
+_buffer[IPC_MEMLOC_COMMAND_CIRCLEBUFFER_LENGTH] = int(( IPC_MEMBLOCK_COMMAND_CIRCLEBUFFER_END - IPC_MEMLOC_COMMAND_CIRCLEBUFFER_START ) / IPC_MAX_MEMLENGTH_COMMAND)
 
 # A map of all the button states memory locations
 _ipc_button_state = {
@@ -108,7 +129,7 @@ def setMode( mode_filename ):
     mode_filename_in_bytes = mode_filename.encode('utf-8')
     strlen = len(mode_filename_in_bytes)
     if (strlen > IPC_MAX_MEMLENGTH_STRING):
-        print( "Modes can have a maximum of 255 character length filenames")
+        print( "Modes can have a maximum of " + str(IPC_MAX_MEMLENGTH_STRING) + " character length filenames")
         return
 
 	# Save the overlay length and the image name at the same time to prevent race conditions
@@ -125,7 +146,7 @@ def setClassifier( classifier_name ):
     classifier_name_in_bytes = classifier_name.encode('utf-8')
     strlen = len(classifier_name_in_bytes)
     if (strlen > IPC_MAX_MEMLENGTH_STRING):
-        print( "Classifiers can have a maximum of 255 character length filenames")
+        print( "Classifiers can have a maximum of " + str(IPC_MAX_MEMLENGTH_STRING) + " character length filenames")
         return
 
 	# Save the overlay length and the image name at the same time to prevent race conditions
@@ -152,7 +173,7 @@ def setOverlayImage( filename ):
     overlayimage_in_bytes = filename.encode('utf-8')
     strlen = len(overlayimage_in_bytes)
     if (strlen > IPC_MAX_MEMLENGTH_STRING):
-        print( "Overlay images can have a maximum of 255 character length filenames")
+        print( "Overlay images can have a maximum of " + str(IPC_MAX_MEMLENGTH_STRING) + " character length filenames")
         return
 
 	# Save the overlay length and the image name at the same time to prevent race conditions
@@ -169,7 +190,7 @@ def setSoundName( soundname ):
     soundname_in_bytes = soundname.encode('utf-8')
     strlen = len(soundname_in_bytes)
     if (strlen > IPC_MAX_MEMLENGTH_STRING):
-        print( "Sound names can have a maximum of 255 character length")
+        print( "Sound names can have a maximum of " + str(IPC_MAX_MEMLENGTH_STRING) + " character length")
         return        
 
 	# Save the sound name length and the sound name at the same time to prevent race conditions
@@ -186,7 +207,7 @@ def setActionName( actionname ):
     actionname_in_bytes = actionname.encode('utf-8')
     strlen = len(actionname_in_bytes)
     if (strlen > IPC_MAX_MEMLENGTH_STRING):
-        print( "Action names can have a maximum of 255 character length")
+        print( "Action names can have a maximum of " + str(IPC_MAX_MEMLENGTH_STRING) + " character length")
         return
     
     total_action_bytes = bytes([strlen]) + actionname_in_bytes + bytes(IPC_MAX_MEMLENGTH_STRING - strlen)
@@ -202,6 +223,7 @@ def setActionName( actionname ):
 	# Save the action name length, the action name and the action amount at the same time to prevent race conditions
     _buffer[IPC_MEMLOC_ACTIONNAME_LENGTH:IPC_MEMLOC_ACTIONNAME_LENGTH + total_action_length + 2] = total_action_bytes + intbytes
 
+
 def getActionName():
     strlen = _buffer[IPC_MEMLOC_ACTIONNAME_LENGTH]
     if (strlen > 0):
@@ -211,3 +233,40 @@ def getActionName():
         
 def getActionAmount():
     return struct.unpack('>H', _buffer[IPC_MEMLOC_ACTION_AMOUNT:IPC_MEMLOC_ACTION_AMOUNT + 2])[0]
+
+def writeToCommandBuffer(command):
+    command_in_bytes = command.encode('utf-8')
+    strlen = len(command_in_bytes)
+    if (strlen > IPC_MAX_MEMLENGTH_COMMAND - 1):
+        print( "Commands can have a maximum of " + str(IPC_MAX_MEMLENGTH_COMMAND - 1) + " character length")
+        return
+        
+    write_pointer_loc = getCurrentWritePointerBlockLocation()
+    # Save the command length and the command at the same time to prevent race conditions
+    _buffer[write_pointer_loc:write_pointer_loc + 1 + strlen] = bytes([strlen]) + command_in_bytes
+    
+    # Increase the write pointer by one block
+    _buffer[IPC_MEMLOC_COMMAND_WRITE_POINTER] = (_buffer[IPC_MEMLOC_COMMAND_WRITE_POINTER] + 1) % _buffer[IPC_MEMLOC_COMMAND_CIRCLEBUFFER_LENGTH]
+
+def getCurrentWritePointerBlockLocation():
+    return IPC_MEMLOC_COMMAND_CIRCLEBUFFER_START + ( _buffer[IPC_MEMLOC_COMMAND_WRITE_POINTER] * IPC_MAX_MEMLENGTH_COMMAND )
+
+def readFromCommandBuffer(read_pointer = 1):
+    read_pointer_index = read_pointer - 1
+                
+    read_pointer_loc = _buffer[_read_pointers[read_pointer_index]]
+    write_pointer_loc = _buffer[IPC_MEMLOC_COMMAND_WRITE_POINTER]
+    
+    command = ""
+    if (read_pointer_loc != write_pointer_loc):
+        memblock_start = IPC_MEMLOC_COMMAND_CIRCLEBUFFER_START + ( read_pointer_loc * IPC_MAX_MEMLENGTH_COMMAND )
+            
+        # Messages available - read one out and return it
+        strlen = _buffer[memblock_start]
+        if (strlen > 0):
+            command = array.array('B', _buffer[memblock_start + 1:memblock_start + 1 + strlen]).tobytes().decode('utf-8')
+        
+        print( read_pointer_loc )        
+        # Increase the read pointer by one block
+        _buffer[_read_pointers[read_pointer_index]] = (_buffer[_read_pointers[read_pointer_index]] + 1) % _buffer[IPC_MEMLOC_COMMAND_CIRCLEBUFFER_LENGTH]
+    return command
