@@ -4,6 +4,19 @@
 The best way to upgrade Parrot.PY to make sure nothing breaks is to download this repository as a zipfile and extract it as a seperate folder to your current version.
 Then to copy over the data directory and change the config/config.py to your previous values.
 
+Version 0.11.0
+-----
+
+* Added IPC options to communicate with Parrot and other programs
+  Using shared memory, it is now possible to pause, resume, quit, switch modes and so much more from outside and inside of Parrot.
+* Improved the performance of overlay switching.
+  Now file switching uses shared memory rather than being file based. This was a major bottleneck when switching overlays a lot.
+* Added microphone reconnection.
+  When your microphone gets disconnected during play time, it will attempt to reconnect every once in a while to find your microphone again without crashing Parrot.
+* Improved mode and classifier switching. 
+  Now allows for classifiers with different audio settings like 44.1kHz or 16kHz, and different feature engineering settings, to run seemlessly after one another if a switch is requested.
+* Added Talon Voice communication code to connect your own noises to Talon actions
+
 Version 0.10.1
 -----
 

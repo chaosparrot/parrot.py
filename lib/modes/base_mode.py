@@ -31,7 +31,7 @@ class BaseMode:
     toggles = {}
     use_direct_keys = False
     input_release_lag = 0
-                
+
     def __init__(self, modeSwitcher, is_testing=False, repeat_delay=REPEAT_DELAY, repeat_rate=REPEAT_RATE):
         self.inputManager = InputManager(is_testing=is_testing, use_direct_keys=self.use_direct_keys, input_release_lag_ms=self.input_release_lag * 1000)
         self.mode = "regular"

@@ -64,4 +64,5 @@ For instructions on upgrading and the release notes, look on ![this page](docs/R
 I have a seperated doc page filled with research, notes, acknowledgements and showcases over on ![this page](docs/NOTES_AND_ACKNOWLEDGEMENTS.md).
 I will expand this document once I learn more during the development. In the meantime, you can use that knowledge to your own advantage.
 
-For examples and explanation of how to interact with a running Parrot instance from your own programs like Talon Voice, read up on ![this page](docs/INTERFACING.md).
+If you desire to connect Parrot.PY to Talon Voice, take a look at ![this page](docs/TALON_VOICE.md).
+For examples and explanation of how to interact with a running Parrot instance from your own programs, read up on ![this page](docs/INTERFACING.md).

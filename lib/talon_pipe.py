@@ -25,9 +25,9 @@ class TalonPipe:
     connection_attempt_timestamp = 0    
     reconnection_polling_threshold = 0.5
 
-    win_pipe: None
-    posix_pipe: None
-    posix_writer: None
+    win_pipe = None
+    posix_pipe = None
+    posix_writer = None
 
     def connect(self):
         self.connection_attempt_timestamp = time.time()    
@@ -38,8 +38,8 @@ class TalonPipe:
                     
                 self.is_connected = True
             else:
-                self.posix_writer = talon_pipe_location.makefile('w', buffering=1, encoding='utf8')            
                 self.posix_pipe = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+                self.posix_writer = self.posix_pipe.makefile('w', buffering=1, encoding='utf8')
                 self.posix_pipe.connect( talon_pipe_location )
                 self.is_connected = True
 
@@ -63,14 +63,13 @@ class TalonPipe:
     
         try:
             if (self.is_connected == True):
-                data = json.dumps({'text': str(data) + '\n', 'cmd': 'input'})
-                
+                data = json.dumps({'text': str(data), 'cmd': 'input'})
                 if (self.win_pipe is not None):
                     win32file.WriteFile(self.win_pipe, data.encode('utf8'))
                 elif(self.posix_writer is not None):
                     self.posix_writer.write(data)
+                    self.posix_writer.write('\n')
                     self.posix_writer.flush()
-                    
         # When an error occurs, assume that the pipe has shut down for whatever reason
         except Exception as e:
             print( e )
