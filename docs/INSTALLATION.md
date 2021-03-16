@@ -1,7 +1,7 @@
 # Installation guide
 -----------
 
-For this program to work, you must atleast have access to a microphone and a Windows machine that can run Python 3.6 64 bit.
+For this program to work, you must atleast have access to a microphone and a Windows machine that can run Python 3.8 64 bit.
 
 Do note that this guide only details how to set up the base installation of this program ( i.e. being able to run the program without random crashes ). 
 There are no ready-made audio recognition models added to this installation, you will have to make those yourself using the settings menu.
@@ -12,52 +12,52 @@ Step one - Installing python
 
 ![Installing python](media/install-python.png)
 
-This can be done by following the [Python installation link](https://www.python.org/downloads/release/python-368/) and selecting your desired way of installing - I used the Windows x86 executable installer option.
-Currently, one of the packages ( pyaudio ) relies on Python 3.6, so that is the easiest version to install from.
-Make sure you have the checkbox 'Add Python 3.6 to PATH' enabled and pick the Install Now option. 
+This can be done by following the [Python installation link](https://www.python.org/downloads/release/python-380/) and selecting your desired way of installing - I used the Windows x86 executable installer option.
+Make sure you have the checkbox 'Add Python 3.8 to PATH' enabled and pick the Install Now option. 
 
-If you install from a higher version that will be supported with fixes longer than 2021, for now you will have to install some .whl files manually in the next step.
+Step two - Download and extract the zipfile from this github repository
+---------------
 
-Step two - Installing all the packages
+![Extracting parrot.py](media/install-parrotpy.png)
+
+Now download the zip of this github repository and save it somewhere on your computer. It doesn't need to be in program files or anything, it can just be on your Desktop.
+Extract the files in another folder and you can start testing the settings menu.
+Now, make sure to go to your Parrot.py location, in my case that is the desktop. So I would type `cd "C:\\Users\\anonymous\\Desktop\\parrot.py-master"` 
+Make sure that you can see the requirements.txt file if you run the `dir` command, that means you're in the right place!
+
+Step three - Installing all the packages
 ---------
 
 ![Installing packages](media/install-libs.png)
 
 Now that you have python installed, you can use it to download packages. Open a command line program ( Search for cmd in your Windows search box ) and test if your python is installed properly.
-This can be done by typing 'python --version', this will display the version of your current python installation.
+This can be done by typing 'python --version', this will display the version of your current python installation. If it is 3.8, you should be good to run the following code.
 
-For Python 3.6, you can simply run this line of code in your command line program:
+For PyAudio to work, you have to download a .whl corresponding to your python version installation.
+You can find the .whl files here: https://www.lfd.uci.edu/~gohlke/pythonlibs/#pyaudio
+It's easiest to place the whl file inside of the parrot folder, as you already have the command line program opened there.
+As I use python 3.8, my install instructions look like this:
+
+```bash
+pip3 install PyAudio-0.2.11-cp38-cp38-win_amd64.whl
+pip3 install pyaudio
+```
+
+After this, you can install the remaining requirements using the following command.
 
 ```bash
 pip3 install -r requirements.txt
 ```
 
-If you are running on Python 3.7 and above, use the following commands:
+Now you can run the following command to see if everything works
 
 ```bash
-pip3 install -r requirements-37.txt
-pip3 install pyaudio
+python settings.py
 ```
 
-If the installation of pyaudio fails, you have to download a .whl corresponding to your python version installation.
-You can find the .whl files here: https://www.lfd.uci.edu/~gohlke/pythonlibs/#pyaudio
-When you have the .whl file on your computer, rename it to pyaudio.whl, navigate to it in your command line program and type the following command:
+If any errors occur, try opening the text file and installing each line seperately and run again.
 
-```bash
-pip3 install pyaudio.whl
-```
-
-Step three - Download and extract the zipfile from this github repository
----------------
-
-![Extracting parrot.py](media/install-parrotpy.png)
-
-Now download the zip of this github repository and save it somewhere on your computer. It doesn't need to be in program files or anything, it can just be on your desktop.
-Extract the files in another folder and you can start testing the settings menu.
-Navigate to the directory in your command line tool by using `cd YOUR_PATH_TO_PARROT_PY_DIRECTORY` and then run `py settings.py`.
-If it shows the options menu, you should be able to run all the recording, training and analysis tools.
-
-Step four - Training Windows Speech recognition
+Optional - Step four - Training Windows Speech recognition
 ---------------
 
 Before you can make use of the speech recognition part, you will have to train Windows Speech recognition on your microphone and your voice.

@@ -89,7 +89,7 @@ Various reddit users in the starcraft subreddit - For pointing out the confusing
 	
 ![feardragon64](https://github.com/feardragon64) - For briefly working on a Hands-Free starcraft project himself, and providing me with the courage to try my program out on the ladder versus actual players.
 
-![lunixbochs](https://github.com/lunixbochs) - For pointing out computational optimizations with the audio pipeline and providing a slack for a wonderful community.
+![lunixbochs](https://github.com/lunixbochs) - For pointing out computational optimizations with the audio and featurization pipeline, and providing a slack for a wonderful community.
 
 ![jcaw](https://github.com/jcaw) - For helping out with brainstorming the deep learning bits, pointing towards normalization and SeLU activation functions and generally doing experiments with noises as well.
 Also for making the recording script for Talon to help boost their dataset.
@@ -101,6 +101,8 @@ timotimo - For motivating me to start implementing audio conversion scripts and 
 SuperfluousBrain - For pointing out a problem with the installation on Python 3.7 and up related to pyaudio and asking clarification based on the patterns
 
 ![Pokey Rule](https://github.com/pokey) - For trying out Mac and Talon Voice integration with Parrot, and providing a bunch of ideas on what to improve.
+
+Koeny - For pointing out Python 3.6 related installation issues, and showing the need for more specific instructions relating to installation.
 
 You - For reading all the way down this page and showing interest in this program <3
 

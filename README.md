@@ -5,7 +5,7 @@ It's name is inspired by the way parrots and parakeets communicate, using chirps
 
 # Software requirements
 * Windows version 7 and up.
-* Python 3.6 and up (64 bit recommended)
+* Python 3.8 (64 bit recommended)
 * Project IRIS ( OPTIONAL - Used for turning the eyetracker into a mouse cursor )
 
 Python packages such as
@@ -21,8 +21,6 @@ Python packages such as
 * pythoncom *( for listening to speech recognition commands )*
 * pytorch *( OPTIONAL - Used for improved neural nets )*
 * audiomentations *( OPTIONAL - Used in training for generating more samples to train on ) 
-
-All required packages can be installed using `pip3 install requirements.txt`
 
 # Hardware requirements
 * A decent computer to run machine learning training on
