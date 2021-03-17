@@ -3,6 +3,8 @@ import pyautogui
 import importlib
 pyautogui.FAILSAFE = False
 
+default_audio = pyaudio.PyAudio().get_default_input_device_info()
+
 REPEAT_DELAY = 0.5
 REPEAT_RATE = 33
 SPEECHREC_ENABLED = False
@@ -16,6 +18,9 @@ TEMP_FILE_NAME = "play.wav"
 PREDICTION_LENGTH = 10
 SILENCE_INTENSITY_THRESHOLD = 400
 INPUT_DEVICE_INDEX = 1
+if (default_audio is not None):
+    INPUT_DEVICE_INDEX = default_audio['index']
+
 SLIDING_WINDOW_AMOUNT = 2
 INPUT_TESTING_MODE = False
 USE_COORDINATE_FILE = False
