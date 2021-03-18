@@ -4,9 +4,9 @@ from talon import Module
 
 mod = Module()
 try:
-    _parrotShm = shared_memory.SharedMemory(create=True, name="parrotpy_ipc", size=4096)
+    _parrotShm = shared_memory.SharedMemory(create=True, name="parrotpy_ipc", size=8192)
 except FileExistsError:
-    _parrotShm = shared_memory.SharedMemory(create=False, name="parrotpy_ipc", size=4096)
+    _parrotShm = shared_memory.SharedMemory(create=False, name="parrotpy_ipc", size=8192)
 _parrotBuffer = _parrotShm.buf
 
 IPC_STATE_PARROTPY_NOT_RUNNING = 0
