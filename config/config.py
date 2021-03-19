@@ -1,6 +1,7 @@
 import pyaudio
 import pyautogui
 import importlib
+import sys
 pyautogui.FAILSAFE = False
 
 default_audio = pyaudio.PyAudio().get_default_input_device_info()
@@ -52,6 +53,7 @@ OVERLAY_ENABLED = True
 
 pytorch_spec = importlib.util.find_spec("torch")
 PYTORCH_AVAILABLE = pytorch_spec is not None
+IS_WINDOWS = sys.platform == 'win32'
 
 dragonfly_spec = importlib.util.find_spec("dragonfly")
 if( SPEECHREC_ENABLED == True ):

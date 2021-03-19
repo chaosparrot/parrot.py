@@ -47,6 +47,7 @@ OVERLAY_ENABLED = False
 
 pytorch_spec = importlib.util.find_spec("torch")
 PYTORCH_AVAILABLE = pytorch_spec is not None
+IS_WINDOWS = sys.platform == 'win32'
 
 dragonfly_spec = importlib.util.find_spec("dragonfly")
 if( SPEECHREC_ENABLED == True ):

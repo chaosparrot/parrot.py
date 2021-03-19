@@ -3,9 +3,10 @@ import time
 import pyautogui
 pyautogui.FAILSAFE = False
 pyautogui.PAUSE = 0.0
-import pydirectinput
-pydirectinput.FAILSAFE=False
-pydirectinput.PAUSE = 0.0
+if (IS_WINDOWS == True):
+    import pydirectinput
+    pydirectinput.FAILSAFE=False
+    pydirectinput.PAUSE = 0.0
 import threading
 
 # Managers sending inputs to manipulate the keyboard or mouse, or to print out statements in testing mode
@@ -66,7 +67,7 @@ class InputManager:
             self.function_mappings['click'] = self.clickTest
             self.function_mappings['mouseDown'] = self.mouseDownTest
             self.function_mappings['mouseUp'] = self.mouseUpTest
-        elif (self.use_direct_keys == True):
+        elif (self.use_direct_keys == True and IS_WINDOWS == True):
             self.function_mappings['press'] = self.pressActionDirect
             self.function_mappings['keyDown'] = self.keyDownActionDirect
             self.function_mappings['keyUp'] = self.keyUpActionDirect

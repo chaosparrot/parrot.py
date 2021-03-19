@@ -1,8 +1,6 @@
 from dragonfly import Grammar, CompoundRule
-import pythoncom
 from time import sleep
 import pyautogui
-from lib.modes import *
 from lib.modes.mode_switch import SwitchMode
 from lib.system_toggles import toggle_speechrec
 import sys
@@ -21,21 +19,7 @@ class ModeSwitcher(object):
         if ModeSwitcher.__instance is None:
             ModeSwitcher.__instance = object.__new__(cls)
             ModeSwitcher.__is_testing = is_testing
-            
-            ModeSwitcher.__modes = {
-                'browse': BrowseMode(ModeSwitcher.__instance),
-                'youtube': YoutubeMode(ModeSwitcher.__instance),
-                'twitch': TwitchMode(ModeSwitcher.__instance),
-                'switch': SwitchMode(ModeSwitcher.__instance),
-                'heroes': HeroesMode(ModeSwitcher.__instance, is_testing),
-                'starcraft': StarcraftMode(ModeSwitcher.__instance, is_testing),
-                'phonemes': PhonemesMode(ModeSwitcher.__instance),
-                'hollowknight': HollowknightMode(ModeSwitcher.__instance),
-                'among_us': AmongUsMode(ModeSwitcher.__instance),
-                'testing': TestMode(ModeSwitcher.__instance),
-                'worklog': ExcelMode(ModeSwitcher.__instance, ''),
-                'excel': ExcelMode(ModeSwitcher.__instance, ''),
-            }
+            ModeSwitcher.__modes = {}
             
         return ModeSwitcher.__instance
         
@@ -48,7 +32,7 @@ class ModeSwitcher(object):
     def switchMode( self, nextMode, run_after_switching = False ):
         # When no switch is needed - NOOP
         if (self.__currentModeName == nextMode ):
-            return
+            return True
         
         current_state = ipc_manager.getParrotState()
         if (run_after_switching == True):
@@ -78,13 +62,15 @@ class ModeSwitcher(object):
                 ipc_manager.setParrotState(current_state)
             else:
                 print( "MODE " + nextMode + " NOT FOUND!" )
+                return False
         else:
             ModeSwitcher.__currentMode = self.__modes[nextMode]
             ModeSwitcher.__currentMode.start()
             ipc_manager.setMode(nextMode)
             ipc_manager.requestParrotState(current_state)
             ipc_manager.setParrotState(current_state)
-        self.__currentModeName = nextMode        
+        self.__currentModeName = nextMode
+        return True
 
     def exit(self):
         if( ModeSwitcher.__currentMode is not None ):

@@ -1,4 +1,5 @@
 data/replays/*.csv
+data/replays/audio/*
 !data/replays/.gitkeep
 data/recordings/*
 !data/recordings/.gitkeep
