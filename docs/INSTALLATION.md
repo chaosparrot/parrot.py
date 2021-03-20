@@ -1,7 +1,11 @@
 # Installation guide
 -----------
 
-For this program to work, you must atleast have access to a microphone and a Windows machine that can run Python 3.8 64 bit.
+For this program to work, you must atleast have access to a microphone and a machine that can run Python 3.8 64 bit.
+This document describes installing the program on a Windows machine.
+
+If you want to install on a Mac, steps 1 to 3 can be found here: [Mac installation guide](MAC_INSTALLATION.md).
+If you want to install on a Linux device, steps 1 to 3 can be found here: [Linux installation guide](LINUX_INSTALLATION.md).
 
 Do note that this guide only details how to set up the base installation of this program ( i.e. being able to run the program without random crashes ). 
 There are no ready-made audio recognition models added to this installation, you will have to make those yourself using the settings menu.

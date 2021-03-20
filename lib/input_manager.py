@@ -1,4 +1,4 @@
-from config.config import REPEAT_DELAY, REPEAT_RATE
+from config.config import REPEAT_DELAY, REPEAT_RATE, IS_WINDOWS
 import time
 import pyautogui
 pyautogui.FAILSAFE = False
