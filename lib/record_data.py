@@ -12,35 +12,36 @@ from scipy.fftpack import fftfreq
 from scipy.signal import blackmanharris
 from lib.machinelearning import get_loudest_freq, get_recording_power
 import os
-import msvcrt
 from queue import *
 import threading
 import traceback
 import sys
 from lib.listen import validate_microphone_input
+from lib.key_poller import KeyPoller
 
 # Countdown from seconds to 0
 def countdown( seconds ):
-    for i in range( -seconds, 0 ):
-        print("recording in... " + str(abs(i)), end="\r")
-        sleep( 1 )
-        if( record_controls() == False ):
-            return False;
+    with KeyPoller() as key_poller:
+        for i in range( -seconds, 0 ):
+            print("recording in... " + str(abs(i)), end="\r")
+            sleep( 1 )
+            if( record_controls(key_poller) == False ):
+                return False;
     print("                          ", end="\r")
     return True
 
-def record_controls( recordQueue=None ):
+def record_controls( key_poller, recordQueue=None ):
     global currently_recording
     global stream
     ESCAPEKEY = b'\x1b'
     SPACEBAR = b' '
     
-    if( msvcrt.kbhit() ):
-        character = msvcrt.getch()
+    character = key_poller.poll()
+    if(character is not None):    
         if( character == SPACEBAR ):
             print( "Recording paused!" )
 
-            if (stream):
+            if (stream != None):
                 stream.stop_stream()
 
             # Pause the recording by looping until we get a new keypress
@@ -50,22 +51,22 @@ def record_controls( recordQueue=None ):
                 if( recordQueue != None ):
                     recordQueue.queue.clear()
             
-                if( msvcrt.kbhit() ):
-                    character = msvcrt.getch()
+                character = key_poller.poll()
+                if(character is not None):                
                     if( character == SPACEBAR ):
                         print( "Recording resumed!" )
-                        stream.start_stream()                        
+                        if (stream is not None):
+                            stream.start_stream()
                         return True
                     elif( character == ESCAPEKEY ):
                         print( "Recording stopped" )
                         currently_recording = False
                         return False
+                time.sleep(0.3)
         elif( character == ESCAPEKEY ):
             print( "Recording stopped" )
             currently_recording = False
-            return False
-            
-        print( character )
+            return False            
     return True    
     
 def record_sound():
@@ -80,6 +81,9 @@ def record_sound():
     print( "-------------------------" )
 
     directory = input("Whats the name of the sound are you recording? ")
+    while (directory == ""):
+        directory = input("")
+    
     if not os.path.exists(RECORDINGS_FOLDER + "/" + directory):
         os.makedirs(RECORDINGS_FOLDER + "/"  + directory)
     if not os.path.exists(RECORDINGS_FOLDER + "/" + directory + "/source"):
@@ -124,6 +128,8 @@ def record_sound():
     WAVE_OUTPUT_FILENAME = RECORDINGS_FOLDER + "/" + directory + "/" + str(int(time.time() ) ) + "file";
     WAVE_OUTPUT_FILE_EXTENSION = ".wav";
 
+    global stream
+    stream = None
     if( countdown( 5 ) == False ):
         return;
     
@@ -148,57 +154,58 @@ def record_consumer(threshold, power_threshold, frequency_threshold, begin_thres
     
     totalAudioFrames = []
     try:
-        while( True ):
-            if( not recordQueue.empty() ):
-                audioFrames.append( recordQueue.get() )
-                totalAudioFrames.append( audioFrames[-1] )
-                if( len( audioFrames ) >= SLIDING_WINDOW_AMOUNT ):
-                    j+=1
-                    audioFrames = audioFrames[-SLIDING_WINDOW_AMOUNT:]
+        with KeyPoller() as key_poller:
+            while( True ):
+                if( not recordQueue.empty() ):
+                    audioFrames.append( recordQueue.get() )
+                    totalAudioFrames.append( audioFrames[-1] )
+                    if( len( audioFrames ) >= SLIDING_WINDOW_AMOUNT ):
+                        j+=1
+                        audioFrames = audioFrames[-SLIDING_WINDOW_AMOUNT:]
+                            
+                        intensity = [
+                            audioop.maxpp( audioFrames[0], 4 ) / 32767,
+                            audioop.maxpp( audioFrames[1], 4 ) / 32767
+                        ]
+                        highestintensity = np.amax( intensity )
                         
-                    intensity = [
-                        audioop.maxpp( audioFrames[0], 4 ) / 32767,
-                        audioop.maxpp( audioFrames[1], 4 ) / 32767
-                    ]
-                    highestintensity = np.amax( intensity )
+                        byteString = b''.join(audioFrames)
+                        fftData = np.frombuffer( byteString, dtype=np.int16 )
+                        frequency = get_loudest_freq( fftData, RECORD_SECONDS )
+                        power = get_recording_power( fftData, RECORD_SECONDS )
+                        
+                        fileid = "%0.2f" % ((j) * RECORD_SECONDS )
                     
-                    byteString = b''.join(audioFrames)
-                    fftData = np.frombuffer( byteString, dtype=np.int16 )
-                    frequency = get_loudest_freq( fftData, RECORD_SECONDS )
-                    power = get_recording_power( fftData, RECORD_SECONDS )
-                    
-                    fileid = "%0.2f" % ((j) * RECORD_SECONDS )
-                
-                    if( record_controls( recordQueue ) == False ):
-                        stream.stop_stream()
-                        break;
-                         
-                    if( frequency > frequency_threshold and highestintensity > threshold and power > power_threshold ):
-                        record_wave_file_count += 1
-                        if( record_wave_file_count <= begin_threshold and record_wave_file_count > delay_threshold ):
-                            files_recorded += 1
-                            print( "Files recorded: %0d - Intensity: %0d - Power: %0d - Freq: %0d - Saving %s" % ( files_recorded, highestintensity, power, frequency, fileid ) )
-                            waveFile = wave.open(WAVE_OUTPUT_FILENAME + fileid + WAVE_OUTPUT_FILE_EXTENSION, 'wb')
+                        if( record_controls( key_poller, recordQueue ) == False ):
+                            stream.stop_stream()
+                            break;
+                             
+                        if( frequency > frequency_threshold and highestintensity > threshold and power > power_threshold ):
+                            record_wave_file_count += 1
+                            if( record_wave_file_count <= begin_threshold and record_wave_file_count > delay_threshold ):
+                                files_recorded += 1
+                                print( "Files recorded: %0d - Intensity: %0d - Power: %0d - Freq: %0d - Saving %s" % ( files_recorded, highestintensity, power, frequency, fileid ) )
+                                waveFile = wave.open(WAVE_OUTPUT_FILENAME + fileid + WAVE_OUTPUT_FILE_EXTENSION, 'wb')
+                                waveFile.setnchannels(CHANNELS)
+                                waveFile.setsampwidth(audio.get_sample_size(FORMAT))
+                                waveFile.setframerate(RATE)
+                                waveFile.writeframes(byteString)
+                                waveFile.close()
+                            else:
+                                print( "Files recorded: %0d - Intensity: %0d - Power: %0d - Freq: %0d" % ( files_recorded, highestintensity, power, frequency ) )
+                        else:
+                            record_wave_file_count = 0
+                            print( "Files recorded: %0d - Intensity: %0d - Power: %0d - Freq: %0d" % ( files_recorded, highestintensity, power, frequency ) )
+                            
+                        # Persist the total wave only once every six frames
+                        if (len(totalAudioFrames) % 6 ):
+                            byteString = b''.join(totalAudioFrames)
+                            waveFile = wave.open(FULL_WAVE_OUTPUT_FILENAME, 'wb')
                             waveFile.setnchannels(CHANNELS)
                             waveFile.setsampwidth(audio.get_sample_size(FORMAT))
                             waveFile.setframerate(RATE)
                             waveFile.writeframes(byteString)
                             waveFile.close()
-                        else:
-                            print( "Files recorded: %0d - Intensity: %0d - Power: %0d - Freq: %0d" % ( files_recorded, highestintensity, power, frequency ) )
-                    else:
-                        record_wave_file_count = 0
-                        print( "Files recorded: %0d - Intensity: %0d - Power: %0d - Freq: %0d" % ( files_recorded, highestintensity, power, frequency ) )
-                        
-                    # Persist the total wave only once every six frames
-                    if (len(totalAudioFrames) % 6 ):
-                        byteString = b''.join(totalAudioFrames)
-                        waveFile = wave.open(FULL_WAVE_OUTPUT_FILENAME, 'wb')
-                        waveFile.setnchannels(CHANNELS)
-                        waveFile.setsampwidth(audio.get_sample_size(FORMAT))
-                        waveFile.setframerate(RATE)
-                        waveFile.writeframes(byteString)
-                        waveFile.close()
                     
                         
     except Exception as e:

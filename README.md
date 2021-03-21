@@ -55,6 +55,11 @@ Sometimes if windows speech rec isnt started before the program, there appears t
 Exception while initializing sapi5 engine: module 'win32com.gen_py' has no attribute 'CLSIDToClassMap'
 You can fix that by starting windows speech rec, going to your C:\Users\YOURUSER\AppData\Local\Temp directory and rename gen_py to gen_py2 or something. This will rebuild the cache for gen_py the next time the program is run.
 
+# Using Parrot.PY with an On Screen Keyboard in Windows
+
+The OSK program in Windows is a special program that doesn't trust the input that this python program is outputting. So if you try clicking on the OSK buttons, it doesn't respond.
+A way to mitigate that is by running your command line program as an administrator. You can do this by searching for your command line program in the start menu, and right clicking on the option 'Run as administrator'.
+
 # Other related stuff
 
 For instructions on upgrading and the release notes, look on ![this page](docs/RELEASE_NOTES.md).
