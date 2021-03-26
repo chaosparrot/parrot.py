@@ -33,8 +33,8 @@ def countdown( seconds ):
 def record_controls( key_poller, recordQueue=None ):
     global currently_recording
     global stream
-    ESCAPEKEY = b'\x1b'
-    SPACEBAR = b' '
+    ESCAPEKEY = '\x1b'
+    SPACEBAR = ' '
     
     character = key_poller.poll()
     if(character is not None):    

@@ -19,7 +19,7 @@ def combine_models():
         if ( file.endswith(".pth.tar") ):
             available_state_dicts.append( file )            
             
-    if( len( available_models ) < 2 and available_state_dicts < 1 ):
+    if( len( available_models ) < 2 and len(available_state_dicts) < 1 ):
         print( "It looks like you haven't trained more than one model yet..." )
         print( "Please train an algorithm first using the [L] option in the main menu" )
         return
