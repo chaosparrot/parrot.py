@@ -19,8 +19,8 @@ Python packages such as
 * pydirectinput *( for mouse and keyboard simulation, but with DirectX keycodes instead )*
 * dragonfly2 *( For speech recognition purposes )*
 * pythoncom *( for listening to speech recognition commands )*
-* pytorch *( OPTIONAL - Used for improved neural nets )*
-* audiomentations *( OPTIONAL - Used in training for generating more samples to train on ) 
+* pytorch *( Used for improved neural nets )*
+* audiomentations *( Used in training for generating more samples to train on ) 
 
 # Hardware requirements
 * A decent computer to run machine learning training on

@@ -270,3 +270,7 @@ def readFromCommandBuffer(read_pointer = 1):
         # Increase the read pointer by one block
         _buffer[_read_pointers[read_pointer_index]] = (_buffer[_read_pointers[read_pointer_index]] + 1) % _buffer[IPC_MEMLOC_COMMAND_CIRCLEBUFFER_LENGTH]
     return command
+    
+# Close the shared memory connection
+def close():
+    _shm.close()

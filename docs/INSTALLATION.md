@@ -50,7 +50,7 @@ pip3 install pyaudio
 After this, you can install the remaining requirements using the following command.
 
 ```bash
-pip3 install -r requirements.txt
+pip3 install -r requirements-windows.txt
 ```
 
 Now you can run the following command to see if everything works
@@ -84,23 +84,15 @@ I haven't tried any other eye tracker, but this one seems just fine for this pro
 
 Follow their installation instructions and make sure you can toggle your mouse cursor following by pressing a key - I have F4 configured to toggle it
 
-Optional - Install PyTorch for advanced neural network usage
+Optional - Install PyTorch CUDA for advanced neural network usage
 ----------------
 
 I personally saw a big improvement when I switched to neural networks running in an ensemble. 
 Pytorch offers a vast array of machinelearning techniques that might be useful to get even more recognition strength out of your generated models. 
+By default, it is installed with the regular installation of Parrot, but you might have to install the stuff that uses your graphics card later if you want to train large models quicker.
 
-But setting up Pytorch might be complicated because you will also need CUDA support and a decent graphics card if you intend to make large models with it.
-If you're just playing around for the first time - You can just stick to the regular installation until you require more accuracy.
-
-When the time comes you need more accuracy, you can download the pytorch version here: https://pytorch.org/get-started/locally/ 
+When you want to start training larger models with your graphics card, you can download the pytorch version here: https://pytorch.org/get-started/locally/ 
 Make sure you select Python and pip for installation, and the CUDA version you have installed. If you do not have a graphics card with CUDA, you can also select the None option there, but training will be a lot slower.
-After installing, make sure you also install audiomentations with the command below
-
-
-```bash
-pip3 install audiomentations;
-```
 
 Optional - Install FFMPEG for recording file conversion
 ----------------

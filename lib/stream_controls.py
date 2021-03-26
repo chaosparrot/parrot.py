@@ -13,8 +13,8 @@ LOOP_STATE_SWITCHED = 2 # Special loop state where the classifier or the mode ha
 poll_counter = 0
 
 def keypress_state_change(key_poller):
-    ESCAPEKEY = b'\x1b'
-    SPACEBAR = b' '
+    ESCAPEKEY = '\x1b'
+    SPACEBAR = ' '
 
     requested_state = False
     character = key_poller.poll()
