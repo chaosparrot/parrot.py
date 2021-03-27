@@ -12,7 +12,7 @@ Running an interaction mode for testing ( uses mode_tutorial_a.py )
 ----
 
 First, copy over the mode_tutorial_a.py file from the examples directory over to the data/code directory. This is an empty interaction mode that won't react to anything.
-If you need a clean configuration, you can also copy over the config file in the examples directory to the config directory.
+If you need a clean configuration, you can remove the config file in data/code and run Parrot again, this should automatically generate an empty config file for you.
 
 We can run our program using the `play.py` command.
 This will automatically run the default classifier and the default mode in the data/code/config.py command. 
@@ -24,7 +24,7 @@ For now, we will run the `py play.py` command with a few bits added to them.
 Adding ` -t` will run the program in testing mode. In this mode - No key presses or mouse clicks will be performed, but they will be printed in your terminal.
 Adding ` -m mode_tutorial_a` will run the program with the mode_tutorial_a file placed in the data/code directory. Currently, because mode_tutorial_a is empty, it won't do much but listen for sounds.
 Adding ` -c dummy` will run the program using the dummy classifier which only recognizes sound and noise. Of course, you can replace dummy with your own trained model to use that model.
-If any of these additional bits are omitted, the program will revert to the defaults set in the config/config file.
+If any of these additional bits are omitted, the program will revert to the defaults set in the data/code/config.py and lib/default_config.py files.
 
 As you can see, nothing is actually being done now when you are running the program. We're going to change that in the next step.
 
