@@ -82,7 +82,7 @@ def learn_data():
         dataset_labels = determine_labels( dir_path )
         print( "--------------------------" )
         dataset = AudioDataset(DATASET_FOLDER, dataset_labels, settings)
-        trainer = AudioNetTrainer(dataset, net_count)
+        trainer = AudioNetTrainer(dataset, net_count, settings)
         
         print( "Learning the data..." )
         trainer.train( clf_filename )

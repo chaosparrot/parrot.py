@@ -37,6 +37,7 @@ class TorchEnsembleClassifier:
             model = TinyAudioNet(input_size, len(state_dict['labels']))
             model.load_state_dict(state_dict['state_dict'])
             model.to( self.device )
+            model.double()
             model.eval()
             self.classifiers[key] = model
             classifierArray.append( key )
