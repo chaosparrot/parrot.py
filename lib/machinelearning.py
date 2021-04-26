@@ -14,10 +14,13 @@ from config.config import *
 import wave
 import audioop
 from lib.mfsc import Mfsc
+import torchaudio
+import torch
 if (PYTORCH_AVAILABLE == True):
     from audiomentations import Compose, AddGaussianNoise, Shift, TimeStretch
 
 _mfscs = {}
+_mfscsn = {}
 
 def feature_engineering( wavFile, record_seconds, input_type ):
     fs, rawWav = scipy.io.wavfile.read( wavFile )
@@ -53,6 +56,15 @@ def feature_engineering_raw( wavData, sampleRate, intensity, record_seconds, inp
         mfsc_result = _mfsc.apply( wavData )
         data_row = []
         data_row.extend( mfsc_result.ravel() )
+    elif(input_type == TYPE_FEATURE_ENGINEERING_NOOV_MFSC):
+        global _mfscsn
+        if ( sampleRate not in _mfscsn ):
+            _mfscsn[sampleRate] = Mfsc(sr=sampleRate, n_mel=40, preem_coeff=0.5, frame_stride_ms=10, frame_size_ms=10)
+
+        _mfsc = _mfscsn[sampleRate]
+        mfsc_result = _mfsc.apply( wavData )
+        data_row = []        
+        data_row.extend( mfsc_result.ravel() )
         
     return data_row, freq
     
@@ -77,6 +89,15 @@ def training_feature_engineering( wavFile, settings):
         _mfsc = _mfscs[fs]
         mfsc_result = _mfsc.apply( wavData )
         data_row.extend( mfsc_result.ravel() )
+    elif(input_type == TYPE_FEATURE_ENGINEERING_NOOV_MFSC):
+        global _mfscsn
+        if ( fs not in _mfscsn ):
+            _mfscsn[fs] = Mfsc(sr=fs, n_mel=40, preem_coeff=0.5, frame_stride_ms=10, frame_size_ms=10)
+
+        _mfsc = _mfscsn[fs]
+        mfsc_result = _mfsc.apply( wavData )
+        data_row.extend( mfsc_result.ravel() )
+
     else:
         print( "OLD MFCC TYPE IS NOT SUPPORTED FOR TRAINING PYTORCH" )
         
@@ -110,6 +131,15 @@ def augmented_feature_engineering( wavFile, settings ):
         _mfsc = _mfscs[fs]
         mfsc_result = _mfsc.apply( wavData )
         data_row.extend( mfsc_result.ravel() )
+    elif(input_type == TYPE_FEATURE_ENGINEERING_NOOV_MFSC):
+        global _mfscsn
+        if ( fs not in _mfscsn ):
+            _mfscsn[fs] = Mfsc(sr=fs, n_mel=40, preem_coeff=0.5, frame_stride_ms=10, frame_size_ms=10)
+
+        _mfsc = _mfscsn[fs]
+        mfsc_result = _mfsc.apply( wavData )
+        data_row.extend( mfsc_result.ravel() )
+
     else:
         print( "OLD MFCC TYPE IS NOT SUPPORTED FOR TRAINING PYTORCH" )    
     return data_row
@@ -178,8 +208,9 @@ def get_highest_intensity_of_wav_file( wav_file, record_seconds ):
     
     return np.amax( intensity )
         
-def get_loudest_freq( fftData, recordLength ):
-    fft_result = fft( fftData )
+def get_loudest_freq( wavData, recordLength ):
+    fft_result = fft( wavData )
+
     positiveFreqs = np.abs( fft_result[ 0:round( len(fft_result)/2 ) ] )
     highestFreq = 0
     loudestPeak = 500

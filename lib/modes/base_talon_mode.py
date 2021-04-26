@@ -37,6 +37,7 @@ class BaseTalonMode(BaseMode, metaclass=ABCMeta):
         if (after_sound_throttled != self.talon_throttled):
             if (after_sound_throttled == False):
                 print( "Re-enabling Talon Voice")
+                
                 self.talon_wake()
                 self.talon_throttled = False
             elif (after_sound_throttled == True):
@@ -78,5 +79,5 @@ class BaseTalonMode(BaseMode, metaclass=ABCMeta):
         self.scroll_wheel(momentum)
 
     def scroll_wheel(self, momentum=1):
-        scroll = int(20 * momentum)
+        scroll = int(momentum)
         self.write("actions.mouse_scroll(" + str(scroll) + ")")

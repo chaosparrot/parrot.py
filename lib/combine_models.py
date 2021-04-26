@@ -174,8 +174,10 @@ def define_settings(settings):
         print("[1] - RAW - Raw WAVE input")        
         print("[2] - V0.8 - MFCC input with frequency and intensity")
         print("[3] - V0.9 - Normalized MFCC input")
+        print("[4] - V0.12 - Normalized MFSC input")
+        print("[5] - V0.12 - Non-overlapping MFSC input")
         feature_engineering = input("")
-        if (feature_engineering != "" and int(feature_engineering) > 0 and int(feature_engineering) < 4 ):
+        if (feature_engineering != "" and int(feature_engineering) > 0 and int(feature_engineering) < 6 ):
             settings['FEATURE_ENGINEERING_TYPE'] = int(feature_engineering)
     print( "-------------------------" )
     return settings

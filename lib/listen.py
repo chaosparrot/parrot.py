@@ -23,6 +23,7 @@ from lib.audio_model import AudioModel
 from lib.stream_controls import manage_loop_state
 from lib.key_poller import KeyPoller
 STATE_POLLING_THRESHOLD = 0.2
+from pyinstrument import Profiler
     
 def classify_audioframes( audioQueue, audio_frames, classifier, high_speed ):
     if( not audioQueue.empty() ):
@@ -35,23 +36,24 @@ def classify_audioframes( audioQueue, audio_frames, classifier, high_speed ):
             print( "SKIP FRAME", audioQueue.qsize() )
             audioQueue.get()
         
-        if( len( audio_frames ) >= 2 ):
-            audio_frames = audio_frames[-2:]
+        window_amount = classifier.get_setting('SLIDING_WINDOW_AMOUNT', SLIDING_WINDOW_AMOUNT)
+        if( len( audio_frames ) >= window_amount ):
+            audio_frames = audio_frames[-window_amount:]
                         
-            highestintensity = np.amax( audioop.maxpp( audio_frames[1], 4 ) / 32767 )
+            highestintensity = np.amax( audioop.maxpp( audio_frames[window_amount - 1], 4 ) / 32767 )
             wavData = b''.join(audio_frames)
                 
             # SKIP FEATURE ENGINEERING COMPLETELY WHEN DEALING WITH SILENCE
             if( high_speed == True and highestintensity < SILENCE_INTENSITY_THRESHOLD ):
-                probabilityDict, predicted, frequency = create_empty_probability_dict( classifier, {}, 0, highestintensity, 0 )
+                probabilityDict, predicted, frequency, distance = create_empty_probability_dict( classifier, {}, 0, highestintensity, 0 )
             else:
                 fftData = np.frombuffer( wavData, dtype=np.int16 )
                 power = get_recording_power( fftData, classifier.get_setting('RECORD_SECONDS', RECORD_SECONDS) )            
-                probabilityDict, predicted, frequency = predict_raw_data( wavData, classifier, highestintensity, power )
+                probabilityDict, predicted, frequency, distance = predict_raw_data( wavData, classifier, highestintensity, power )
             
-            return probabilityDict, predicted, audio_frames, highestintensity, frequency, wavData
+            return probabilityDict, predicted, audio_frames, highestintensity, frequency, wavData, distance
             
-    return False, False, audio_frames, False, False, False
+    return False, False, audio_frames, False, False, False, 0
     
 def action_consumer( stream, classifier, dataDicts, persist_replay, replay_file, mode_switcher=False ):
     actions = []
@@ -96,7 +98,7 @@ def action_consumer( stream, classifier, dataDicts, persist_replay, replay_file,
                                                 
                         csvfile.flush()
                     else:
-                        time.sleep( RECORD_SECONDS / 3 )
+                        time.sleep( RECORD_SECONDS / 30 )
         else:
             while( listening_state['currently_recording'] == True ):
                 if( not listening_state['classifierQueue'].empty() ):
@@ -109,14 +111,13 @@ def action_consumer( stream, classifier, dataDicts, persist_replay, replay_file,
                         if( isinstance( actions, list ) == False ):
                             actions = []
                 else:
-                    time.sleep( RECORD_SECONDS / 3 )
+                    time.sleep( RECORD_SECONDS / 30 )
     except Exception as e:
         print( "----------- ERROR DURING CONSUMING ACTIONS -------------- " )
         exc_type, exc_value, exc_tb = sys.exc_info()
         traceback.print_exception(exc_type, exc_value, exc_tb)
         listening_state['stream'].stop_stream()
         listening_state['currently_recording'] = False
-
     
 def classification_consumer( audio, stream, classifier, persist_files, high_speed ):
     audio_frames = []
@@ -132,11 +133,11 @@ def classification_consumer( audio, stream, classifier, persist_files, high_spee
     
     try:    
         while( listening_state['currently_recording'] == True ):
-            probabilityDict, predicted, audio_frames, highestintensity, frequency, wavData = classify_audioframes( listening_state['audioQueue'], audio_frames, classifier, high_speed )
+            probabilityDict, predicted, audio_frames, highestintensity, frequency, wavData, distance = classify_audioframes( listening_state['audioQueue'], audio_frames, classifier, high_speed )
             
             # Skip if a prediction could not be made
             if( probabilityDict == False ):
-                time.sleep( classifier.get_setting('RECORD_SECONDS', RECORD_SECONDS) / 3 )
+                time.sleep( classifier.get_setting('RECORD_SECONDS', RECORD_SECONDS) / 6 )
                 continue
                 
             seconds_playing = time.time() - starttime
@@ -145,7 +146,7 @@ def classification_consumer( audio, stream, classifier, persist_files, high_spee
             prediction_time = time.time() - starttime - seconds_playing
             
             #long_comment = "Time: %0.2f - Prediction in: %0.2f - Winner: %s - Percentage: %0d - Frequency %0d                                        " % (seconds_playing, prediction_time, winner, probabilityDict[winner]['percent'], probabilityDict[winner]['frequency'])
-            short_comment = "T %0.3f - [%0d%s %s] F:%0d P:%0d" % (seconds_playing, probabilityDict[winner]['percent'], '%', winner, frequency, probabilityDict[winner]['power'])            
+            short_comment = "T %0.3f - [%0d%s %s] F:%0d P:%0d D:%0.1f" % (seconds_playing, probabilityDict[winner]['percent'], '%', winner, frequency, probabilityDict[winner]['power'], distance)            
             if( winner != "silence" ):
                 print( short_comment )
             
@@ -162,13 +163,11 @@ def classification_consumer( audio, stream, classifier, persist_files, high_spee
         exc_type, exc_value, exc_tb = sys.exc_info()
         traceback.print_exception(exc_type, exc_value, exc_tb)
         listening_state['stream'].stop_stream()
-        listening_state['currently_recording'] = False
-    
+        listening_state['currently_recording'] = False    
     
 def nonblocking_record( in_data, frame_count, time_info, status ):
     global listening_state
     listening_state['audioQueue'].put( in_data )
-    
     return in_data, pyaudio.paContinue
     
 def start_nonblocking_listen_loop( classifier, mode_switcher = False, persist_replay = False, persist_files = False, amount_of_seconds=-1, high_speed=False ):
@@ -275,7 +274,9 @@ def predict_wav_files( classifier, wav_files ):
     print( "                                                                                           ", end="\r" )
     
     return probabilities
-        
+
+predictions_done = 0
+predictions_saved = 0        
 def predict_raw_data( wavData, classifier, intensity, power ):
     # FEATURE ENGINEERING
     first_channel_data = np.frombuffer( wavData, dtype=np.int16 )
@@ -285,8 +286,18 @@ def predict_raw_data( wavData, classifier, intensity, power ):
     data_row, frequency = feature_engineering_raw( first_channel_data, classifier.get_setting('RATE', RATE), intensity, classifier.get_setting('RECORD_SECONDS', RECORD_SECONDS), 
         classifier.get_setting('FEATURE_ENGINEERING_TYPE', FEATURE_ENGINEERING_TYPE) )    
     data = [ data_row ]
-
-    return create_probability_dict( classifier, data, frequency, intensity, power )
+    
+    # Check similarity between slices
+    global predictions_done
+    global predictions_saved
+    first_slice = np.array(data_row[:40])
+    second_slice = np.array(data_row[-40:])
+    distance = np.linalg.norm(first_slice-second_slice)
+    if (distance < 2.0):
+        predictions_saved += 1
+    predictions_done += 1
+    
+    return create_probability_dict( classifier, data, frequency, intensity, power, distance )
         
 def predict_wav_file( wav_file, classifier, intensity ):
     # FEATURE ENGINEERING
@@ -317,9 +328,9 @@ def create_empty_probability_dict( classifier, data, frequency, intensity, power
     if ('silence' not in classifier.classes_):
         probabilityDict['silence'] = { 'percent': 100, 'intensity': int(intensity), 'winner': True, 'frequency': frequency, 'power': power }
             
-    return probabilityDict, predicted, frequency
+    return probabilityDict, predicted, frequency, 0
     
-def create_probability_dict( classifier, data, frequency, intensity, power ):
+def create_probability_dict( classifier, data, frequency, intensity, power, distance=0 ):
     # Predict the outcome of the audio file    
     probabilities = classifier.predict_proba( data ) * 100
     probabilities = probabilities.astype(int)
@@ -337,7 +348,7 @@ def create_probability_dict( classifier, data, frequency, intensity, power ):
     if ('silence' not in classifier.classes_):
         probabilityDict['silence'] = { 'percent': 100, 'intensity': int(intensity), 'winner': False, 'frequency': frequency, 'power': power }
         
-    return probabilityDict, predicted, frequency
+    return probabilityDict, predicted, frequency, distance
     
 # Load in a classifier that also sets the classifier state during runtime
 def load_running_classifier( classifier_name ):

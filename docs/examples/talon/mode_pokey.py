@@ -45,4 +45,4 @@ class PokeyMode(BaseTalonMode):
             #self.wheel_down(momentum)
             #self.wheel_up(momentum)
         #else:
-        super().handle_sounds(dataDicts)
+        super().handle_sounds(dataDicts) 

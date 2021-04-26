@@ -199,7 +199,7 @@ def audio_analysis( available_models ):
         classifier = None
         print( "-------------------------" )
         print( "Analyzing file " + replay_file )
-        plot_replay( pd.read_csv( replay_file, skiprows=0, header=0) )
+        #plot_replay( pd.read_csv( replay_file, skiprows=0, header=0) )
     elif( new_or_existing.lower() == "e" ):
         print( "-------------------------" )
         print( "Analysing existing audio files" )
