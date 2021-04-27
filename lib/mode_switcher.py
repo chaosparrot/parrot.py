@@ -1,7 +1,4 @@
-from dragonfly import Grammar, CompoundRule
 from time import sleep
-import pyautogui
-from lib.modes.mode_switch import SwitchMode
 from lib.system_toggles import toggle_speechrec
 import sys
 import inspect
