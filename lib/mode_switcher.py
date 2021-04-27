@@ -7,6 +7,7 @@ import sys
 import inspect
 import importlib
 import lib.ipc_manager as ipc_manager
+import os.path as path
 
 class ModeSwitcher(object):
     __instance = None
@@ -31,6 +32,7 @@ class ModeSwitcher(object):
                 
     def switchMode( self, nextMode, run_after_switching = False ):
         # When no switch is needed - NOOP
+        nextMode = nextMode.strip()
         if (self.__currentModeName == nextMode ):
             return True
         
@@ -44,8 +46,19 @@ class ModeSwitcher(object):
             ModeSwitcher.__currentMode.exit()
             
         if( nextMode not in self.__modes ):
-            full_module_name = "lib.modes." + nextMode
-            nextModule = importlib.import_module(full_module_name)
+            # Keep the backwards compatible mode lib/modes/ directory for current users
+            if (path.exists("lib/modes/" + nextMode + ".p")):
+                full_module_name = "lib.modes." + nextMode 
+            # Use data/code for new users
+            elif (not path.exists("data/code/" + nextMode + ".py")):
+                print("")            
+                print("---- MODE NOT FOUND ERROR ----")
+                print( "Could not find " + nextMode + ", does the " + nextMode + ".py file exist in the data/code folder?" )
+                print("------------------------------")                
+                exit()
+            else:
+                full_module_name = "data.code." + nextMode
+                nextModule = importlib.import_module(full_module_name)
             
             module_found = False
             clsmembers = inspect.getmembers(sys.modules[full_module_name], inspect.isclass)
@@ -61,7 +74,13 @@ class ModeSwitcher(object):
                 ipc_manager.requestParrotState(current_state)
                 ipc_manager.setParrotState(current_state)
             else:
-                print( "MODE " + nextMode + " NOT FOUND!" )
+                print("")
+                print("---- MODE NOT FOUND ERROR ----")
+                print( "The file " + nextMode + ".py does not contain a valid class." )
+                print( "Make sure it looks like one of the examples in the docs/examples folder." )
+                print( "For more information on how modes work, look in the docs/TUTORIAL.md file." )
+                print("------------------------------")
+                exit()
                 return False
         else:
             ModeSwitcher.__currentMode = self.__modes[nextMode]

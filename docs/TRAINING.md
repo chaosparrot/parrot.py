@@ -3,7 +3,7 @@
 
 The goal of this step is to train a model that is accurate enough to prevent misclicks from happening and from other key strokes not being registered. 
 Training a model involves going through the [L] menu when running `py settings.py`. 
-This script will learn from your recorded audio samples and train a machine learning model to recognize them, finally saving the model in the models folder ( default is data/models, this can be changed in config/config.py ).
+This script will learn from your recorded audio samples and train a machine learning model to recognize them, finally saving the model in the models folder ( default is data/models, this can be changed in data/code/config.py, defaults are set in lib/default_config.py ).
 Here you will choose the model name and which sounds you want to recognize.
 
 ![L menu](media/settings-train.png)

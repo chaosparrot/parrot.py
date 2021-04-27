@@ -99,7 +99,8 @@ Optional - Install FFMPEG for recording file conversion
 
 It is handy to be able to convert already recorded audio files in case you want to tweak the channels or rate after having recorded the audio files.
 For this reason, FFMPEG is required if you desire to convert existing files.
-If you already have it installed, simply point to the place where it is installed inside the config/config.py file.
+If you already have it installed, simply point to the place where it is installed inside the data/code/config.py file using this line
+```PATH_TO_FFMPEG = "your_ffmpeg_location_here"```
 
 Installing ffmpeg on windows is as easy as downloading it and unzipping it somewhere on your computer. The executable should be inside the bin folder in there.
 By default, the program assumes the ffmpeg executable is placed in ffmpeg/bin inside parrot.

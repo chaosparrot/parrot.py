@@ -33,7 +33,7 @@ Replays
 ----
 
 On top of being able to do analysis using the graph, you can also analyse replays it has generated during a play or analysing session.
-These are spreadsheet files located in the replays folder ( default is data/replays - This can be changed in config/config.py ).
+These are spreadsheet files located in the replays folder ( default is data/replays - This can be changed in data/code/config.py, defaults found in lib/default_config.py ).
 
 ![Analyse replay file](media/settings-analyse-replay.png)
 

@@ -6,23 +6,23 @@ This step will require programming, but I've made this tutorial with the assumpt
 You will need to have a trained model before we can interact with it however, so make sure you have followed the previous steps. Or simply use the dummy classifier ( which only classifies noise and silence )
 
 In the examples directory, there are files labeled mode_tutorial_a.py - These are complete files with comments and explanations about what they do.
-You're free to copy and paste them in the lib/modes/ directory, and if you're running into issues, you can always copy back the original in the examples directory over the altered one in the lib/modes directory.
+You're free to copy and paste them in the data/code/ directory, and if you're running into issues, you can always copy back the original in the examples directory over the altered one in the data/code directory.
 
 Running an interaction mode for testing ( uses mode_tutorial_a.py )
 ----
 
-First, copy over the mode_tutorial_a.py file from the examples directory over to the lib/modes directory. This is an empty interaction mode that won't react to anything.
+First, copy over the mode_tutorial_a.py file from the examples directory over to the data/code directory. This is an empty interaction mode that won't react to anything.
 If you need a clean configuration, you can also copy over the config file in the examples directory to the config directory.
 
 We can run our program using the `play.py` command.
-This will automatically run the default classifier and the default mode in the config/config.py command. 
+This will automatically run the default classifier and the default mode in the data/code/config.py command. 
 You can always change this to match your own trained model and classifier.
 Remember, you can always pause or quit the program by pressing SPACE or ESC respectively.
 If you encounter a crash during this command, make sure you have followed the installation process and make sure you haven't skipped any steps.
 
 For now, we will run the `py play.py` command with a few bits added to them. 
 Adding ` -t` will run the program in testing mode. In this mode - No key presses or mouse clicks will be performed, but they will be printed in your terminal.
-Adding ` -m mode_tutorial_a` will run the program with the mode_tutorial_a file placed in the lib/modes directory. Currently, because mode_tutorial_a is empty, it won't do much but listen for sounds.
+Adding ` -m mode_tutorial_a` will run the program with the mode_tutorial_a file placed in the data/code directory. Currently, because mode_tutorial_a is empty, it won't do much but listen for sounds.
 Adding ` -c dummy` will run the program using the dummy classifier which only recognizes sound and noise. Of course, you can replace dummy with your own trained model to use that model.
 If any of these additional bits are omitted, the program will revert to the defaults set in the config/config file.
 
@@ -104,13 +104,13 @@ It is also possible to detect whether or not your mouse is in a custom area of t
 In the mode_tutorial_f.py example, you can see the detect_inside_screen function. Here you can give your topleft coordinates ( x an y ) and the width and height of the box you want to detect.
 In this case, we use the topleft coordinate of the screen ( 0, 0 ) and detect a box 400 pixels wide and 400 pixels down.
 
-Using speech recognition ( uses mode_tutorial_g.py )
+Using speech recognition ( WINDOWS ONLY - uses mode_tutorial_g.py )
 ----
 
 There is another way to connect sounds with actions, and that is through speech recognition. This uses the dragonfly and windows speech recognition api that you might have installed and configured.
 Speech recognition is very powerful, and allows you to map your voice commands to actions with relative accuracy without having to do manual sound training in Parrot.py. 
 
-Before you try out speech recognition, make sure to change the SPEECH_RECOGNITION_ENABLED to True in the config/config.py file.
+Before you try out speech recognition, make sure to add SPEECH_RECOGNITION_ENABLED=True in the data/code/config.py file.
 In the mode_tutorial_g.py file, I have added two speech commands. They can be read in the part annotated with A. These two commands will press a and b respectively, but the last command will also toggle speech recognition off.
 
 On top of that, you will notice a handle_sound and a handle_speech area. Parrot.py allows you to recognize the speech recognition in unison with regular sounds, however, these can usually conflict with one another. 

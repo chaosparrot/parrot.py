@@ -1,3 +1,4 @@
+import lib.config_generator
 from config.config import *
 from lib.listen import start_nonblocking_listen_loop, load_running_classifier
 from lib.mode_switcher import ModeSwitcher

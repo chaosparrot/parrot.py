@@ -47,9 +47,7 @@ class SwitchMode:
 
     def start( self ):
         self.grammar.load()    
-        mute_sound()
         toggle_speechrec()
-        
         
     def handle_input( self, dataDicts ):
         if( SPEECHREC_ENABLED == True ):
@@ -66,7 +64,6 @@ class SwitchMode:
     def exit( self ):
         self.grammar.unload()        
         toggle_speechrec()
-        turn_on_sound()
 
 if( SPEECHREC_ENABLED == True and IS_WINDOWS == True ):
 

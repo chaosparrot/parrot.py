@@ -16,12 +16,12 @@ Flac is the standard file output from audio recording in Talon Voice, a similar 
 As of the moment of this writing, Talon uses a sample rate of 16kHz with 1 audio channel.
 Users that seek to use their existing talon noise recordings to try out parrot can use the following workflow.
 
-1. Copy the contents of the recordings over to your recording folder ( path is in the config/config.py RECORDINGS_FOLDER setting )
+1. Copy the contents of the recordings over to your recording folder ( path is in the lib/default_config.py RECORDINGS_FOLDER setting )
    Make sure the contents are two levels deep - the folder name should be the name of the recorded sound, and the files inside should be the .flac files.
 2. Configure the config/config.py file with RATE=16000 and CHANNELS=1
 3. In the conversion menu, press [W]
 4. Select all the sounds you desire to convert
-5. Let it do the conversion. The files will be placed inside the folder designated by the CONVERSION_OUTPUT_FOLDER setting in the config/config.py file.
+5. Let it do the conversion. The files will be placed inside the folder designated by the CONVERSION_OUTPUT_FOLDER setting in the lib/default_config.py file.
 
 Please note that parrot does not aim to be a replacement of Talon Voice. In fact, for most cases I would recommend Talon Voice over parrot. 
 Do consider donating the audio files you might have already recorded to Talon, as it greatly helps develop this program. 
