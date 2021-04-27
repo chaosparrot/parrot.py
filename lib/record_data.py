@@ -89,13 +89,8 @@ def record_sound():
     if not os.path.exists(RECORDINGS_FOLDER + "/" + directory + "/source"):
         os.makedirs(RECORDINGS_FOLDER + "/"  + directory + "/source")
 
-    threshold = input("What intensity( loudness ) threshold do you need? " )
-    if( threshold == "" ):
-        threshold = 0
-    else:
-        threshold = int(threshold)
-        
-    power_threshold = input("What signal power threshold do you need? " )
+    threshold = 0
+    power_threshold = input("What signal power ( loudness ) threshold do you need? " )
     if( power_threshold == "" ):
         power_threshold = 0
     else:
@@ -106,19 +101,7 @@ def record_sound():
         frequency_threshold = 0
     else:
         frequency_threshold = int( frequency_threshold )
-    print( "During a wave of recognized sounds... " )
-    begin_threshold = input("After how many saved files should we stop assuming the sound is being made? " )
-    if( begin_threshold == "" ):
-        begin_threshold = 1000
-    else:
-        begin_threshold = int( begin_threshold )
-
-    if( begin_threshold == 1000 ):
-        begin_threshold = input("After how many positive recognitions should we save the files? " )
-        if( begin_threshold == "" ):
-            begin_threshold = 1000
-        else:
-            begin_threshold = 0 - int( begin_threshold )
+    begin_threshold = 10000
         
     print("")
     print("You can pause/resume the recording session using the [SPACE] key, and stop the recording using the [ESC] key" )
@@ -184,7 +167,7 @@ def record_consumer(threshold, power_threshold, frequency_threshold, begin_thres
                             record_wave_file_count += 1
                             if( record_wave_file_count <= begin_threshold and record_wave_file_count > delay_threshold ):
                                 files_recorded += 1
-                                print( "Files recorded: %0d - Intensity: %0d - Power: %0d - Freq: %0d - Saving %s" % ( files_recorded, highestintensity, power, frequency, fileid ) )
+                                print( "Files recorded: %0d - Power: %0d - Freq: %0d - Saving %s" % ( files_recorded, power, frequency, fileid ) )
                                 waveFile = wave.open(WAVE_OUTPUT_FILENAME + fileid + WAVE_OUTPUT_FILE_EXTENSION, 'wb')
                                 waveFile.setnchannels(CHANNELS)
                                 waveFile.setsampwidth(audio.get_sample_size(FORMAT))
@@ -192,10 +175,10 @@ def record_consumer(threshold, power_threshold, frequency_threshold, begin_thres
                                 waveFile.writeframes(byteString)
                                 waveFile.close()
                             else:
-                                print( "Files recorded: %0d - Intensity: %0d - Power: %0d - Freq: %0d" % ( files_recorded, highestintensity, power, frequency ) )
+                                print( "Files recorded: %0d - Power: %0d - Freq: %0d" % ( files_recorded, power, frequency ) )
                         else:
                             record_wave_file_count = 0
-                            print( "Files recorded: %0d - Intensity: %0d - Power: %0d - Freq: %0d" % ( files_recorded, highestintensity, power, frequency ) )
+                            print( "Files recorded: %0d - Power: %0d - Freq: %0d" % ( files_recorded, power, frequency ) )
                             
                         # Persist the total wave only once every six frames
                         if (len(totalAudioFrames) % 6 ):

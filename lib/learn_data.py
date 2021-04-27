@@ -24,11 +24,19 @@ from lib.combine_models import define_settings, get_current_default_settings
 from lib.audio_model import AudioModel
 
 def learn_data():
+    dir_path = os.path.join( os.path.dirname( os.path.dirname( os.path.realpath(__file__)) ), DATASET_FOLDER)    
+    data_directory_names = [directory for directory in os.listdir( dir_path ) if os.path.isdir(dir_path + "/" + directory)]
+    
     print( "-------------------------" )
-    print( "Time to learn the audio files")
-    print( "This script is going to analyze all your generated audio snippets" )
-    print( "And attempt to learn the sounds to their folder names" )
-    print( "-------------------------" )
+    if (len(data_directory_names) < 2):
+        print("You haven't recorded any sounds yet in " + DATASET_FOLDER + "! Make sure to record at least two before you train a model")
+        print( "-------------------------" )
+        return
+    else:
+        print( "Time to learn the audio files")
+        print( "This script is going to analyze all your generated audio snippets" )
+        print( "And attempt to learn the sounds to their folder names" )
+        print( "-------------------------" )
     
     settings = define_settings(get_current_default_settings())
     
@@ -44,7 +52,6 @@ def learn_data():
         print( "- [A] Audio Net ( Neural net in Pytorch )" )
     print( "- [X] Exit the learning" )
 
-    dir_path = os.path.join( os.path.dirname( os.path.dirname( os.path.realpath(__file__)) ), DATASET_FOLDER)
     
     model_type = input("")
     if( model_type == "" or model_type.lower() == "r" ):
