@@ -29,7 +29,7 @@ def learn_data():
     
     print( "-------------------------" )
     if (len(data_directory_names) < 2):
-        print("You haven't recorded any sounds yet in " + DATASET_FOLDER + "! Make sure to record at least two before you train a model")
+        print("You haven't recorded enough different sounds yet in " + DATASET_FOLDER + "! Make sure to record at least two different sounds before you train a model")
         print( "-------------------------" )
         return
     else:
