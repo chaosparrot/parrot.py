@@ -2,7 +2,6 @@ import numpy as np
 from config.config import *
 import pyaudio
 import time
-import msvcrt
 from queue import *
 import lib.ipc_manager as ipc_manager
 DISCONNECTION_DETECTION_THRESHOLD = 1.0
@@ -13,13 +12,13 @@ LOOP_STATE_BLOCK = 0 # Block the listening loop and just wait for state transiti
 LOOP_STATE_SWITCHED = 2 # Special loop state where the classifier or the mode has been switched - This requires additional setup to make work
 poll_counter = 0
 
-def keypress_state_change():
-    ESCAPEKEY = b'\x1b'
-    SPACEBAR = b' '
+def keypress_state_change(key_poller):
+    ESCAPEKEY = '\x1b'
+    SPACEBAR = ' '
 
     requested_state = False
-    if( msvcrt.kbhit() ):
-        character = msvcrt.getch()
+    character = key_poller.poll()
+    if( character is not None ):
         if (character == SPACEBAR):
             requested_state = "paused" if ipc_manager.getParrotState() not in ["paused", "switching"] else "running"
         elif ( character == ESCAPEKEY ):
@@ -34,10 +33,10 @@ def set_loop_state( state ):
 # Detect state transitions by checking the IPC requested state
 # Then detecting the keypress state if no requested state is found
 # And in the final check - Detect a disconnection
-def detect_state_transition(current_state, listening_state, currenttime):
+def detect_state_transition(current_state, listening_state, currenttime, key_poller):
     requested_state = ipc_manager.getRequestedParrotState()
     if (requested_state == False):
-        requested_state = keypress_state_change()
+        requested_state = keypress_state_change(key_poller)
     if (current_state not in ["disconnected", "paused"] and requested_state == False and currenttime - listening_state['last_audio_update'] > DISCONNECTION_DETECTION_THRESHOLD):
         requested_state = "disconnected"
     return requested_state 
@@ -85,7 +84,7 @@ def transition_state(listening_state, modeSwitcher, current_state, requested_sta
     if (current_state == "disconnected"):
         global poll_counter
         if (requested_state == False):
-            audio = pyaudio.PyAudio()        
+            audio = pyaudio.PyAudio()
             try:
                 stream = audio.open(format=FORMAT, channels=CHANNELS, rate=RATE, input=True,
                         input_device_index=INPUT_DEVICE_INDEX,
@@ -137,8 +136,8 @@ def transition_state(listening_state, modeSwitcher, current_state, requested_sta
 
 # Manages the state machine for listening
 # By detecting changes in connectivity status, key presses and ipc requests
-def manage_loop_state(current_state, listening_state, modeSwitcher=None, currenttime=0, STATE_POLLING_THRESHOLD = 0.1):
-    requested_state = detect_state_transition(current_state, listening_state, currenttime)
+def manage_loop_state(current_state, listening_state, modeSwitcher=None, currenttime=0, STATE_POLLING_THRESHOLD = 0.1, key_poller = None):
+    requested_state = detect_state_transition(current_state, listening_state, currenttime, key_poller)
     loop_state = transition_state(listening_state, modeSwitcher, current_state, requested_state)
     
     # After switching modes or classifiers, do not set the loop state, this is handled by the mode switcher instead
@@ -148,6 +147,6 @@ def manage_loop_state(current_state, listening_state, modeSwitcher=None, current
     if (loop_state == LOOP_STATE_BLOCK ):
         set_loop_state(requested_state)
         time.sleep( STATE_POLLING_THRESHOLD )
-        return manage_loop_state(ipc_manager.getParrotState(), listening_state, modeSwitcher, currenttime, STATE_POLLING_THRESHOLD)
+        return manage_loop_state(ipc_manager.getParrotState(), listening_state, modeSwitcher, currenttime, STATE_POLLING_THRESHOLD, key_poller)
         
     return loop_state == LOOP_STATE_CONTINUE and listening_state['restart_listen_loop'] == False

@@ -4,7 +4,7 @@ This program is a prototype meant to explore ways to interact with computer syst
 It's name is inspired by the way parrots and parakeets communicate, using chirps, clicks and sometimes speech. 
 
 # Software requirements
-* Windows version 7 and up.
+* Windows version 7 and up, MacOS or Linux (X11)
 * Python 3.8 (64 bit recommended)
 * Project IRIS ( OPTIONAL - Used for turning the eyetracker into a mouse cursor )
 
@@ -19,8 +19,8 @@ Python packages such as
 * pydirectinput *( for mouse and keyboard simulation, but with DirectX keycodes instead )*
 * dragonfly2 *( For speech recognition purposes )*
 * pythoncom *( for listening to speech recognition commands )*
-* pytorch *( OPTIONAL - Used for improved neural nets )*
-* audiomentations *( OPTIONAL - Used in training for generating more samples to train on ) 
+* pytorch *( Used for improved neural nets )*
+* audiomentations *( Used in training for generating more samples to train on ) 
 
 # Hardware requirements
 * A decent computer to run machine learning training on
@@ -54,6 +54,11 @@ You can run the program by executing `py play.py`. This process might crash if y
 Sometimes if windows speech rec isnt started before the program, there appears to be a weird caching bug that shows the following error:
 Exception while initializing sapi5 engine: module 'win32com.gen_py' has no attribute 'CLSIDToClassMap'
 You can fix that by starting windows speech rec, going to your C:\Users\YOURUSER\AppData\Local\Temp directory and rename gen_py to gen_py2 or something. This will rebuild the cache for gen_py the next time the program is run.
+
+# Using Parrot.PY with an On Screen Keyboard in Windows
+
+The OSK program in Windows is a special program that doesn't trust the input that this python program is outputting. So if you try clicking on the OSK buttons, it doesn't respond.
+A way to mitigate that is by running your command line program as an administrator. You can do this by searching for your command line program in the start menu, and right clicking on the option 'Run as administrator'.
 
 # Other related stuff
 

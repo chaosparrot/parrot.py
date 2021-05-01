@@ -30,7 +30,7 @@ class TalonPipe:
     posix_writer = None
 
     def connect(self):
-        self.connection_attempt_timestamp = time.time()    
+        self.connection_attempt_timestamp = time.time()
         try:
             if( is_windows ):
                 self.win_pipe = win32file.CreateFile( talon_pipe_location, win32file.GENERIC_READ | win32file.GENERIC_WRITE, 0,

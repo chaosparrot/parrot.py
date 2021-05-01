@@ -1,11 +1,10 @@
+pyaudio
 numpy
 pandas
 matplotlib
 scikit-learn
-librosa
 python_speech_features
 pyautogui
-pydirectinput
-dragonfly2
-pywin32
 joblib
+torch
+audiomentations

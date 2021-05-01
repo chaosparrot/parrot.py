@@ -5,7 +5,7 @@ In order to train a model, you need to record sounds first. You can do this by r
 
 ![Installing packages](media/settings-record.png)
 
-This script will record sounds in seperate files of 30 milliseconds each and save them in your recordings folder ( data/recordings is the default place, which can be changed in the config/config.py file ). 
+This script will record sounds in seperate files of 30 milliseconds each and save them in your recordings folder ( data/recordings is the default place, which can be changed in the data/code/config.py file using the examples in lib/default_conifg.py ). 
 You have to be sure to record as little noise as possible. For example, if you are recording a bell sound, it is imperative that you only record that sound.
 If you accidentally recorded a different sound, you can always delete the specific file from the recordings directory.
 

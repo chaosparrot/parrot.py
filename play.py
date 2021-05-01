@@ -1,3 +1,4 @@
+import lib.config_generator
 from config.config import *
 from lib.listen import start_nonblocking_listen_loop, load_running_classifier
 from lib.mode_switcher import ModeSwitcher
@@ -32,6 +33,7 @@ def main(argv):
     
     start_nonblocking_listen_loop( classifier, mode_switcher, SAVE_REPLAY_DURING_PLAY, SAVE_FILES_DURING_PLAY, -1, True )
     mode_switcher.exit()
+    ipc_manager.close()
 
 if __name__ == "__main__":
    main(sys.argv[1:])

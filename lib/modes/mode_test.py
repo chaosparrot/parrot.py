@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 
 class TestMode:
 
-	def __init__(self, modeSwitcher):
+	def __init__(self, modeSwitcher, is_testing):
 		self.mode = "regular"
 		self.modeSwitcher = modeSwitcher
 
@@ -25,7 +25,7 @@ class TestMode:
 		self.starttime = time.time()
 		
 		self.preventDoubleClickInPlotMode = time.time() 
-		self.plot_in_seconds( 15.00 )
+		self.plot_in_seconds( 60.00 )
 
 	def handle_input( self, dataDicts ):
 	

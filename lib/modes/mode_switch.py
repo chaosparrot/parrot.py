@@ -7,11 +7,10 @@ from time import sleep
 from subprocess import call
 from lib.system_toggles import toggle_eyetracker, turn_on_sound, mute_sound, toggle_speechrec
 import os
-import pythoncom
 from lib.modes import *
 from config.config import *
 
-if( SPEECHREC_ENABLED == True ):
+if( SPEECHREC_ENABLED == True and IS_WINDOWS == True ):
     import pythoncom
     from dragonfly import Grammar, CompoundRule, Integer
 
@@ -20,7 +19,7 @@ class SwitchMode:
     def __init__(self, modeSwitcher):
         self.mode = "regular"
                 
-        if( SPEECHREC_ENABLED == True ):
+        if( SPEECHREC_ENABLED == True and IS_WINDOWS == True ):
             # Create a grammar which contains and loads the command rule.
             self.grammar = Grammar("Switch grammar")                # Create a grammar to contain the command    rule.
             twitchRule = TwitchModeRule()
@@ -48,14 +47,16 @@ class SwitchMode:
 
     def start( self ):
         self.grammar.load()    
-        mute_sound()
         toggle_speechrec()
-        
         
     def handle_input( self, dataDicts ):
         if( SPEECHREC_ENABLED == True ):
-            pythoncom.PumpWaitingMessages()
-            sleep(.1)
+            if (IS_WINDOWS == True):
+                pythoncom.PumpWaitingMessages()
+                sleep(.1)
+            else:
+                print( "No speech recognition is available on other platforms than windows, exiting mode switching" )
+                self.exit()
         else:
             print( "NO SPEECH RECOGNITION ENABLED - CANNOT SWITCH BETWEEN MODES" )
             sleep(.5)
@@ -63,9 +64,8 @@ class SwitchMode:
     def exit( self ):
         self.grammar.unload()        
         toggle_speechrec()
-        turn_on_sound()
 
-if( SPEECHREC_ENABLED == True ):
+if( SPEECHREC_ENABLED == True and IS_WINDOWS == True ):
 
     # Voice command rule combining spoken form and recognition processing.
     class TwitchModeRule(CompoundRule):

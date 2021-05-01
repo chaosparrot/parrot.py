@@ -1,4 +1,5 @@
 data/replays/*.csv
+data/replays/audio/*
 !data/replays/.gitkeep
 data/recordings/*
 !data/recordings/.gitkeep
@@ -12,3 +13,5 @@ config/__pycache__/*
 __pycache__*
 ffmpeg
 lib/private/*
+data/code/*
+data/README.md

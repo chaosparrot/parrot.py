@@ -10,6 +10,9 @@ import csv
 from config.config import *
 import torch.optim as optim
 import time 
+from lib.combine_models import connect_model
+from lib.key_poller import KeyPoller
+import random
 
 class TinyAudioNet(nn.Module):
 
@@ -47,7 +50,7 @@ class TinyAudioNetEnsemble(nn.Module):
         self.models = []
         self.model_length = len(models)
         for model in models:
-            model.double()
+            #model.double()
             self.models.append(model)
             
     def forward(self, x):
@@ -61,60 +64,63 @@ class TinyAudioNetEnsemble(nn.Module):
         return out / self.model_length
             
 class AudioNetTrainer:
-
     nets = []
     dataset_labels = []
     dataset_size = 0
     
     optimizers = []
-    validation_loader = None
-    train_loader = None
+    validation_loaders = []
+    train_loaders = []
     criterion = nn.NLLLoss()
     batch_size = 256
     validation_split = .2
     max_epochs = 300
-    random_seed = 42
+    random_seeds = []
     use_cuda = torch.cuda.is_available()
     device = torch.device("cuda" if use_cuda else "cpu")
     dataset = False
-    train_indecis = []
+    train_indices = []
     input_size = 120
     
-    def __init__(self, dataset, net_count = 1):
+    def __init__(self, dataset, net_count = 1, audio_settings = None):
         self.net_count = net_count
         x, y = dataset[0]
         self.input_size = len(x)
         self.dataset_labels = dataset.get_labels()
         self.dataset = dataset
         self.dataset_size = len(dataset)
+        self.audio_settings = audio_settings
+        self.dataset_size = len(dataset)
+        
+        split = int(np.floor(self.validation_split * self.dataset_size))
 
         for i in range(self.net_count):
             self.nets.append(TinyAudioNet(self.input_size, len(self.dataset_labels), True))
             self.optimizers.append(optim.SGD(self.nets[i].parameters(), lr=0.003, momentum=0.9, nesterov=True))
+            self.random_seeds.append(random.randint(0, 100000))
+            
  
-        # Split the dataset into validation and training data loaders
-        indices = list(range(self.dataset_size))
-        split = int(np.floor(self.validation_split * self.dataset_size))
-        np.random.seed(self.random_seed)
-        np.random.shuffle(indices)
-        train_indices, val_indices = indices[split:], indices[:split]
-        
-        # Append augmentations to the training indexes and recalculate the actual validation split
-        self.train_indecis = dataset.append_augmentation_ids( train_indices, 0.5 )
-        self.dataset_size = len(dataset)
-        self.validation_split = split / self.dataset_size
-        
-        train_sampler = SubsetRandomSampler(self.train_indecis)
-        valid_sampler = SubsetRandomSampler(val_indices)
-        self.train_loader = torch.utils.data.DataLoader(dataset, batch_size=self.batch_size, sampler=train_sampler)
-        self.validation_loader = torch.utils.data.DataLoader(dataset, batch_size=self.batch_size, sampler=valid_sampler)
+            # Split the dataset into validation and training data loaders
+            indices = list(range(self.dataset_size))
+            np.random.seed(self.random_seeds[i])
+            np.random.shuffle(indices)
+            train_indices, val_indices = indices[split:], indices[:split]
+            self.train_indices.append( train_indices)
+            
+            train_sampler = SubsetRandomSampler(self.train_indices[i])
+            valid_sampler = SubsetRandomSampler(val_indices)
+            self.train_loaders.append(torch.utils.data.DataLoader(dataset, batch_size=self.batch_size, sampler=train_sampler))
+            self.validation_loaders.append(torch.utils.data.DataLoader(dataset, batch_size=self.batch_size, sampler=valid_sampler))
         
     def train(self, filename):
         best_accuracy = []
+        combined_classifier_map = {}
         for i in range(self.net_count):
             self.nets[i] = self.nets[i].to(self.device)
+            combined_classifier_map['classifier_' + str(i)] = os.path.join(CLASSIFIER_FOLDER, filename + '_' + str(i + 1) + '-BEST-weights.pth.tar')
             best_accuracy.append(0)
         starttime = int(time.time())
+        combined_model = TinyAudioNetEnsemble(self.nets).to(self.device)
         
         input_size = 120
         
@@ -123,29 +129,28 @@ class AudioNetTrainer:
             headers.extend(self.dataset_labels)
             writer = csv.DictWriter(csvfile, fieldnames=headers, delimiter=',')
             writer.writeheader()
-
             for epoch in range(self.max_epochs):
-                # Reshuffle the indexes in the training batch to ensure the net does not memories the order of data being fed in
-                np.random.shuffle(self.train_indecis)
-                train_sampler = SubsetRandomSampler(self.train_indecis)
-                self.train_loader = torch.utils.data.DataLoader(self.dataset, batch_size=self.batch_size, sampler=train_sampler)                
-            
                 # Training
-                #self.dataset.set_training(True)
+                self.dataset.set_training(True)
                 epoch_loss = 0.0
                 running_loss = []                
                 for j in range(self.net_count):
                     running_loss.append(0.0)
                     self.nets[j].train(True)
-                i = 0
-                with torch.set_grad_enabled(True):
-                    for local_batch, local_labels in self.train_loader:
-                        # Transfer to GPU
-                        local_batch, local_labels = local_batch.to(self.device), local_labels.to(self.device)
-                        
-                        # Zero the gradients for this batch
-                        i += 1                        
-                        for j in range(self.net_count):
+                    
+                    # Reshuffle the indexes in the training batch to ensure the net does not memories the order of data being fed in
+                    np.random.shuffle(self.train_indices[j])
+                    train_sampler = SubsetRandomSampler(self.train_indices[j])
+                    self.train_loaders[j] = torch.utils.data.DataLoader(self.dataset, batch_size=self.batch_size, sampler=train_sampler)                
+                    
+                    i = 0
+                    with torch.set_grad_enabled(True):
+                        for local_batch, local_labels in self.train_loaders[j]:
+                            # Transfer to GPU
+                            local_batch, local_labels = local_batch.to(self.device), local_labels.to(self.device)
+                            
+                            # Zero the gradients for this batch
+                            i += 1                        
                             net = self.nets[j]
                             optimizer = self.optimizers[j]
                             optimizer.zero_grad()
@@ -174,28 +179,28 @@ class AudioNetTrainer:
                     self.nets[j].train(False)
                 
                 # Validation
-                #self.dataset.set_training(False)                
+                self.dataset.set_training(False)
                 epoch_validation_loss = []
                 correct = []
                 epoch_loss = []
-                accuracy = []                
+                accuracy = []
+                combined_correct = 0
                 for j in range(self.net_count):
                     epoch_validation_loss.append(0.0)
                     correct.append(0)
                 
-                with torch.set_grad_enabled(False):
-                    accuracy_batch = {'total': {}, 'correct': {}, 'percent': {}}
-                    for dataset_label in self.dataset_labels:
-                        accuracy_batch['total'][dataset_label] = 0
-                        accuracy_batch['correct'][dataset_label] = 0
-                        accuracy_batch['percent'][dataset_label] = 0
-                
-                    for local_batch, local_labels in self.validation_loader:
-                        # Transfer to GPU
-                        local_batch, local_labels = local_batch.to(self.device), local_labels.to(self.device)
-                        
-                        # Zero the gradients for this batch
-                        for j in range(self.net_count):
+                    with torch.set_grad_enabled(False):
+                        accuracy_batch = {'total': {}, 'correct': {}, 'percent': {}}
+                        for dataset_label in self.dataset_labels:
+                            accuracy_batch['total'][dataset_label] = 0
+                            accuracy_batch['correct'][dataset_label] = 0
+                            accuracy_batch['percent'][dataset_label] = 0
+                    
+                        for local_batch, local_labels in self.validation_loaders[j]:
+                            # Transfer to GPU
+                            local_batch, local_labels = local_batch.to(self.device), local_labels.to(self.device)
+                            
+                            # Zero the gradients for this batch
                             optimizer = self.optimizers[j]
                             net = self.nets[j]
                             optimizer.zero_grad()
@@ -206,31 +211,40 @@ class AudioNetTrainer:
                             loss = self.criterion(output, local_labels)
                             epoch_validation_loss[j] += output.shape[0] * loss.item()
                             
+                            # Calculate combined accuracy on last validation pass
+                            if (j + 1 == self.net_count):
+                                combined_output = combined_model(local_batch)
+                                combined_correct += ( local_labels == combined_output.max(dim = 1)[1] ).sum().item()
+                            
                             # Calculate the percentages
                             for index, label in enumerate(local_labels):
                                 local_label_string = self.dataset_labels[label]
                                 accuracy_batch['total'][local_label_string] += 1
                                 if( output[index].argmax() == label ):
                                     accuracy_batch['correct'][local_label_string] += 1
-                                accuracy_batch['percent'][local_label_string] = accuracy_batch['correct'][local_label_string] / accuracy_batch['total'][local_label_string]            
-
+                                accuracy_batch['percent'][local_label_string] = accuracy_batch['correct'][local_label_string] / accuracy_batch['total'][local_label_string]
+                
+                
                 for j in range(self.net_count):
                     epoch_loss.append(epoch_validation_loss[j] / ( self.dataset_size * self.validation_split ) )
                     accuracy.append( correct[j] / ( self.dataset_size * self.validation_split ) )
                     print('[Net: %d] Validation loss: %.4f accuracy %.3f' % (j + 1, epoch_loss[j], accuracy[j]))
 
-                print('[Combined] Sum validation loss: %.4f average accuracy %.3f' % (np.sum(epoch_loss), np.average(accuracy)))
+                print('[Combined] Sum validation loss: %.4f average accuracy %.3f' % (np.sum(epoch_loss), combined_correct / ( self.dataset_size * self.validation_split )))
+                
                 csv_row = { 'epoch': epoch, 'loss': np.sum(epoch_loss), 'avg_validation_accuracy': np.average(accuracy) }
                 for dataset_label in self.dataset_labels:
                     csv_row[dataset_label] = accuracy_batch['percent'][dataset_label]
                 writer.writerow( csv_row )
                 csvfile.flush()
-                
-                for j in range(self.net_count):                
+                                
+                new_best = False
+                for j in range(self.net_count):
                     current_filename = filename + '_' + str(j+1)
                     if( accuracy[j] > best_accuracy[j] ):
                         best_accuracy[j] = accuracy[j]
                         current_filename = filename + '_' + str(j+1) + '-BEST'
+                        new_best = True
                         
                     torch.save({'state_dict': self.nets[j].state_dict(), 
                         'input_size': self.input_size,
@@ -238,7 +252,21 @@ class AudioNetTrainer:
                         'accuracy': accuracy[j],
                         'last_row': csv_row,
                         'loss': epoch_loss[j],
-                        'epoch': epoch
-                        }, os.path.join(CLASSIFIER_FOLDER, current_filename) + '-weights.pth.tar')    
-
-        
+                        'epoch': epoch,
+                        'random_seed': self.random_seeds[j],
+                        }, os.path.join(CLASSIFIER_FOLDER, current_filename) + '-weights.pth.tar')
+                
+                # Persist a new combined model with the best weights if new best weights are given
+                if (new_best == True):
+                    print( "------------------------------------------------------")
+                    print( "Persisting new combined best in " + filename )
+                    print( "------------------------------------------------------")                    
+                    connect_model( filename, combined_classifier_map, "ensemble_torch", True, self.audio_settings )
+                
+                with KeyPoller() as key_poller:
+                    ESCAPEKEY = '\x1b'
+                    character = key_poller.poll()
+                    if ( character == ESCAPEKEY ):
+                        print("Pressed escape - Stopped training loop")
+                        print( "------------------------------------------------------")
+                        return

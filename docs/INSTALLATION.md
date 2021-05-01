@@ -1,7 +1,11 @@
 # Installation guide
 -----------
 
-For this program to work, you must atleast have access to a microphone and a Windows machine that can run Python 3.8 64 bit.
+For this program to work, you must atleast have access to a microphone and a machine that can run Python 3.8 64 bit.
+This document describes installing the program on a Windows machine.
+
+If you want to install on a Mac, steps 1 to 3 can be found here: [Mac installation guide](MAC_INSTALLATION.md).
+If you want to install on a Linux device, steps 1 to 3 can be found here: [Linux installation guide](LINUX_INSTALLATION.md).
 
 Do note that this guide only details how to set up the base installation of this program ( i.e. being able to run the program without random crashes ). 
 There are no ready-made audio recognition models added to this installation, you will have to make those yourself using the settings menu.
@@ -46,7 +50,7 @@ pip3 install pyaudio
 After this, you can install the remaining requirements using the following command.
 
 ```bash
-pip3 install -r requirements.txt
+pip3 install -r requirements-windows.txt
 ```
 
 Now you can run the following command to see if everything works
@@ -80,30 +84,23 @@ I haven't tried any other eye tracker, but this one seems just fine for this pro
 
 Follow their installation instructions and make sure you can toggle your mouse cursor following by pressing a key - I have F4 configured to toggle it
 
-Optional - Install PyTorch for advanced neural network usage
+Optional - Install PyTorch CUDA for advanced neural network usage
 ----------------
 
 I personally saw a big improvement when I switched to neural networks running in an ensemble. 
 Pytorch offers a vast array of machinelearning techniques that might be useful to get even more recognition strength out of your generated models. 
+By default, it is installed with the regular installation of Parrot, but you might have to install the stuff that uses your graphics card later if you want to train large models quicker.
 
-But setting up Pytorch might be complicated because you will also need CUDA support and a decent graphics card if you intend to make large models with it.
-If you're just playing around for the first time - You can just stick to the regular installation until you require more accuracy.
-
-When the time comes you need more accuracy, you can download the pytorch version here: https://pytorch.org/get-started/locally/ 
+When you want to start training larger models with your graphics card, you can download the pytorch version here: https://pytorch.org/get-started/locally/ 
 Make sure you select Python and pip for installation, and the CUDA version you have installed. If you do not have a graphics card with CUDA, you can also select the None option there, but training will be a lot slower.
-After installing, make sure you also install audiomentations with the command below
-
-
-```bash
-pip3 install audiomentations;
-```
 
 Optional - Install FFMPEG for recording file conversion
 ----------------
 
 It is handy to be able to convert already recorded audio files in case you want to tweak the channels or rate after having recorded the audio files.
 For this reason, FFMPEG is required if you desire to convert existing files.
-If you already have it installed, simply point to the place where it is installed inside the config/config.py file.
+If you already have it installed, simply point to the place where it is installed inside the data/code/config.py file using this line
+```PATH_TO_FFMPEG = "your_ffmpeg_location_here"```
 
 Installing ffmpeg on windows is as easy as downloading it and unzipping it somewhere on your computer. The executable should be inside the bin folder in there.
 By default, the program assumes the ffmpeg executable is placed in ffmpeg/bin inside parrot.

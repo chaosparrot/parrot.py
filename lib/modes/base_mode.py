@@ -9,7 +9,6 @@ from lib.system_toggles import toggle_eyetracker, toggle_speechrec
 from lib.pattern_detector import PatternDetector
 from config.config import *
 import os
-import pythoncom
 from lib.overlay_manipulation import update_overlay_image
 
 # Quadrants
@@ -43,7 +42,7 @@ class BaseMode:
         self.shiftKey = False
         self.altKey = False
         
-        if( SPEECHREC_ENABLED == True ):
+        if( SPEECHREC_ENABLED == True and IS_WINDOWS == True ):
             from dragonfly import Grammar
             from lib.grammar.simple_grammar import SimpleSpeechCommand
             import pythoncom
@@ -73,8 +72,12 @@ class BaseMode:
                 
         # Recognize speech commands in speech mode
         if( self.mode == "speech" ):
-            pythoncom.PumpWaitingMessages()
-            self.handle_speech( dataDicts )
+            if (IS_WINDOWS == True):
+                pythoncom.PumpWaitingMessages()
+                self.handle_speech( dataDicts )
+            else:
+                print( "Speech recognition is only implemented for Windows")
+                self.mode = "regular"
             
         # Regular quick command mode
         elif( self.mode == "regular" ):
@@ -83,7 +86,8 @@ class BaseMode:
         return self.detector.tickActions
                 
     def handle_speech( self, dataDicts ):
-        print( "No speech handler" )
+        if (IS_WINDOWS == False):
+            print( "No speech handler" )
         return
         
     def handle_sounds( self, dataDicts ):

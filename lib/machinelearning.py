@@ -13,8 +13,11 @@ import matplotlib.pyplot as plt
 from config.config import *
 import wave
 import audioop
+from lib.mfsc import Mfsc
 if (PYTORCH_AVAILABLE == True):
     from audiomentations import Compose, AddGaussianNoise, Shift, TimeStretch
+
+_mfscs = {}
 
 def feature_engineering( wavFile, record_seconds, input_type ):
     fs, rawWav = scipy.io.wavfile.read( wavFile )
@@ -41,6 +44,15 @@ def feature_engineering_raw( wavData, sampleRate, intensity, record_seconds, inp
         mfcc_result1 = mfcc( wavData, samplerate=sampleRate, nfft=1103, numcep=30, nfilt=40, preemph=0.5, winstep=0.005, winlen=0.015, appendEnergy=False )
         data_row = []
         data_row.extend( mfcc_result1.ravel() )
+    elif(input_type == TYPE_FEATURE_ENGINEERING_NORM_MFSC):
+        global _mfscs
+        if ( sampleRate not in _mfscs ):
+            _mfscs[sampleRate] = Mfsc(sr=sampleRate, n_mel=40, preem_coeff=0.5, frame_stride_ms=5, frame_size_ms=15)
+
+        _mfsc = _mfscs[sampleRate]
+        mfsc_result = _mfsc.apply( wavData )
+        data_row = []
+        data_row.extend( mfsc_result.ravel() )
         
     return data_row, freq
     
@@ -57,6 +69,14 @@ def training_feature_engineering( wavFile, settings):
         data_row.extend( mfcc_result1.ravel() )
     elif ( input_type == TYPE_FEATURE_ENGINEERING_RAW_WAVE ):
         data_row = wavData
+    elif(input_type == TYPE_FEATURE_ENGINEERING_NORM_MFSC):
+        global _mfscs
+        if ( fs not in _mfscs ):
+            _mfscs[fs] = Mfsc(sr=fs, n_mel=40, preem_coeff=0.5, frame_stride_ms=5, frame_size_ms=15)
+
+        _mfsc = _mfscs[fs]
+        mfsc_result = _mfsc.apply( wavData )
+        data_row.extend( mfsc_result.ravel() )
     else:
         print( "OLD MFCC TYPE IS NOT SUPPORTED FOR TRAINING PYTORCH" )
         
@@ -82,6 +102,14 @@ def augmented_feature_engineering( wavFile, settings ):
         data_row.extend( mfcc_result1.ravel() )
     elif ( input_type == TYPE_FEATURE_ENGINEERING_RAW_WAVE ):
         data_row = wavData
+    elif(input_type == TYPE_FEATURE_ENGINEERING_NORM_MFSC):
+        global _mfscs
+        if ( fs not in _mfscs ):
+            _mfscs[fs] = Mfsc(sr=fs, n_mel=40, preem_coeff=0.5, frame_stride_ms=5, frame_size_ms=15)
+
+        _mfsc = _mfscs[fs]
+        mfsc_result = _mfsc.apply( wavData )
+        data_row.extend( mfsc_result.ravel() )
     else:
         print( "OLD MFCC TYPE IS NOT SUPPORTED FOR TRAINING PYTORCH" )    
     return data_row

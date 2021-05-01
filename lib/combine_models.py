@@ -19,7 +19,7 @@ def combine_models():
         if ( file.endswith(".pth.tar") ):
             available_state_dicts.append( file )            
             
-    if( len( available_models ) < 2 ):
+    if( len( available_models ) < 2 and len(available_state_dicts) < 1 ):
         print( "It looks like you haven't trained more than one model yet..." )
         print( "Please train an algorithm first using the [L] option in the main menu" )
         return
@@ -174,8 +174,9 @@ def define_settings(settings):
         print("[1] - RAW - Raw WAVE input")        
         print("[2] - V0.8 - MFCC input with frequency and intensity")
         print("[3] - V0.9 - Normalized MFCC input")
+        print("[4] - V0.12 - Normalized MFSC input")        
         feature_engineering = input("")
-        if (feature_engineering != "" and int(feature_engineering) > 0 and int(feature_engineering) < 4 ):
+        if (feature_engineering != "" and int(feature_engineering) > 0 and int(feature_engineering) < 5 ):
             settings['FEATURE_ENGINEERING_TYPE'] = int(feature_engineering)
     print( "-------------------------" )
     return settings
@@ -196,7 +197,7 @@ def print_available_models( available_models ):
     for modelindex, available_model in enumerate(available_models):
         print( " - [" + str( modelindex + 1 ) + "] " + available_model )
 
-def connect_model( clf_filename, classifier_map, model_type ):
+def connect_model( clf_filename, classifier_map, model_type, during_training = False, settings = None ):
     if( model_type == "hierarchial" ):
         classifier = HierarchialClassifier( classifier_map )
     elif( model_type == "ensemble" ):
@@ -205,13 +206,16 @@ def connect_model( clf_filename, classifier_map, model_type ):
         from lib.torch_ensemble_classifier import TorchEnsembleClassifier    
         classifier = TorchEnsembleClassifier( classifier_map )        
 
-    settings = define_settings( get_current_default_settings() )
+    if (settings == None):
+        settings = define_settings( get_current_default_settings() )
     classifier = AudioModel( settings, classifier )
     classifier_filename = CLASSIFIER_FOLDER + "/" + clf_filename
     joblib.dump( classifier, classifier_filename )
-    print( "-------------------------" )
-    print( "Model created!" )
-    print( "The created model contains the following " + str(len( classifier.classes_ )) + " possible predictions: " )
-    print( ", ".join( classifier.classes_ ) )
-    print( "-------------------------" )
+    
+    if (during_training == False):
+        print( "-------------------------" )
+        print( "Model created!" )
+        print( "The created model contains the following " + str(len( classifier.classes_ )) + " possible predictions: " )
+        print( ", ".join( classifier.classes_ ) )
+        print( "-------------------------" )
 

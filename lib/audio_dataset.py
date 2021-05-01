@@ -35,20 +35,7 @@ class AudioDataset(Dataset):
                         rebuild_cache = len(self.feature_engineering_cached(full_filename, False)) != len(self.feature_engineering_augmented(full_filename))
                         
                     self.samples.append([full_filename, index, torch.tensor(self.feature_engineering_cached(full_filename, rebuild_cache)).float()])
-
-    def append_augmentation_ids(self, training_ids, augmentation_probability=1.0):
-        print( "-------------------------" )
-        aug_index = len( self.samples ) - 1
-        size = len( training_ids )
-        augmented_ids = []
-        for index, training_id in enumerate(training_ids):
-            print(  "Augmenting data - " + str( math.floor(((index + 1 ) / size ) * 100)) + "%", end="\r" )
-            if ( random.uniform(0, 1) >= 1.0 - augmentation_probability ):
-                self.samples.append([self.samples[training_id][0], self.samples[training_id][1], torch.tensor(self.feature_engineering_augmented(self.samples[training_id][0])).float()])
-                aug_index += 1
-                augmented_ids.append( aug_index )
-        training_ids += augmented_ids
-        return training_ids
+                    self.augmented_samples.append(None)
 
     def set_training(self, training):
         self.training = training
@@ -72,10 +59,13 @@ class AudioDataset(Dataset):
         return len( self.samples )
 
     def __getitem__(self, idx):
-        #if (self.training ):
-        #    return self.augmented_samples[idx][2], self.augmented_samples[idx][1]
-        #else :
-        return self.samples[idx][2], self.samples[idx][1]
+        # During training, get a 10% probability that you get an augmented sample
+        if (self.training and random.uniform(0, 1) >= 0.9 ):
+            if (self.augmented_samples[idx] is None):
+                self.augmented_samples[idx] = [self.samples[idx][0], self.samples[idx][1], torch.tensor(self.feature_engineering_augmented(self.samples[idx][0])).float()]
+            return self.augmented_samples[idx][2], self.augmented_samples[idx][1]
+        else:
+            return self.samples[idx][2], self.samples[idx][1]
 		
     def get_labels(self):
         return self.paths

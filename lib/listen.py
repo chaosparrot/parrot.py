@@ -13,9 +13,6 @@ import audioop
 import math
 import time
 import csv
-from scipy.fftpack import fft
-from scipy.fftpack import fftfreq
-import msvcrt
 from queue import *
 import threading
 import traceback
@@ -24,6 +21,7 @@ import lib.ipc_manager as ipc_manager
 import joblib
 from lib.audio_model import AudioModel
 from lib.stream_controls import manage_loop_state
+from lib.key_poller import KeyPoller
 STATE_POLLING_THRESHOLD = 0.2
     
 def classify_audioframes( audioQueue, audio_frames, classifier, high_speed ):
@@ -47,7 +45,7 @@ def classify_audioframes( audioQueue, audio_frames, classifier, high_speed ):
             if( high_speed == True and highestintensity < SILENCE_INTENSITY_THRESHOLD ):
                 probabilityDict, predicted, frequency = create_empty_probability_dict( classifier, {}, 0, highestintensity, 0 )
             else:
-                power = fftData = np.frombuffer( wavData, dtype=np.int16 )
+                fftData = np.frombuffer( wavData, dtype=np.int16 )
                 power = get_recording_power( fftData, classifier.get_setting('RECORD_SECONDS', RECORD_SECONDS) )            
                 probabilityDict, predicted, frequency = predict_raw_data( wavData, classifier, highestintensity, power )
             
@@ -229,8 +227,9 @@ def start_nonblocking_listen_loop( classifier, mode_switcher = False, persist_re
     while listening_state['currently_recording'] == True and listening_state['restart_listen_loop'] == False:
         currenttime = time.time()
         
-        if( not infinite_duration and currenttime - starttime > amount_of_seconds or manage_loop_state( "running", listening_state, mode_switcher, currenttime, STATE_POLLING_THRESHOLD ) == False ):
-            listening_state['currently_recording'] = False
+        with KeyPoller() as key_poller:
+            if( not infinite_duration and currenttime - starttime > amount_of_seconds or manage_loop_state( "running", listening_state, mode_switcher, currenttime, STATE_POLLING_THRESHOLD, key_poller ) == False ):
+                listening_state['currently_recording'] = False
         time.sleep(STATE_POLLING_THRESHOLD)
 
     # Stop all the streams and different threads
