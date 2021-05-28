@@ -49,7 +49,7 @@ def learn_data():
     print( "- [R] Random Forest ( SKLEARN )" )
     print( "- [M] Multi Layer Perceptron ( Neural net in SKLEARN )" )
     if( PYTORCH_AVAILABLE ):
-        print( "- [A] Audio Net ( Neural net in Pytorch )" )
+        print( "- [A] Audio Net ( Neural net in Pytorch - Can be used by TalonVoice )" )
     print( "- [X] Exit the learning" )
 
     
@@ -74,10 +74,10 @@ def learn_data():
         return
     elif( model_type.lower() == "a" and PYTORCH_AVAILABLE ):
         print( "Selected Audio Net!")
-        print( "How many nets do you wish to train at the same time? ( Default is 1 )" )
+        print( "How many nets do you wish to train at the same time? ( Default is 3 )" )
         net_count = input("")
         if ( net_count == "" ):
-            net_count = 1
+            net_count = 3
         else:
             net_count = int(net_count)
 

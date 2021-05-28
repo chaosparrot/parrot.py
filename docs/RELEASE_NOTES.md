@@ -4,6 +4,15 @@
 The best way to upgrade Parrot.PY to make sure nothing breaks is to download this repository as a zipfile and extract it as a seperate folder to your current version.
 Then to copy over the data directory and change the config/config.py to your previous values.
 
+Version 0.12.1
+-----
+
+As of this moment, the TalonVoice beta offers first party support of Parrot models. 
+As such, the functionality to run Parrot alongside TalonVoice by communicating through the Talon repl has been removed.
+Documentation for the integration has been rewritten.
+
+If you are running the old style communication, it is recommended to get access to the Talon beta instead as the first party integration is vastly superior to the communication bridge we had before.
+
 Version 0.12.0
 -----
 
