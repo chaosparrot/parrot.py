@@ -326,10 +326,8 @@ def test_accuracy( available_models, available_sounds ):
                 for key in prediction:
                     if prediction[key]['winner']:
                         predicted_wav_file_labels.append(key)
-                if( sound in prediction ):
-                    if ( prediction[sound]['winner'] and prediction[sound]['percent'] >= threshold ):
-                        i_correct += 1
-                    else:
+                if( sound in prediction and prediction[sound]['winner'] and prediction[sound]['percent'] >= threshold ):
+                    i_correct += 1
             print( "Accuracy above threshold %0d - %0.1f " % ( threshold, round((i_correct / i) * 100.0) ), end="\n" )
     
     total_metrics = precision_recall_fscore_support( true_wav_file_labels, predicted_wav_file_labels, average=None, labels=classifier.classes_, beta=0.5 )
