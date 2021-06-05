@@ -304,10 +304,8 @@ def test_accuracy( available_models, available_sounds ):
     print( "Analysing..." )
     true_wav_file_labels = []
     predicted_wav_file_labels = []
-    false_positives = {}
     for index, sound in enumerate(available_sounds):
         if( sound in classifier.classes_ ):
-            false_positives[sound] = 0
             # First sort the wav files by time
             recordings_dir = os.path.join(RECORDINGS_FOLDER, sound )
             wav_files = os.listdir(recordings_dir)            
@@ -332,18 +330,18 @@ def test_accuracy( available_models, available_sounds ):
                     if ( prediction[sound]['winner'] and prediction[sound]['percent'] >= threshold ):
                         i_correct += 1
                     else:
-                        false_positives[sound] += 1
-            print( "Accuracy above threshold %0d - %0.1f " % ( threshold, round((i_correct / i) * 100.0) ) )
+            print( "Accuracy above threshold %0d - %0.1f " % ( threshold, round((i_correct / i) * 100.0) ), end="\n" )
     
-    total_metrics = precision_recall_fscore_support( true_wav_file_labels, predicted_wav_file_labels, average=None, labels=classifier.classes_ )
-    combined_metrics = precision_recall_fscore_support( true_wav_file_labels, predicted_wav_file_labels, average="weighted", labels=classifier.classes_ )
-    print("Output label".ljust(30) + " P       R       F1      Samples")
+    total_metrics = precision_recall_fscore_support( true_wav_file_labels, predicted_wav_file_labels, average=None, labels=classifier.classes_, beta=0.5 )
+    print("Output label".ljust(30) + " P       R       F0.5    Samples")
     print("----------------------------------------------------------------")
     for index, sound in enumerate(classifier.classes_):
         print( sound.ljust(30) + " %0.2f    %0.2f    %0.2f    %0d" % ( total_metrics[0][index], total_metrics[1][index], total_metrics[2][index], total_metrics[3][index] ) )
     print("----------------------------------------------------------------")
-    print( "Total (results weighted)".ljust(30) + " %0.2f    %0.2f    %0.2f" % ( combined_metrics[0], combined_metrics[1], combined_metrics[2] ) )    
-    
+    print("Total percentiles")
+    print("50th".ljust(30) + " %0.2f    %0.2f    %0.2f" % (np.percentile(total_metrics[0], 50), np.percentile(total_metrics[1], 50), np.percentile(total_metrics[2], 50)))
+    print("75th".ljust(30) + " %0.2f    %0.2f    %0.2f" % (np.percentile(total_metrics[0], 75), np.percentile(total_metrics[1], 75), np.percentile(total_metrics[2], 75)))
+    print("95th".ljust(30) + " %0.2f    %0.2f    %0.2f" % (np.percentile(total_metrics[0], 95), np.percentile(total_metrics[1], 95), np.percentile(total_metrics[2], 95)))
     test_data(True)
     
 def analyze_replay_or_audio( available_models, available_replays, available_sounds ):
