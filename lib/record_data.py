@@ -138,6 +138,13 @@ def record_consumer(threshold, power_threshold, frequency_threshold, begin_thres
     totalAudioFrames = []
     try:
         with KeyPoller() as key_poller:
+            # Write the source file first with the right settings to add the headers, and write the data later
+            totalWaveFile = wave.open(FULL_WAVE_OUTPUT_FILENAME, 'wb')
+            totalWaveFile.setnchannels(CHANNELS)
+            totalWaveFile.setsampwidth(audio.get_sample_size(FORMAT))
+            totalWaveFile.setframerate(RATE)
+            totalWaveFile.close()
+        
             while( True ):
                 if( not recordQueue.empty() ):
                     audioFrames.append( recordQueue.get() )
@@ -180,15 +187,15 @@ def record_consumer(threshold, power_threshold, frequency_threshold, begin_thres
                             record_wave_file_count = 0
                             print( "Files recorded: %0d - Power: %0d - Freq: %0d" % ( files_recorded, power, frequency ) )
                             
-                        # Persist the total wave only once every six frames
-                        if (len(totalAudioFrames) % 6 ):
-                            byteString = b''.join(totalAudioFrames)
-                            waveFile = wave.open(FULL_WAVE_OUTPUT_FILENAME, 'wb')
-                            waveFile.setnchannels(CHANNELS)
-                            waveFile.setsampwidth(audio.get_sample_size(FORMAT))
-                            waveFile.setframerate(RATE)
-                            waveFile.writeframes(byteString)
-                            waveFile.close()
+                    # Append to the total wav file only once every ten audio frames ( roughly once every 150 milliseconds )
+                    if (len(totalAudioFrames) >= 10 ):
+                        byteString = b''.join(totalAudioFrames)
+                        totalAudioFrames = []
+                        waveFile = open(FULL_WAVE_OUTPUT_FILENAME, 'ab')
+                        waveFile.write(byteString)
+                        waveFile.close()
+                            
+                            
                     
                         
     except Exception as e:
