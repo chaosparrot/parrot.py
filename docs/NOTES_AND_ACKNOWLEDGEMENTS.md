@@ -4,10 +4,10 @@
 During the development of Parrot.py I came across some articles and blog bposts that might defend some of the choices made in terms of the audio bits.
 Below I also have some emperical notes, which I do not have scientific backings for, but are none the less observations that might help someone else as well.
 
-![Preference for 20-40 ms window duration in speech analysis by Kuldip K. Paliwal, James G. Lyons and Kamil K. Wojcicki](http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.185.3622&rep=rep1&type=pdf)
+[Preference for 20-40 ms window duration in speech analysis by Kuldip K. Paliwal, James G. Lyons and Kamil K. Wojcicki](http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.185.3622&rep=rep1&type=pdf)
 This paper is one of the reasons why I chose a recording sound of 30 milliseconds. 
 
-![SELU - Make FNNs Great Again by Elior Cohen](https://towardsdatascience.com/selu-make-fnns-great-again-snn-8d61526802a9)
+[SELU - Make FNNs Great Again by Elior Cohen](https://towardsdatascience.com/selu-make-fnns-great-again-snn-8d61526802a9)
 This blog post, coupled with emperical evidence, provides the reason why I use SeLU over ReLU in my current architecture
 
 Emperical notes 
@@ -87,22 +87,27 @@ The first user other than me ( I forgot their name, shame on me ) - For showing 
 
 Various reddit users in the starcraft subreddit - For pointing out the confusing nature of the program output during demos, making it harder to follow which noises contribute to which actions. This resulted in me making the control visualisation that is visible in the hollow knight demo.
 	
-![feardragon64](https://github.com/feardragon64) - For briefly working on a Hands-Free starcraft project himself, and providing me with the courage to try my program out on the ladder versus actual players.
+[feardragon64](https://github.com/feardragon64) - For briefly working on a Hands-Free starcraft project himself, and providing me with the courage to try my program out on the ladder versus actual players.
 
-![lunixbochs](https://github.com/lunixbochs) - For pointing out computational optimizations with the audio and featurization pipeline, and providing a slack for a wonderful community.
+[lunixbochs](https://github.com/lunixbochs) - For pointing out computational optimizations with the audio and featurization pipeline, and providing a slack for a wonderful community.
+Not to mention helping out a ton with integration Parrot noises into Talon.
 
-![jcaw](https://github.com/jcaw) - For helping out with brainstorming the deep learning bits, pointing towards normalization and SeLU activation functions and generally doing experiments with noises as well.
+[jcaw](https://github.com/jcaw) - For helping out with brainstorming the deep learning bits, pointing towards normalization and SeLU activation functions and generally doing experiments with noises as well.
 Also for making the recording script for Talon to help boost their dataset.
 
-![okonomichiyaki](https://github.com/okonomichiyaki) - For testing out the documentation by starting from scratch and implementing their own interaction modes, and for making some demos with Hades.
+[okonomichiyaki](https://github.com/okonomichiyaki) - For testing out the documentation by starting from scratch and implementing their own interaction modes, and for making some demos with Hades.
 
 timotimo - For motivating me to start implementing audio conversion scripts and providing a continuous recording dataset from which I can do some research on.
+Also for requesting multi-microphone recording
 
 SuperfluousBrain - For pointing out a problem with the installation on Python 3.7 and up related to pyaudio and asking clarification based on the patterns
 
-![Pokey Rule](https://github.com/pokey) - For trying out Mac and Talon Voice integration with Parrot, and providing a bunch of ideas on what to improve.
+[Pokey Rule](https://github.com/pokey) - For trying out Mac and Talon Voice integration with Parrot, and providing a bunch of ideas on what to improve.
+And requesting a better microphone disconnection strategy
 
 Koeny - For pointing out Python 3.6 related installation issues, and showing the need for more specific instructions relating to installation.
+
+[Richard Hladík](https://github.com/RichardHladik) - For pointing out issues with the recording efficiency on Linux
 
 You - For reading all the way down this page and showing interest in this program <3
 

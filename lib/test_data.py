@@ -18,6 +18,7 @@ from lib.listen import start_nonblocking_listen_loop, predict_wav_files, validat
 from lib.machinelearning import feature_engineering
 import csv
 from lib.audio_model import AudioModel
+from sklearn.metrics import precision_recall_fscore_support
 
 def test_data( with_intro ):
     available_models = []
@@ -301,8 +302,10 @@ def test_accuracy( available_models, available_sounds ):
         threshold = int( threshold )
     
     print( "Analysing..." )
+    true_wav_file_labels = []
+    predicted_wav_file_labels = []
     for index, sound in enumerate(available_sounds):
-        if( sound in classifier.classes_ ):    
+        if( sound in classifier.classes_ ):
             # First sort the wav files by time
             recordings_dir = os.path.join(RECORDINGS_FOLDER, sound )
             wav_files = os.listdir(recordings_dir)            
@@ -313,16 +316,30 @@ def test_accuracy( available_models, available_sounds ):
             for wavindex, wav_file in enumerate(wav_files):
                 if( wav_file.endswith(".wav") and i < 5000 ):
                     file_path = os.path.join(recordings_dir, wav_file )
+                    true_wav_file_labels.append(sound)                    
                     full_wav_files.append( file_path )
                     i += 1
 
             predictions = predict_wav_files( classifier, full_wav_files )
             i_correct = 0
             for prediction in predictions:
+                for key in prediction:
+                    if prediction[key]['winner']:
+                        predicted_wav_file_labels.append(key)
                 if( sound in prediction and prediction[sound]['winner'] and prediction[sound]['percent'] >= threshold ):
                     i_correct += 1
-            print( "Accuracy above threshold %0d - %0.1f " % ( threshold, round((i_correct / i) * 100.0) ) )
-        
+            print( "Accuracy above threshold %0d - %0.1f " % ( threshold, round((i_correct / i) * 100.0) ), end="\n" )
+    
+    total_metrics = precision_recall_fscore_support( true_wav_file_labels, predicted_wav_file_labels, average=None, labels=classifier.classes_, beta=0.5 )
+    print("Output label".ljust(30) + " P       R       F0.5    Samples")
+    print("----------------------------------------------------------------")
+    for index, sound in enumerate(classifier.classes_):
+        print( sound.ljust(30) + " %0.2f    %0.2f    %0.2f    %0d" % ( total_metrics[0][index], total_metrics[1][index], total_metrics[2][index], total_metrics[3][index] ) )
+    print("----------------------------------------------------------------")
+    print("Total percentiles")
+    print("50th".ljust(30) + " %0.2f    %0.2f    %0.2f" % (np.percentile(total_metrics[0], 50), np.percentile(total_metrics[1], 50), np.percentile(total_metrics[2], 50)))
+    print("75th".ljust(30) + " %0.2f    %0.2f    %0.2f" % (np.percentile(total_metrics[0], 75), np.percentile(total_metrics[1], 75), np.percentile(total_metrics[2], 75)))
+    print("95th".ljust(30) + " %0.2f    %0.2f    %0.2f" % (np.percentile(total_metrics[0], 95), np.percentile(total_metrics[1], 95), np.percentile(total_metrics[2], 95)))
     test_data(True)
     
 def analyze_replay_or_audio( available_models, available_replays, available_sounds ):
