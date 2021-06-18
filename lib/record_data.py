@@ -203,7 +203,7 @@ def record_consumer(power_threshold, frequency_threshold, begin_threshold, WAVE_
                                                 
                         byteString = b''.join(audioFrames)
                         fftData = np.frombuffer( byteString, dtype=np.int16 )
-                        frequency = get_loudest_freq( fftData, RECORD_SECONDS ) if frequency_threshold > 0 else 0
+                        frequency = get_loudest_freq( fftData, RECORD_SECONDS )
                         power = get_recording_power( fftData, RECORD_SECONDS )
                         
                         fileid = "%0.2f" % ((j) * RECORD_SECONDS )
