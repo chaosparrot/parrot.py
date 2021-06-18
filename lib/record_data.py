@@ -32,7 +32,7 @@ def countdown( seconds ):
 
 def record_controls( key_poller, recordQueue=None ):
     global currently_recording
-    global stream
+    global streams
     ESCAPEKEY = '\x1b'
     SPACEBAR = ' '
     
@@ -41,22 +41,25 @@ def record_controls( key_poller, recordQueue=None ):
         if( character == SPACEBAR ):
             print( "Recording paused!" )
 
-            if (stream != None):
-                stream.stop_stream()
+            if (streams is not None):
+                for stream in streams:
+                    streams[stream].stop_stream()
 
             # Pause the recording by looping until we get a new keypress
             while( True ):
                 
                 ## If the audio queue exists - make sure to clear it continuously
                 if( recordQueue != None ):
-                    recordQueue.queue.clear()
+                    for key in recordQueue:
+                        recordQueue[key].queue.clear()
             
                 character = key_poller.poll()
                 if(character is not None):                
                     if( character == SPACEBAR ):
                         print( "Recording resumed!" )
-                        if (stream is not None):
-                            stream.start_stream()
+                        if (streams is not None):
+                            for stream in streams:
+                                streams[stream].start_stream()
                         return True
                     elif( character == ESCAPEKEY ):
                         print( "Recording stopped" )
@@ -71,14 +74,40 @@ def record_controls( key_poller, recordQueue=None ):
     
 def record_sound():
     audio = pyaudio.PyAudio()
-    if (validate_microphone_input(audio) == False):
-        return;
 
     print( "-------------------------" )
     print( "Let's record some sounds!")
     print( "This script is going to listen to your microphone input" )
     print( "And record tiny audio files to be used for learning later" )
     print( "-------------------------" )
+    
+    # Note - this assumes a maximum of 10 possible input devices, which is probably wrong but eh
+    print("What microphone do you want to record with? ( Empty is the default system mic, [X] exits the recording menu )")
+    print("You can put a space in between numbers to record with multiple microphones")
+    for index in range(audio.get_device_count()):
+        device_info = audio.get_device_info_by_index(index)
+        if (device_info and device_info['name'] and device_info['maxInputChannels'] > 0):
+            default_mic = " - " if index != INPUT_DEVICE_INDEX else " DEFAULT - "
+            host_api = audio.get_host_api_info_by_index(device_info['hostApi'])
+            host_api_string = " " + host_api["name"] if host_api else ""
+            print("[" + str(index) + "]" + default_mic + device_info['name'] + host_api_string)
+                
+    mic_index_string = input("")
+    mic_indecis = []
+    if mic_index_string == "":
+        mic_indecis = [str(INPUT_DEVICE_INDEX)]
+    elif mic_index_string.strip().lower() == "x":
+        return;
+    else:
+        mic_indecis = mic_index_string.split()
+    valid_mics = []
+    for mic_index in mic_indecis:
+        if (str.isdigit(mic_index) and validate_microphone_index(audio, int(mic_index))):
+            valid_mics.append(int(mic_index))
+    
+    if len(valid_mics) == 0:
+        print("No usable microphones selected - Exiting")
+        return;    
 
     directory = input("Whats the name of the sound are you recording? ")
     while (directory == ""):
@@ -89,7 +118,6 @@ def record_sound():
     if not os.path.exists(RECORDINGS_FOLDER + "/" + directory + "/source"):
         os.makedirs(RECORDINGS_FOLDER + "/"  + directory + "/source")
 
-    threshold = 0
     power_threshold = input("What signal power ( loudness ) threshold do you need? " )
     if( power_threshold == "" ):
         power_threshold = 0
@@ -102,29 +130,49 @@ def record_sound():
     else:
         frequency_threshold = int( frequency_threshold )
     begin_threshold = 10000
-        
+    
     print("")
     print("You can pause/resume the recording session using the [SPACE] key, and stop the recording using the [ESC] key" )
 
-    FULL_WAVE_OUTPUT_FILENAME = RECORDINGS_FOLDER + "/" + directory + "/source/i_" + str(threshold) + "__p_" + str(power_threshold) + \
-    "__f_" + str(frequency_threshold) + "__begin_" + str(begin_threshold) + "__" + str(int(time.time() ) ) + ".wav"
-    WAVE_OUTPUT_FILENAME = RECORDINGS_FOLDER + "/" + directory + "/" + str(int(time.time() ) ) + "file";
-    WAVE_OUTPUT_FILE_EXTENSION = ".wav";
-
-    global stream
-    stream = None
+    global streams
+    global recordQueue
+    global audios
+    global files_recorded
+    files_recorded = 0
+    streams = {}
+    audios = {}
+    recordQueue = {}
     if( countdown( 5 ) == False ):
         return;
     
     global currently_recording
     currently_recording = True
-    non_blocking_record(threshold, power_threshold, frequency_threshold, begin_threshold, WAVE_OUTPUT_FILENAME, WAVE_OUTPUT_FILE_EXTENSION, FULL_WAVE_OUTPUT_FILENAME)
+    
+    time_string = str(int(time.time()))
+    for index, microphone_index in enumerate(valid_mics):
+        FULL_WAVE_OUTPUT_FILENAME = RECORDINGS_FOLDER + "/" + directory + "/source/i_0__p_" + str(power_threshold) + \
+        "__f_" + str(frequency_threshold) + "__begin_" + str(begin_threshold) + "__mici_" + str(microphone_index) + "__" + time_string + ".wav"
+        WAVE_OUTPUT_FILENAME = RECORDINGS_FOLDER + "/" + directory + "/" + time_string + "__mici_" + str(microphone_index) + "__file";
+        WAVE_OUTPUT_FILE_EXTENSION = ".wav";
+        
+        non_blocking_record(power_threshold, frequency_threshold, begin_threshold, WAVE_OUTPUT_FILENAME, WAVE_OUTPUT_FILE_EXTENSION, FULL_WAVE_OUTPUT_FILENAME, microphone_index, index==0)
+    
+    # wait for stream to finish (5)
+    while currently_recording:
+        time.sleep(0.1)
+    
+    for microphone_index in valid_mics:
+        streams['index' + str(microphone_index)].stop_stream()
+        streams['index' + str(microphone_index)].close()
+        audios['index' + str(microphone_index)].terminate()
     
 # Consumes the recordings in a sliding window fashion - Always combining the two latest chunks together    
-def record_consumer(threshold, power_threshold, frequency_threshold, begin_threshold, WAVE_OUTPUT_FILENAME, WAVE_OUTPUT_FILE_EXTENSION, FULL_WAVE_OUTPUT_FILENAME, audio, stream):
+def record_consumer(power_threshold, frequency_threshold, begin_threshold, WAVE_OUTPUT_FILENAME, WAVE_OUTPUT_FILE_EXTENSION, FULL_WAVE_OUTPUT_FILENAME, MICROPHONE_INPUT_INDEX, audio, streams, print_stuff=False):
     global recordQueue
+    global currently_recording
+    global files_recorded
+    indexedQueue = recordQueue['index' + str(MICROPHONE_INPUT_INDEX)]
 
-    files_recorded = 0
     j = 0
     record_wave_file_count = 0
     audioFrames = []
@@ -145,20 +193,14 @@ def record_consumer(threshold, power_threshold, frequency_threshold, begin_thres
             totalWaveFile.setframerate(RATE)
             totalWaveFile.close()
         
-            while( True ):
-                if( not recordQueue.empty() ):
-                    audioFrames.append( recordQueue.get() )
+            while( currently_recording ):
+                while( not indexedQueue.empty() ):
+                    audioFrames.append( indexedQueue.get() )
                     totalAudioFrames.append( audioFrames[-1] )
                     if( len( audioFrames ) >= SLIDING_WINDOW_AMOUNT ):
                         j+=1
                         audioFrames = audioFrames[-SLIDING_WINDOW_AMOUNT:]
-                            
-                        intensity = [
-                            audioop.maxpp( audioFrames[0], 4 ) / 32767,
-                            audioop.maxpp( audioFrames[1], 4 ) / 32767
-                        ]
-                        highestintensity = np.amax( intensity )
-                        
+                                                
                         byteString = b''.join(audioFrames)
                         fftData = np.frombuffer( byteString, dtype=np.int16 )
                         frequency = get_loudest_freq( fftData, RECORD_SECONDS )
@@ -167,14 +209,17 @@ def record_consumer(threshold, power_threshold, frequency_threshold, begin_thres
                         fileid = "%0.2f" % ((j) * RECORD_SECONDS )
                     
                         if( record_controls( key_poller, recordQueue ) == False ):
-                            stream.stop_stream()
+                            for stream in streams:
+                                streams[stream].stop_stream()
+                            currently_recording = False
                             break;
                              
-                        if( frequency > frequency_threshold and highestintensity > threshold and power > power_threshold ):
+                        if( frequency > frequency_threshold and power > power_threshold ):
                             record_wave_file_count += 1
                             if( record_wave_file_count <= begin_threshold and record_wave_file_count > delay_threshold ):
                                 files_recorded += 1
-                                print( "Files recorded: %0d - Power: %0d - Freq: %0d - Saving %s" % ( files_recorded, power, frequency, fileid ) )
+                                if print_stuff:
+                                    print( "Files recorded: %0d - Power: %0d - Freq: %0d - Saving %s" % ( files_recorded, power, frequency, fileid ) )
                                 waveFile = wave.open(WAVE_OUTPUT_FILENAME + fileid + WAVE_OUTPUT_FILE_EXTENSION, 'wb')
                                 waveFile.setnchannels(CHANNELS)
                                 waveFile.setsampwidth(audio.get_sample_size(FORMAT))
@@ -182,58 +227,67 @@ def record_consumer(threshold, power_threshold, frequency_threshold, begin_thres
                                 waveFile.writeframes(byteString)
                                 waveFile.close()
                             else:
-                                print( "Files recorded: %0d - Power: %0d - Freq: %0d" % ( files_recorded, power, frequency ) )
+                                if print_stuff:
+                                    print( "Files recorded: %0d - Power: %0d - Freq: %0d" % ( files_recorded, power, frequency ) )
                         else:
                             record_wave_file_count = 0
-                            print( "Files recorded: %0d - Power: %0d - Freq: %0d" % ( files_recorded, power, frequency ) )
+                            if print_stuff:
+                                print( "Files recorded: %0d - Power: %0d - Freq: %0d" % ( files_recorded, power, frequency ) )
                             
-                    # Append to the total wav file only once every ten audio frames ( roughly once every 150 milliseconds )
-                    if (len(totalAudioFrames) >= 10 ):
+                    # Append to the total wav file only once every ten audio frames ( roughly once every 225 milliseconds )
+                    if (len(totalAudioFrames) >= 15 ):
                         byteString = b''.join(totalAudioFrames)
                         totalAudioFrames = []
                         waveFile = open(FULL_WAVE_OUTPUT_FILENAME, 'ab')
                         waveFile.write(byteString)
                         waveFile.close()
-                            
-                            
+                sleep(0.001)
                     
-                        
     except Exception as e:
         print( "----------- ERROR DURING RECORDING -------------- " )
         exc_type, exc_value, exc_tb = sys.exc_info()
         traceback.print_exception(exc_type, exc_value, exc_tb)
         stream.stop_stream()
 
-def multithreaded_record( in_data, frame_count, time_info, status ):
-    global recordQueue
-    recordQueue.put( in_data )
+def multithreaded_record( in_data, frame_count, time_info, status, queue ):
+    queue.put( in_data )
     
     return in_data, pyaudio.paContinue
                 
 # Records a non blocking audio stream and saves the chunks onto a queue
 # The queue will be used as a sliding window over the audio, where two chunks are combined into one audio file
-def non_blocking_record(threshold, power_threshold, frequency_threshold, begin_threshold, WAVE_OUTPUT_FILENAME, WAVE_OUTPUT_FILE_EXTENSION, FULL_WAVE_OUTPUT_FILENAME):
-    global currently_recording
+def non_blocking_record(power_threshold, frequency_threshold, begin_threshold, WAVE_OUTPUT_FILENAME, WAVE_OUTPUT_FILE_EXTENSION, FULL_WAVE_OUTPUT_FILENAME, MICROPHONE_INPUT_INDEX, print_logs):
     global recordQueue
-    global stream
-    recordQueue = Queue(maxsize=0)
-
-    audio = pyaudio.PyAudio()
-    stream = audio.open(format=FORMAT, channels=CHANNELS,
+    global streams
+    global audios
+    
+    mic_index = 'index' + str(MICROPHONE_INPUT_INDEX)
+    
+    recordQueue[mic_index] = Queue(maxsize=0)
+    micindexed_lambda = lambda in_data, frame_count, time_info, status, queue=recordQueue['index' + str(MICROPHONE_INPUT_INDEX)]: multithreaded_record(in_data, frame_count, time_info, status, queue) 
+    audios[mic_index] = pyaudio.PyAudio()
+    streams[mic_index] = audios[mic_index].open(format=FORMAT, channels=CHANNELS,
         rate=RATE, input=True,
-        input_device_index=INPUT_DEVICE_INDEX,
+        input_device_index=MICROPHONE_INPUT_INDEX,
         frames_per_buffer=round( RATE * RECORD_SECONDS / SLIDING_WINDOW_AMOUNT ),
-        stream_callback=multithreaded_record)
+        stream_callback=micindexed_lambda)
         
-    consumer = threading.Thread(name='consumer', target=record_consumer, args=(threshold, power_threshold, frequency_threshold, begin_threshold, WAVE_OUTPUT_FILENAME, WAVE_OUTPUT_FILE_EXTENSION, FULL_WAVE_OUTPUT_FILENAME, audio, stream))
+    consumer = threading.Thread(name='consumer', target=record_consumer, args=(power_threshold, frequency_threshold, begin_threshold, WAVE_OUTPUT_FILENAME, WAVE_OUTPUT_FILE_EXTENSION, FULL_WAVE_OUTPUT_FILENAME, MICROPHONE_INPUT_INDEX, audios[mic_index], streams, print_logs))
     consumer.setDaemon( True )
     consumer.start()
-    stream.start_stream()
-
-    # wait for stream to finish (5)
-    while currently_recording:
-        time.sleep(0.1)
-
-    stream.stop_stream()
-    stream.close()
-    audio.terminate()
+    streams[mic_index].start_stream()
+    
+def validate_microphone_index(audio, input_index):
+    micDict = {'name': 'Missing Microphone index ' + str(input_index)}
+    try:
+        micDict = audio.get_device_info_by_index( input_index )
+        if (micDict and micDict['maxInputChannels'] > 0):            
+            host_api = audio.get_host_api_info_by_index(micDict['hostApi'])
+            host_api_string = " " + host_api["name"] if host_api else ""
+            print( "Using input from " + micDict['name'] + host_api_string )
+            return True
+        else:
+            raise IOError( "Invalid number of channels" )
+    except IOError as e:
+        print("Could not connect enough audio channels to " + micDict['name'] + ", disabling this mic for recording")
+        return False
