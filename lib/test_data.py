@@ -300,6 +300,16 @@ def test_accuracy( available_models, available_sounds ):
         threshold = 0
     else:
         threshold = int( threshold )
+    power_threshold = input("At what power should we consider sounds to not be silence? " )
+    if( power_threshold == "" ):
+        power_threshold = 0
+    else:
+        power_threshold = int( power_threshold )
+    freq_threshold = input("At what frequency should we consider sounds to not be silence? " )
+    if( freq_threshold == "" ):
+        freq_threshold = 0
+    else:
+        freq_threshold = int( freq_threshold )
     
     print( "Analysing..." )
     true_wav_file_labels = []
@@ -307,15 +317,15 @@ def test_accuracy( available_models, available_sounds ):
     for index, sound in enumerate(available_sounds):
         if( sound in classifier.classes_ ):
             # First sort the wav files by time
-            recordings_dir = os.path.join(RECORDINGS_FOLDER, sound )
-            wav_files = os.listdir(recordings_dir)            
+            dataset_dir = os.path.join(DATASET_FOLDER, sound )
+            wav_files = os.listdir(dataset_dir)
             full_wav_files = []
             
             print( "----- " + str(sound) + " -----" )
             i = 0
             for wavindex, wav_file in enumerate(wav_files):
                 if( wav_file.endswith(".wav") and i < 5000 ):
-                    file_path = os.path.join(recordings_dir, wav_file )
+                    file_path = os.path.join(dataset_dir, wav_file )
                     true_wav_file_labels.append(sound)                    
                     full_wav_files.append( file_path )
                     i += 1
@@ -325,12 +335,18 @@ def test_accuracy( available_models, available_sounds ):
             for prediction in predictions:
                 for key in prediction:
                     if prediction[key]['winner']:
-                        predicted_wav_file_labels.append(key)
-                if( sound in prediction and prediction[sound]['winner'] and prediction[sound]['percent'] >= threshold ):
+                        if prediction[key]['percent'] >= threshold and prediction[key]['power'] >= power_threshold and prediction[key]['frequency'] >= freq_threshold:
+                            predicted_wav_file_labels.append(key)
+                        else:
+                            predicted_wav_file_labels.append("silence")                            
+                if( sound in prediction and prediction[sound]['winner'] and prediction[sound]['percent'] >= threshold and
+                    prediction[sound]['power'] >= power_threshold and prediction[sound]['frequency'] >= freq_threshold):
                     i_correct += 1
-            print( "Accuracy above threshold %0d - %0.1f " % ( threshold, round((i_correct / i) * 100.0) ), end="\n" )
+            print( "Accuracy above thresholds %0.1f " % ( round((i_correct / i) * 100.0) ) )
     
     total_metrics = precision_recall_fscore_support( true_wav_file_labels, predicted_wav_file_labels, average=None, labels=classifier.classes_, beta=0.5 )
+    if (threshold + power_threshold + freq_threshold > 0 ):
+        print("Noise floor thresholds\nPercentage %0d - Power %0d - Frequency %0d" % (threshold, power_threshold, freq_threshold ) )
     print("Output label".ljust(30) + " P       R       F0.5    Samples")
     print("----------------------------------------------------------------")
     for index, sound in enumerate(classifier.classes_):
