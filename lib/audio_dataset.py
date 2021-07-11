@@ -32,7 +32,7 @@ class AudioDataset(Dataset):
                     
                     # When the input length changes due to a different input type being used, we need to rebuild the cache from scratch
                     if (index == 0 and file_index == 0):
-                        rebuild_cache = len(self.feature_engineering_cached(full_filename, False)) != len(self.feature_engineering_augmented(full_filename))
+                        rebuild_cache = True#len(self.feature_engineering_cached(full_filename, False)) != len(self.feature_engineering_augmented(full_filename))
                         
                     self.samples.append([full_filename, index, torch.tensor(self.feature_engineering_cached(full_filename, rebuild_cache)).float()])
                     self.augmented_samples.append(None)

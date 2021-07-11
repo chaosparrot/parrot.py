@@ -7,7 +7,7 @@ import joblib
 import numpy as np
 import copy
 import torch
-from lib.audio_net import TinyAudioNet, TinyAudioNetEnsemble
+from lib.audio_net import TinyAudioNet, TinyAudioNetEnsemble, TinyRecurrent
 
 torch.set_num_threads(1)
 torch.backends.cudnn.benchmark = True
@@ -25,7 +25,7 @@ class TorchEnsembleClassifier:
     classes_ = []
         
     # Initialize the classifiers and their leaf classes
-    def __init__( self, classifier_map, input_size=120 ):        
+    def __init__( self, classifier_map, input_size=120, rnn=True ):
         self.classifiers = {}
         self.device = torch.device('cpu')
         classifierArray = []
@@ -34,7 +34,7 @@ class TorchEnsembleClassifier:
             self.classes_ = state_dict['labels']
             if ('input_size' in state_dict):
                 input_size = state_dict['input_size']
-            model = TinyAudioNet(input_size, len(state_dict['labels']))
+            model = TinyAudioNet(input_size, len(state_dict['labels'])) if rnn == False else TinyRecurrent(input_size, len(state_dict['labels']))
             model.load_state_dict(state_dict['state_dict'])
             model.to( self.device )
             model.double()

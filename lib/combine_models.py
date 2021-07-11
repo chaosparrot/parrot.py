@@ -28,6 +28,7 @@ def combine_models():
     print( "[E]nsemble ( default )" )
     if( PYTORCH_AVAILABLE ):
         print( "[ET]- Ensemble for Pytorch" )
+        print( "[ER]- Ensemble of TinyRecurrents")
     print( "[H]ierarchial" )
     print( "[U]pgrade model to new version, or change audio settings" )
     model_type = input("")
@@ -35,6 +36,8 @@ def combine_models():
         model_type = "ensemble"
     elif( model_type.strip().lower() == "et" and PYTORCH_AVAILABLE ):
         model_type = "ensemble_torch"
+    elif( model_type.strip().lower() == "er" and PYTORCH_AVAILABLE ):
+        model_type = "ensemble_torch_rnn"
     elif( model_type.strip().lower() == "h" ):
         model_type = "hierarchial"        
     elif( model_type.strip().lower() == "u" ):
@@ -51,8 +54,8 @@ def combine_models():
         
         if( model_type == "hierarchial" ):
             classifier_map = configure_tree_model( available_models )
-        elif( model_type == "ensemble_torch"):
-            classifier_map = configure_single_layer_model( available_state_dicts, True )
+        elif( model_type == "ensemble_torch" or model_type == "ensemble_torch_rnn"):
+            classifier_map = configure_single_layer_model( available_state_dicts, True, model_type=="ensemble_torch_rnn" )
         else:
             classifier_map = configure_single_layer_model( available_models, False )
                 
@@ -102,7 +105,7 @@ def configure_tree_model( available_models ):
     
     return classifier_map
     
-def configure_single_layer_model( available_models, pytorch ):
+def configure_single_layer_model( available_models, pytorch, rnn=False ):
     amount_of_classifiers = input("How many classifiers do you want to add to this model?")
     while( int( amount_of_classifiers ) <= 0 ):
         amount_of_classifiers = input("")
@@ -204,7 +207,10 @@ def connect_model( clf_filename, classifier_map, model_type, during_training = F
         classifier = EnsembleClassifier( classifier_map )
     elif( model_type == "ensemble_torch" ):
         from lib.torch_ensemble_classifier import TorchEnsembleClassifier    
-        classifier = TorchEnsembleClassifier( classifier_map )        
+        classifier = TorchEnsembleClassifier( classifier_map )
+    elif( model_type == "ensemble_torch_rnn" ):
+        from lib.torch_ensemble_classifier import TorchEnsembleClassifier    
+        classifier = TorchEnsembleClassifier( classifier_map, rnn=True )        
 
     if (settings == None):
         settings = define_settings( get_current_default_settings() )

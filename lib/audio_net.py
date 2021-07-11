@@ -13,6 +13,43 @@ import time
 from lib.combine_models import connect_model
 from lib.key_poller import KeyPoller
 import random
+from torch.optim.lr_scheduler import StepLR
+
+class TinyRecurrent(nn.Module):
+
+    def __init__(self, inputsize, outputsize, only_logsoftmax=False):
+        super(TinyRecurrent, self).__init__()
+        self.only_logsoftmax = only_logsoftmax
+        self.softmax = nn.Softmax(dim=-1)
+        self.log_softmax = nn.LogSoftmax(dim=1)
+        self.relu = nn.ReLU()
+        self.dropOut = nn.Dropout(p=0.15)
+        
+        self.sequence_length = 4
+        self.hidden_dim = 512
+        self.layer_dim = 2
+
+        self.batchNorm = nn.BatchNorm1d(inputsize)        
+        self.rnn = nn.GRU(int(inputsize / self.sequence_length), self.hidden_dim, self.layer_dim, 
+            bidirectional=False, batch_first=True)
+        self.fc1 = nn.Linear(self.hidden_dim, 512)
+        #self.fc2 = nn.Linear(512, 512)
+        #self.fc3 = nn.Linear(512, 256)
+        self.fc2 = nn.Linear(512, outputsize)
+		
+    def forward(self, x):
+        x = self.batchNorm(x)
+        x = x.view(-1, self.sequence_length, 40)
+        x, _ = self.rnn(x)
+        x = self.dropOut(self.relu(x[:, -1, :]))
+        #x = self.dropOut(self.relu( self.fc1(x) ))
+        #x = self.dropOut(self.relu( self.fc2(x) ))
+        #x = self.dropOut(self.relu( self.fc3(x) ))
+        x = self.fc2(x)
+        if( self.training or self.only_logsoftmax ):
+            return self.log_softmax(x)
+        else:
+            return self.softmax(x)
 
 class TinyAudioNet(nn.Module):
 
@@ -24,7 +61,7 @@ class TinyAudioNet(nn.Module):
         self.selu = nn.SELU()
         self.dropOut = nn.Dropout(p=0.15)
         
-        self.batchNorm = nn.BatchNorm1d(inputsize)        
+        self.batchNorm = nn.BatchNorm1d(inputsize)
         self.fc1 = nn.Linear(inputsize, 512)
         self.fc2 = nn.Linear(512, 512)
         self.fc3 = nn.Linear(512, 512)
@@ -69,6 +106,7 @@ class AudioNetTrainer:
     dataset_size = 0
     
     optimizers = []
+    schedulers = []
     validation_loaders = []
     train_loaders = []
     criterion = nn.NLLLoss()
@@ -81,6 +119,8 @@ class AudioNetTrainer:
     dataset = False
     train_indices = []
     input_size = 120
+    
+    rand_seed = True
     
     def __init__(self, dataset, net_count = 1, audio_settings = None):
         self.net_count = net_count
@@ -95,9 +135,14 @@ class AudioNetTrainer:
         split = int(np.floor(self.validation_split * self.dataset_size))
 
         for i in range(self.net_count):
-            self.nets.append(TinyAudioNet(self.input_size, len(self.dataset_labels), True))
-            self.optimizers.append(optim.SGD(self.nets[i].parameters(), lr=0.003, momentum=0.9, nesterov=True))
-            self.random_seeds.append(random.randint(0, 100000))
+            self.nets.append(TinyRecurrent(self.input_size, len(self.dataset_labels), True))
+            self.optimizers.append(optim.SGD(self.nets[i].parameters(), lr=0.01, momentum=0.9, nesterov=True))
+            self.schedulers.append(StepLR(self.optimizers[i], 90, gamma=0.6))
+                
+            if self.rand_seed:
+                self.random_seeds.append(random.randint(0, 100000))
+            else:
+                self.random_seeds.append(42)                
             
  
             # Split the dataset into validation and training data loaders
@@ -177,8 +222,9 @@ class AudioNetTrainer:
                 print( "Validating..." )
                 for j in range(self.net_count):
                     self.nets[j].train(False)
+                    self.schedulers[j].step()
                 
-                # Validation
+                # Validation    
                 self.dataset.set_training(False)
                 epoch_validation_loss = []
                 correct = []
@@ -261,12 +307,12 @@ class AudioNetTrainer:
                     print( "------------------------------------------------------")
                     print( "Persisting new combined best in " + filename )
                     print( "------------------------------------------------------")                    
-                    connect_model( filename, combined_classifier_map, "ensemble_torch", True, self.audio_settings )
+                    #connect_model( filename, combined_classifier_map, "ensemble_torch_rnn", True, self.audio_settings )
                 
-                with KeyPoller() as key_poller:
-                    ESCAPEKEY = '\x1b'
-                    character = key_poller.poll()
-                    if ( character == ESCAPEKEY ):
-                        print("Pressed escape - Stopped training loop")
-                        print( "------------------------------------------------------")
-                        return
+                #with KeyPoller() as key_poller:
+                #    ESCAPEKEY = '\x1b'
+                #    character = key_poller.poll()
+                #    if ( character == ESCAPEKEY ):
+                #        print("Pressed escape - Stopped training loop")
+                #        print( "------------------------------------------------------")
+                #        return
