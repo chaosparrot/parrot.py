@@ -64,8 +64,8 @@ A way to mitigate that is by running your command line program as an administrat
 
 For instructions on upgrading and the release notes, look on ![this page](docs/RELEASE_NOTES.md).
 
-I have a seperated doc page filled with research, notes, acknowledgements and showcases over on ![this page](docs/NOTES_AND_ACKNOWLEDGEMENTS.md).
+I have a separate doc page filled with research, notes, acknowledgements and showcases over on ![this page](docs/NOTES_AND_ACKNOWLEDGEMENTS.md).
 I will expand this document once I learn more during the development. In the meantime, you can use that knowledge to your own advantage.
 
-If you desire to connect Parrot.PY to Talon Voice, take a look at ![this page](docs/TALON_VOICE.md).
-For examples and explanation of how to interact with a running Parrot instance from your own programs, read up on ![this page](docs/INTERFACING.md).
+If you desire to use Parrot.PY inside of Talon, take a look at this page explaining the [integration with Talon Voice](docs/TALON_VOICE.md).
+For examples and explanation of how to interact with a running Parrot instance from your own programs, read up on [interfacing with other programs](docs/INTERFACING.md).
