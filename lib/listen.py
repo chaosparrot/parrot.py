@@ -100,7 +100,7 @@ def action_consumer( stream, classifier, dataDicts, persist_replay, replay_file,
         else:
             while( listening_state['currently_recording'] == True ):
                 if( not listening_state['classifierQueue'].empty() ):
-                    dataDicts.append( classifierQueue.get() )
+                    dataDicts.append( listening_state['classifierQueue'].get() )
                     if( len(dataDicts) > PREDICTION_LENGTH ):
                         dataDicts.pop(0)
             
