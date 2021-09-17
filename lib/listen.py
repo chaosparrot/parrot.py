@@ -100,7 +100,10 @@ def action_consumer( stream, classifier, dataDicts, persist_replay, replay_file,
         else:
             while( listening_state['currently_recording'] == True ):
                 if( not listening_state['classifierQueue'].empty() ):
-                    dataDicts.append( listening_state['classifierQueue'].get() )
+                    current_time = time.time()
+                    listening_state['last_audio_update'] = current_time
+                    probabilityDict = listening_state['classifierQueue'].get()
+                    dataDicts.append( probabilityDict )
                     if( len(dataDicts) > PREDICTION_LENGTH ):
                         dataDicts.pop(0)
             
