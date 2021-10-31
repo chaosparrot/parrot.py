@@ -16,6 +16,7 @@ import random
 from torch.optim.lr_scheduler import StepLR
 
 class TinyRecurrent(nn.Module):
+    h0 = None
 
     def __init__(self, inputsize, outputsize, only_logsoftmax=False):
         super(TinyRecurrent, self).__init__()
@@ -26,21 +27,25 @@ class TinyRecurrent(nn.Module):
         self.dropOut = nn.Dropout(p=0.15)
         
         self.sequence_length = 4
-        self.hidden_dim = 512
+        self.hidden_dim = 256
         self.layer_dim = 2
 
         self.batchNorm = nn.BatchNorm1d(inputsize)        
         self.rnn = nn.GRU(int(inputsize / self.sequence_length), self.hidden_dim, self.layer_dim, 
             bidirectional=False, batch_first=True)
-        self.fc1 = nn.Linear(self.hidden_dim, 512)
-        #self.fc2 = nn.Linear(512, 512)
+        self.fc1 = nn.Linear(self.hidden_dim, 256)
         #self.fc3 = nn.Linear(512, 256)
-        self.fc2 = nn.Linear(512, outputsize)
+        self.fc2 = nn.Linear(256, outputsize)
+        self.h0 = None
 		
     def forward(self, x):
         x = self.batchNorm(x)
         x = x.view(-1, self.sequence_length, 40)
-        x, _ = self.rnn(x)
+        if self.h0 is None:
+            x, h0 = self.rnn(x)
+        else:
+            x, h0 = self.rnn(x, self.h0)
+        self.h0 = h0
         x = self.dropOut(self.relu(x[:, -1, :]))
         #x = self.dropOut(self.relu( self.fc1(x) ))
         #x = self.dropOut(self.relu( self.fc2(x) ))
