@@ -152,12 +152,16 @@ def update_model( available_models ):
             
             class M(torch.nn.Module):
                 
+                def __init__(self):
+                    super(M, self).__init__()                    
+                    self.fc1 = torch.nn.Linear(45, 45)
+                
                 def forward(self, x):
-                    return x[0]
-            
-            print("Detected Talon Voice capable model - Exporting ONNX file to the model directory - Use this for the integration")
-            classifier_filename = classifier_filename.replace(".pkl", ".onnx")
-            print(classifier_filename)
+                    return self.fc1(x)
+
+            classifier_filename = classifier_filename.replace(".pkl", ".onnx")            
+            print("Detected Talon Voice capable model - Exporting "+ classifier_filename + " file - Use this for the parrot.py integration")
+            print()
             
             audio_input_size = main_classifier.settings['RATE'] * main_classifier.settings['RECORD_SECONDS']
             true_input_size = len(feature_engineering_raw(torch.randn((int(audio_input_size))).numpy(), \
@@ -165,10 +169,10 @@ def update_model( available_models ):
             input_names = []
             for x in range(true_input_size):
                 input_names.append("mfsc" + str(x))
-            dummy_input = torch.from_numpy(np.asarray([torch.zeros((true_input_size)).numpy()]))#torch.from_numpy(np.asarray([torch.zeros((true_input_size)).numpy()])).double()
-            print( dummy_input[0] )
-            dummy_output = torch.zeros((len(main_classifier.classifier.classes_)))
-            dummy_output[0] = 1.0
+            dummy_input = torch.from_numpy(np.asarray([torch.zeros((true_input_size), requires_grad=False).numpy()])).double()#torch.from_numpy(np.asarray([torch.zeros((true_input_size)).numpy()])).double()
+            #dummy_input.requires_grad = False
+            dummy_output = torch.zeros((len(main_classifier.classifier.classes_)), requires_grad=False)
+            #dummy_output[0] = 1.0
             
 #real input - tensor([[ 2.1422,  2.2133,  2.1466,  1.4511,  0.1155, -1.1442, -1.0249, -0.9786,
 #         -1.1083, -1.3470, -1.2139, -1.3049, -1.3878, -1.4346, -1.3665, -1.4997,
@@ -191,19 +195,27 @@ def update_model( available_models ):
 #          0.0421,  0.0090,  0.0486,  0.0979,  0.1179,  0.1386,  0.1728,  0.1962,
 #          0.2246,  0.2435,  0.2691,  0.2896,  0.3066,  0.3203,  0.3334,  0.1258]],
 #       dtype=torch.float64)            
-            
-            print( dummy_output )
+                        
+            print( "OUTPUT", dummy_output, main_classifier.classes_ )
             torch_classifier = main_classifier.classifier.combinedClassifier
             torch_classifier.eval()
+            
+            m = M()
+            
+            # The models inside need to be detached from require_grad constant to be exportable
+            for model in torch_classifier.models:
+                for param in model.parameters():
+                    param.requires_grad = False
                 
             torch.onnx.export(
-                M(),
-                dummy_output,
+                torch_classifier,
+                dummy_input,
                 classifier_filename,
                 #input_names=input_names,
                 output_names=main_classifier.classes_,
                 example_outputs=dummy_output,
                 opset_version=13,
+                export_params=True,
                 verbose=False
             )
         
