@@ -150,6 +150,11 @@ def update_model( available_models ):
             import torch            
             from lib.machinelearning import feature_engineering_raw
             
+            class M(torch.nn.Module):
+                
+                def forward(self, x):
+                    return x[0]
+            
             print("Detected Talon Voice capable model - Exporting ONNX file to the model directory - Use this for the integration")
             classifier_filename = classifier_filename.replace(".pkl", ".onnx")
             print(classifier_filename)
@@ -159,8 +164,9 @@ def update_model( available_models ):
                 main_classifier.settings['RATE'], 0, main_classifier.settings['RECORD_SECONDS'], main_classifier.settings['FEATURE_ENGINEERING_TYPE'])[0])
             input_names = []
             for x in range(true_input_size):
-                input_names = "mfsc" + str(x)
-            dummy_input = torch.from_numpy(np.asarray([torch.zeros((true_input_size)).numpy()])).double()
+                input_names.append("mfsc" + str(x))
+            dummy_input = torch.from_numpy(np.asarray([torch.zeros((true_input_size)).numpy()]))#torch.from_numpy(np.asarray([torch.zeros((true_input_size)).numpy()])).double()
+            print( dummy_input[0] )
             dummy_output = torch.zeros((len(main_classifier.classifier.classes_)))
             dummy_output[0] = 1.0
             
@@ -186,15 +192,16 @@ def update_model( available_models ):
 #          0.2246,  0.2435,  0.2691,  0.2896,  0.3066,  0.3203,  0.3334,  0.1258]],
 #       dtype=torch.float64)            
             
+            print( dummy_output )
             torch_classifier = main_classifier.classifier.combinedClassifier
             torch_classifier.eval()
-            torch_classifier.make_onnx_exportable()
+                
             torch.onnx.export(
-                torch_classifier,
-                dummy_input,
-                classifier_filename + '.onnx',
-                input_names=input_names,
-                output_names=main_classifier.classifier.classes_,
+                M(),
+                dummy_output,
+                classifier_filename,
+                #input_names=input_names,
+                output_names=main_classifier.classes_,
                 example_outputs=dummy_output,
                 opset_version=13,
                 verbose=False
