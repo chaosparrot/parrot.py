@@ -52,6 +52,11 @@ class TinyAudioNetEnsemble(nn.Module):
         for model in models:
             #model.double()
             self.models.append(model)
+
+    def make_onnx_exportable(self):
+        for model in self.models:
+            model.eval()
+            model.batchNorm.eval()
             
     def forward(self, x):
         out = 0
