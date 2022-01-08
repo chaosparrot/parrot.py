@@ -60,7 +60,6 @@ class TinyAudioNetEnsemble(nn.Module):
                 out = model(x)
             else:
                 out = out + model(x)
-        
         return out / self.model_length
             
 class AudioNetTrainer:

@@ -147,78 +147,43 @@ def update_model( available_models ):
         from lib.torch_ensemble_classifier import TorchEnsembleClassifier
         if isinstance(main_classifier.classifier, TorchEnsembleClassifier) and \
             int(main_classifier.settings['FEATURE_ENGINEERING_TYPE']) == 4:
-            import torch            
-            from lib.machinelearning import feature_engineering_raw
-            
-            class M(torch.nn.Module):
-                
-                def __init__(self):
-                    super(M, self).__init__()                    
-                    self.fc1 = torch.nn.Linear(45, 45)
-                
-                def forward(self, x):
-                    return self.fc1(x)
-
-            classifier_filename = classifier_filename.replace(".pkl", ".onnx")            
+            import torch
+            from lib.machinelearning import feature_engineering_raw            
+                        
+            classifier_filename = classifier_filename.replace(".pkl", ".onnx")
             print("Detected Talon Voice capable model - Exporting "+ classifier_filename + " file - Use this for the parrot.py integration")
-            print()
             
             audio_input_size = main_classifier.settings['RATE'] * main_classifier.settings['RECORD_SECONDS']
             true_input_size = len(feature_engineering_raw(torch.randn((int(audio_input_size))).numpy(), \
                 main_classifier.settings['RATE'], 0, main_classifier.settings['RECORD_SECONDS'], main_classifier.settings['FEATURE_ENGINEERING_TYPE'])[0])
-            input_names = []
-            for x in range(true_input_size):
-                input_names.append("mfsc" + str(x))
-            dummy_input = torch.from_numpy(np.asarray([torch.zeros((true_input_size), requires_grad=False).numpy()])).double()#torch.from_numpy(np.asarray([torch.zeros((true_input_size)).numpy()])).double()
-            #dummy_input.requires_grad = False
-            dummy_output = torch.zeros((len(main_classifier.classifier.classes_)), requires_grad=False)
-            #dummy_output[0] = 1.0
-            
-#real input - tensor([[ 2.1422,  2.2133,  2.1466,  1.4511,  0.1155, -1.1442, -1.0249, -0.9786,
-#         -1.1083, -1.3470, -1.2139, -1.3049, -1.3878, -1.4346, -1.3665, -1.4997,
-#         -1.4478, -1.4888, -1.5303, -1.4382, -0.9869, -0.6087, -1.1574, -1.4752,
-#         -1.5790, -1.5807, -1.6291, -1.6102, -1.1462, -1.0878, -1.3290, -1.3041,
-#         -1.5277, -1.5464, -1.4652, -1.0432, -1.0930, -1.2181, -1.3096, -1.2863,
-#          2.5656,  2.6944,  2.7083,  2.1283,  0.3716, -0.1843, -0.1956, -0.2903,
-#         -0.4607, -0.4973, -0.4931, -0.5619, -0.5920, -0.6485, -0.6085, -0.6563,
-#         -0.6779, -0.6801, -0.6483, -0.6502, -0.6543, -0.6230, -0.6128, -0.6159,
-#         -0.5746, -0.5574, -0.5318, -0.4983, -0.4473, -0.4280, -0.4183, -0.3923,
-#         -0.3701, -0.3481, -0.3174, -0.2826, -0.2894, -0.2667, -0.2521, -0.4344,
-#          2.0556,  2.2507,  2.3801,  2.2066,  1.6269,  1.2333,  1.0383,  0.9455,
-#          0.7903,  0.7336,  0.7643,  0.6773,  0.6354,  0.6013,  0.6427,  0.5704,
-#          0.5766,  0.5747,  0.5822,  0.6114,  0.5821,  0.6289,  0.6335,  0.6487,
-#          0.6766,  0.7033,  0.7261,  0.7549,  0.7863,  0.8132,  0.8454,  0.8644,
-#          0.8948,  0.9132,  0.9412,  0.9587,  0.9742,  0.9950,  1.0029,  0.7893,
-#          0.3443,  0.4979,  0.6339,  0.7373,  0.7481,  0.6207,  0.3825,  0.0924,
-#          0.0639,  0.1453,  0.1341, -0.1327, -0.0860,  0.0302, -0.1119, -0.1549,
-#         -0.0161, -0.2056, -0.0416, -0.0974, -0.0857, -0.0602, -0.0189, -0.0633,
-#          0.0421,  0.0090,  0.0486,  0.0979,  0.1179,  0.1386,  0.1728,  0.1962,
-#          0.2246,  0.2435,  0.2691,  0.2896,  0.3066,  0.3203,  0.3334,  0.1258]],
-#       dtype=torch.float64)            
+            dummy_input = torch.randn(1, true_input_size, requires_grad=False).double()
                         
-            print( "OUTPUT", dummy_output, main_classifier.classes_ )
             torch_classifier = main_classifier.classifier.combinedClassifier
             torch_classifier.eval()
-            
-            m = M()
             
             # The models inside need to be detached from require_grad constant to be exportable
             for model in torch_classifier.models:
                 for param in model.parameters():
                     param.requires_grad = False
-                
+           
             torch.onnx.export(
                 torch_classifier,
-                dummy_input,
+                (dummy_input, ),
                 classifier_filename,
-                #input_names=input_names,
-                output_names=main_classifier.classes_,
-                example_outputs=dummy_output,
                 opset_version=13,
                 export_params=True,
                 verbose=False
             )
-        
+            
+            # For some odd reason importing onnx before this place makes python stall
+            import onnx
+            
+            model = onnx.load(classifier_filename)
+            meta = model.metadata_props.add()
+            meta.key = "output_labels"
+            meta.value = ";".join(main_classifier.classes_)
+            onnx.save(model, classifier_filename)
+                        
 
 def define_settings(settings):
     print( "Use the current audio settings for this model? Y/N ( Empty is yes )" )
