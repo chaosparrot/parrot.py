@@ -16,7 +16,10 @@ You can also trim out stuff below a specific frequency value. Neither the intens
 
 During the recording, you can also pause the recording using SPACE or quit it using ESC. If you feel a sneeze coming up, or a car passes by, you can press these keys to make sure you don't have to prune away a lot of files.
 
-I found that you need around a 1000 samples to get a working recognition of a sound. You will get diminishing returns past 5000 samples, but the returns are still there. As of the moment of this writing, I used 15000 samples for the Hollow Knight demo.
+### Amount of data needed
+
+I found that you need around 30 seconds of recorded sound, roughly 1000 samples, to get a working recognition of a specific sound. Depending on the noise it would take between a minute and two minutes to record the sounds ( there are less samples to pick from with short sounds like clicks, whereas longer sounds like vowels give more samples ).
+You will start getting diminishing returns past two and a half minutes of recorded sound ( 5000 samples ), but the returns are still there. As of the moment of this writing, I used 15000 samples for the Hollow Knight demo.
 You can try any amount and see if they recognize well.
 
 From this version onward, there will also be full recordings of the recording session saved in the source directory inside of the sound you are recording. This might come in handy when we start adding more sophisticated models in the future.
