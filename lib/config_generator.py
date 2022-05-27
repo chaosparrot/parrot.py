@@ -8,7 +8,7 @@ if (DEFAULT_CLF_FILE == ""):
         if ( file.endswith(".pkl") ):
             available_models.append( file )
 
-    print("You haven't set up a model file (DEFAULT_CFL_FILE) in your data/code/config.py file yet!") 
+    print("You haven't set up a model file (DEFAULT_CLF_FILE) in your data/code/config.py file yet!") 
     if (len(available_models) > 0):
         print("Make sure to enter the filename ( without the file extension ) of one of the models in " + CLASSIFIER_FOLDER + " to load in the model")
         print("It seems you have already trained models, try setting one of the following options:")
