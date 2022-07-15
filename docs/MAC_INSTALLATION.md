@@ -20,6 +20,10 @@ brew install portaudio
 
 Test if your python version is correct by typing ```python --version``` in your Terminal, if it shows 3.8, you're good to go!
 
+On the M1, some issues can occur while installing portaudio. There are a number of possible fixes that are outlined in these links:
+- [Unable to install pyaudio on M1 Mac](https://stackoverflow.com/questions/68251169/unable-to-install-pyaudio-on-m1-mac-portaudio-already-installed)
+- [MacOS Brew install libsndfile but still not found](https://stackoverflow.com/questions/70737503/macos-brew-install-libsndfile-but-still-not-found)
+
 Step two - Download and extract the zipfile from this github repository
 ---------------
 

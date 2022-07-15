@@ -157,7 +157,7 @@ def load_wav_files( directory, label, int_label, start, end, input_type ):
     return category_dataset_x, category_dataset_labels, totalFeatureEngineeringTime
             
 def determine_labels( dir_path ):
-    data_directory_names =  [directory for directory in os.listdir( dir_path ) if directory != ".gitkeep"]
+    data_directory_names =  [directory for directory in os.listdir( dir_path ) if not directory.startswith(".")]
     
     print( "Selecting categories to train on... ( [Y]es / [N]o / [S]kip )" )
     filtered_data_directory_names = []
