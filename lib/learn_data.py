@@ -45,16 +45,19 @@ def learn_data():
         clf_filename = DEFAULT_CLF_FILE
     clf_filename += '.pkl'
     
-    print( "Type the algorithm that you wish to use for recognition ( Default is random forest )")
-    print( "- [R] Random Forest ( SKLEARN )" )
-    print( "- [M] Multi Layer Perceptron ( Neural net in SKLEARN )" )
+    print( "Type the algorithm that you wish to use for recognition")
+    print( "- [R] Random Forest ( SKLEARN - For quick verification )" )
     if( PYTORCH_AVAILABLE ):
-        print( "- [A] Audio Net ( Neural net in Pytorch - Can be used by TalonVoice )" )
+        print( "- [A] Audio Net ( Neural net in Pytorch - Required by TalonVoice )" )
+    print( "- [M] Multi Layer Perceptron ( Neural net in SKLEARN )" )
     print( "- [X] Exit the learning" )
 
     
     model_type = input("")
-    if( model_type == "" or model_type.lower() == "r" ):
+    while model_type == "":
+        model_type = input("")
+
+    if( model_type.lower() == "r" ):
         classifier = RandomForestClassifier(n_estimators=100, max_depth=20, random_state=123)
         print( "Selected random forest!")        
         

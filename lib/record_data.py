@@ -18,6 +18,7 @@ import traceback
 import sys
 from lib.listen import validate_microphone_input
 from lib.key_poller import KeyPoller
+import struct
 
 # Countdown from seconds to 0
 def countdown( seconds ):
@@ -192,6 +193,14 @@ def record_consumer(power_threshold, frequency_threshold, begin_threshold, WAVE_
             totalWaveFile.setsampwidth(audio.get_sample_size(FORMAT))
             totalWaveFile.setframerate(RATE)
             totalWaveFile.close()
+            
+            # This is used to modify the wave file directly later
+            # Thanks to hydrogen18.com for offering the wav file explanation and code
+            CHUNK_SIZE_OFFSET = 4
+            DATA_SUB_CHUNK_SIZE_SIZE_OFFSET = 40
+
+            LITTLE_ENDIAN_INT = struct.Struct('<I')
+            totalFrameCount = 0
         
             while( currently_recording ):
                 while( not indexedQueue.empty() ):
@@ -237,17 +246,34 @@ def record_consumer(power_threshold, frequency_threshold, begin_threshold, WAVE_
                     # Append to the total wav file only once every ten audio frames ( roughly once every 225 milliseconds )
                     if (len(totalAudioFrames) >= 15 ):
                         byteString = b''.join(totalAudioFrames)
+                        totalFrameCount += len(byteString)
                         totalAudioFrames = []
-                        waveFile = open(FULL_WAVE_OUTPUT_FILENAME, 'ab')
-                        waveFile.write(byteString)
-                        waveFile.close()
+                        appendTotalFile = open(FULL_WAVE_OUTPUT_FILENAME, 'ab')
+                        appendTotalFile.write(byteString)
+                        appendTotalFile.close()
+                        
+                        # Set the amount of frames available and chunk size
+                        # By overriding the header part of the wave file manually
+                        # Which wouldn't be needed if the wave package supported appending properly                        
+                        # Thanks to hydrogen18.com for the explanation and code
+                        appendTotalFile = open(FULL_WAVE_OUTPUT_FILENAME, 'r+b')
+                        appendTotalFile.seek(0,2)
+                        chunk_size = appendTotalFile.tell() - 8
+                        appendTotalFile.seek(CHUNK_SIZE_OFFSET)
+                        appendTotalFile.write(LITTLE_ENDIAN_INT.pack(chunk_size))
+                        appendTotalFile.seek(DATA_SUB_CHUNK_SIZE_SIZE_OFFSET)
+                        sample_length = 2 * totalFrameCount
+                        appendTotalFile.write(LITTLE_ENDIAN_INT.pack(sample_length))
+                        appendTotalFile.close()
                 sleep(0.001)
                     
     except Exception as e:
         print( "----------- ERROR DURING RECORDING -------------- " )
         exc_type, exc_value, exc_tb = sys.exc_info()
         traceback.print_exception(exc_type, exc_value, exc_tb)
-        stream.stop_stream()
+        for stream in streams:
+            streams[stream].stop_stream()
+        currently_recording = False
 
 def multithreaded_record( in_data, frame_count, time_info, status, queue ):
     queue.put( in_data )

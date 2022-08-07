@@ -15,7 +15,7 @@ import audioop
 def convert_files( with_intro ):            
     available_sounds = []
     for fileindex, file in enumerate(os.listdir( RECORDINGS_FOLDER )):
-        if ( os.path.isdir(os.path.join(RECORDINGS_FOLDER, file)) ):
+        if ( os.path.isdir(os.path.join(RECORDINGS_FOLDER, file)) and not file.startswith(".") ):
             available_sounds.append( file )
          
     try:
@@ -108,12 +108,7 @@ def segment_audiofiles(sound_directories):
     print( "Set up the filtering levels to filter out silence or other unrelated sounds")
     print( "-------------------------" )
 
-    threshold = input("What intensity( loudness ) threshold do you need? " )
-    if( threshold == "" ):
-        threshold = 0
-    else:
-        threshold = int(threshold)
-        
+    threshold = 0
     power_threshold = input("What signal power threshold do you need? " )
     if( power_threshold == "" ):
         power_threshold = 0
@@ -125,26 +120,16 @@ def segment_audiofiles(sound_directories):
         frequency_threshold = 0
     else:
         frequency_threshold = int( frequency_threshold )
-    print( "During a wave of recognized sounds... " )
-    begin_threshold = input("After how many saved files should we stop assuming the sound is being made? " )
-    if( begin_threshold == "" ):
-        begin_threshold = 1000
-    else:
-        begin_threshold = int( begin_threshold )
-
-    if( begin_threshold == 1000 ):
-        begin_threshold = input("After how many positive recognitions should we save the files? " )
-        if( begin_threshold == "" ):
-            begin_threshold = 1000
-        else:
-            begin_threshold = 0 - int( begin_threshold )
-        
-    print("")
-    print("You can pause/resume the recording session using the [SPACE] key, and stop the recording using the [ESC] key" )
+    begin_threshold = 10000
 
     for index, directory in enumerate(sound_directories):
         print( "Segmenting " + directory + "..." )
-        full_directory_path = RECORDINGS_FOLDER + "/" + directory        
+        full_directory_path = RECORDINGS_FOLDER + "/" + directory
+        
+        # Use the source folder if it is available instead
+        if os.path.exists(full_directory_path + "/source"):        
+            full_directory_path += "/source"
+        
         output_directory = operation_directory + "/" + directory
         if not os.path.exists(output_directory):
             os.makedirs(output_directory)
@@ -160,6 +145,7 @@ def segment_audiofiles(sound_directories):
         else:
             for fileindex, file in enumerate(files_to_segment):
                 segment_input_file( threshold, power_threshold, frequency_threshold, begin_threshold, full_directory_path + "/" + file, output_directory + "/" + file.replace(".wav", "-"), ".wav" )
+        print( "Put all the segmented files inside " + operation_directory )
 
 # Segments an existing wav file and saves the chunks onto a queue
 # The queue will be used as a sliding window over the audio, where two chunks are combined into one audio file

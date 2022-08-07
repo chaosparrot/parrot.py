@@ -24,4 +24,10 @@ You can try any amount and see if they recognize well.
 
 From this version onward, there will also be full recordings of the recording session saved in the source directory inside of the sound you are recording. This might come in handy when we start adding more sophisticated models in the future.
 
+You can use these source files to resegment the recordings you have made as well, by using the [V] menu at the start and then navigating to [S]. This will reuse the source files available to read out the wav data and persist them inside the data/output folder.
+
+### Background noise
+
+It helps to record some background noise as well, like talking, silence or a fan on your desk if you use that a lot. If you have a recording of those sounds, the models will learn to ignore the sound coming from those by not accidentally triggering actual noises.
+
 [Step 2 - Training the model](TRAINING.md)

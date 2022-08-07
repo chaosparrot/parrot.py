@@ -109,6 +109,8 @@ Koeny - For pointing out Python 3.6 related installation issues, and showing the
 
 [Richard Hladík](https://github.com/RichardHladik) - For pointing out issues with the recording efficiency on Linux
 
+[Andreas Arvidsson](https://github.com/AndreasArvidsson) - For offering vital experience with the onboarding and helping to diagnose some issues with the source files.
+
 You - For reading all the way down this page and showing interest in this program <3
 
 # Showcases
