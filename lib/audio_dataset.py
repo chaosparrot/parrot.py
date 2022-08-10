@@ -43,7 +43,9 @@ class AudioDataset(Dataset):
     def feature_engineering_cached(self, filename, rebuild_cache=False):
         # Only build a filesystem cache of feature engineering results if we are dealing with non-raw wave form
         if (self.settings['FEATURE_ENGINEERING_TYPE'] != 1):
-            cached_filename = filename + "_fe";
+            cache_dir = os.path.join(os.path.dirname(filename), "cache")
+            os.makedirs(cache_dir, exist_ok=True)
+            cached_filename = os.path.join(cache_dir, os.path.basename(filename) + "_fe")
             if (os.path.isfile(cached_filename) == False or rebuild_cache == True):
                 data_row = training_feature_engineering(filename, self.settings)
                 np.savetxt( cached_filename, data_row )
