@@ -184,13 +184,13 @@ def load_data( dir_path, max_files, input_type ):
     grouped_data_directories = {}
     for directory_name in filtered_data_directory_names:
         if MICROPHONE_SEPARATOR:
-            category_name = directory_name.split(MICROPHONE_SEPARATOR)[0] 
+            category_name = directory_name.split( MICROPHONE_SEPARATOR )[0] 
         else:
             category_name = directory_name
         if category_name not in grouped_data_directories:
-            grouped_data_directories[category_name] = []
-        data_directory = f"{DATASET_FOLDER}/{directory_name.lower()}"
-        grouped_data_directories[category_name].append(data_directory)
+            grouped_data_directories[ category_name ] = []
+        data_directory = f"{ DATASET_FOLDER }/{ directory_name.lower() }"
+        grouped_data_directories[ category_name ].append( data_directory )
 
     # Generate the training set and labels with them
     dataset = []
