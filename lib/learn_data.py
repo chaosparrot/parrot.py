@@ -137,28 +137,29 @@ def fit_sklearn_classifier( classifier,  dir_path, clf_filename, settings ):
         print( "--------------------------" )
     
     
-def load_wav_files( directory, label, int_label, start, end, input_type ):
+def load_wav_files( directories, label, int_label, start, end, input_type ):
     category_dataset_x = []
     category_dataset_labels = []
-    first_file = False
-    
     totalFeatureEngineeringTime = 0
-    
-    for fileindex, file in enumerate(os.listdir(directory)):
-        if ( file.endswith(".wav") and fileindex >= start and len(category_dataset_x) < end ):
-            full_filename = os.path.join(directory, file)
-            print( "Loading " + str(fileindex) + " files for " + label + "... ", end="\r" )
-            
-            # Load the WAV file and turn it into a onedimensional array of numbers
-            feature_engineering_start = time.time() * 1000
-            data_row, frequency = feature_engineering( full_filename, RECORD_SECONDS, input_type )
-            category_dataset_x.append( data_row )
-            category_dataset_labels.append( label )
-            totalFeatureEngineeringTime += time.time() * 1000 - feature_engineering_start
+    category_file_index = 0
+
+    for directory in directories:
+        for fileindex, file in enumerate(os.listdir(directory)):
+            if ( file.endswith(".wav") and fileindex >= start and len(category_dataset_x) < end ):
+                full_filename = os.path.join(directory, file)
+                print( "Loading " + str(category_file_index) + " files for " + label + "... ", end="\r" )
+                category_file_index += 1
+
+                # Load the WAV file and turn it into a onedimensional array of numbers
+                feature_engineering_start = time.time() * 1000
+                data_row, frequency = feature_engineering( full_filename, RECORD_SECONDS, input_type )
+                category_dataset_x.append( data_row )
+                category_dataset_labels.append( label )
+                totalFeatureEngineeringTime += time.time() * 1000 - feature_engineering_start
 
     print( "Loaded " + str( len( category_dataset_labels ) ) + " .wav files for category " + label + " (id: " + str(int_label) + ")" )
     return category_dataset_x, category_dataset_labels, totalFeatureEngineeringTime
-            
+
 def determine_labels( dir_path ):
     data_directory_names =  [directory for directory in os.listdir( dir_path ) if not directory.startswith(".")]
     
@@ -172,31 +173,38 @@ def determine_labels( dir_path ):
             break
         else:
             print( "Disabled " + directory_name )
-            
+
     return filtered_data_directory_names
-             
+
 def load_data( dir_path, max_files, input_type ):
     filtered_data_directory_names = determine_labels( dir_path )
 
-    data_directories = list( map( lambda n: (DATASET_FOLDER + "/" + n).lower(), filtered_data_directory_names) )
-
-    # Add a label used for classifying the sounds
-    data_directories_label = list( map( get_label_for_directory, data_directories ) )
-    warnings.filterwarnings(action='ignore', category=DeprecationWarning)
+    # If the microphone separator setting is set use that to split directory names into categories/labels.
+    # This enable us to have multiple directories with different names and as long as they have the same prefix they will be combined into a single category/label.
+    grouped_data_directories = {}
+    for directory_name in filtered_data_directory_names:
+        if MICROPHONE_SEPARATOR:
+            category_name = directory_name.split(MICROPHONE_SEPARATOR)[0] 
+        else:
+            category_name = directory_name
+        if category_name not in grouped_data_directories:
+            grouped_data_directories[category_name] = []
+        data_directory = f"{DATASET_FOLDER}/{directory_name.lower()}"
+        grouped_data_directories[category_name].append(data_directory)
 
     # Generate the training set and labels with them
     dataset = []
     dataset_x = []
     dataset_labels = []
-    
+
     totalFeatureEngineeringTime = 0
-    for index, directory in enumerate( data_directories ):
-        id_label = data_directories_label[ index ]
-        str_label = filtered_data_directory_names[ index ]
-        cat_dataset_x, cat_dataset_labels, featureEngineeringTime = load_wav_files( directory, str_label, id_label, 0, max_files, input_type )
+    for str_label, directories in grouped_data_directories.items():
+        # Add a label used for classifying the sounds
+        id_label = get_label_for_directory( "".join( directories ) )
+        cat_dataset_x, cat_dataset_labels, featureEngineeringTime = load_wav_files( directories, str_label, id_label, 0, max_files, input_type )
         totalFeatureEngineeringTime += featureEngineeringTime
         dataset_x.extend( cat_dataset_x )
         dataset_labels.extend( cat_dataset_labels )
 
-    return dataset_x, dataset_labels, filtered_data_directory_names, totalFeatureEngineeringTime
+    return dataset_x, dataset_labels, grouped_data_directories.keys(), totalFeatureEngineeringTime
 
