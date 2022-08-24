@@ -15,7 +15,7 @@ class AudioDataset(Dataset):
     training = False
 
     def __init__(self, grouped_data_directories, settings):
-        self.paths = grouped_data_directories.keys()
+        self.paths = list( grouped_data_directories.keys() )
         self.settings = settings
         rebuild_cache = False
 
