@@ -300,18 +300,21 @@ def test_accuracy( available_models, available_sounds ):
         threshold = 0
     else:
         threshold = int( threshold )
-    
+
     print( "Analysing..." )
     true_wav_file_labels = []
     predicted_wav_file_labels = []
     for index, sound in enumerate(available_sounds):
-        if( sound in classifier.classes_ ):
+        if( sound in classifier.classes_ or ( MICROPHONE_SEPARATOR and sound.split( MICROPHONE_SEPARATOR )[0] in classifier.classes_ ) ):
             # First sort the wav files by time
             recordings_dir = os.path.join(RECORDINGS_FOLDER, sound )
             wav_files = os.listdir(recordings_dir)            
             full_wav_files = []
             
             print( "----- " + str(sound) + " -----" )
+            if MICROPHONE_SEPARATOR:
+                sound = sound.split( MICROPHONE_SEPARATOR )[0]
+
             i = 0
             for wavindex, wav_file in enumerate(wav_files):
                 if( wav_file.endswith(".wav") and i < 5000 ):
