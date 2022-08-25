@@ -16,6 +16,7 @@ After you have installed homebrew, you need to install Python 3.8 and portaudio.
 ```
 brew install python@3.8
 brew install portaudio
+brew install six
 ```
 
 Test if your python version is correct by typing ```python --version``` in your Terminal, if it shows 3.8, you're good to go!
@@ -54,13 +55,15 @@ If any errors occur, try opening the requirements-posix.txt file and installing 
 On the M1 Macs, some issues can still occur after this, in that case, you can follow these instructions to append additional ENVIRONMENT variables to the session.
 
 ```bash
-export CPATH=/opt/homebrew/include                         
+export CPATH=/opt/homebrew/include
 export LIBRARY_PATH=/opt/homebrew/lib
 export DYLD_LIBRARY_PATH="/opt/homebrew/lib:$DYLD_LIBRARY_PATH"
 export PATH=$PATH:/opt/homebrew/Cellar/libsndfile/1.1.0/bin
 export PATH="/opt/homebrew/opt/python@3.8/libexec/bin:$PATH"
 python settings.py
 ```
+
+Note that just running this will not persist these ENVIRONMENT variables, so you will have to run this every time you open up your terminal program. If you wish to not have to do this every time, you should add all the lines with EXPORT= to your terminal profile.
 
 Step four - Enabling permissions
 ---------------
