@@ -12,30 +12,34 @@ class AudioDataset(Dataset):
     paths = []
     length = 0
     settings = {}
-        
     training = False
 
-    def __init__(self, basedir, paths, settings):
-        self.paths = paths
+    def __init__(self, grouped_data_directories, settings):
+        self.paths = list( grouped_data_directories.keys() )
         self.settings = settings
-		
         rebuild_cache = False
-        for index,path in enumerate(paths):
-            totalpath = os.path.join(basedir,path)
-            print( "Loading in " + path )
-            listed_files = os.listdir(totalpath)
+
+        for index, label in enumerate( grouped_data_directories ):
+            directories = grouped_data_directories[ label ]
+
+            listed_files = []
+            for directory in directories:
+                for file in os.listdir( directory ):
+                    if( file.endswith(".wav") ):
+                        listed_files.append( os.path.join(directory, file) )
             listed_files_size = len( listed_files )
-            for file_index, file in enumerate(listed_files):            
-                if( file.endswith(".wav") ):
-                    print( str( math.floor(((file_index + 1 ) / listed_files_size ) * 100)) + "%", end="\r" )
-                    full_filename = os.path.join(totalpath, file)
-                    
-                    # When the input length changes due to a different input type being used, we need to rebuild the cache from scratch
-                    if (index == 0 and file_index == 0):
-                        rebuild_cache = len(self.feature_engineering_cached(full_filename, False)) != len(self.feature_engineering_augmented(full_filename))
-                        
-                    self.samples.append([full_filename, index, torch.tensor(self.feature_engineering_cached(full_filename, rebuild_cache)).float()])
-                    self.augmented_samples.append(None)
+
+            print( f"Loading in {label}: {listed_files_size} files" )
+
+            for file_index, full_filename in enumerate( listed_files ):            
+                print( str( math.floor(((file_index + 1 ) / listed_files_size ) * 100)) + "%", end="\r" )
+
+                # When the input length changes due to a different input type being used, we need to rebuild the cache from scratch
+                if (index == 0 and file_index == 0):
+                    rebuild_cache = len(self.feature_engineering_cached(full_filename, False)) != len(self.feature_engineering_augmented(full_filename))
+
+                self.samples.append([full_filename, index, torch.tensor(self.feature_engineering_cached(full_filename, rebuild_cache)).float()])
+                self.augmented_samples.append(None)
 
     def set_training(self, training):
         self.training = training
