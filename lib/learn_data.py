@@ -91,7 +91,8 @@ def learn_data():
         print( "--------------------------" )        
         dataset_labels = determine_labels( dir_path )
         print( "--------------------------" )
-        dataset = AudioDataset(DATASET_FOLDER, dataset_labels, settings)
+        grouped_data_directories =  get_grouped_data_directories( dataset_labels )
+        dataset = AudioDataset( grouped_data_directories, settings )
         trainer = AudioNetTrainer(dataset, net_count, settings)
         
         print( "Learning the data..." )
@@ -176,13 +177,11 @@ def determine_labels( dir_path ):
 
     return filtered_data_directory_names
 
-def load_data( dir_path, max_files, input_type ):
-    filtered_data_directory_names = determine_labels( dir_path )
-
+def get_grouped_data_directories( labels ):
     # If the microphone separator setting is set use that to split directory names into categories/labels.
     # This enable us to have multiple directories with different names and as long as they have the same prefix they will be combined into a single category/label.
     grouped_data_directories = {}
-    for directory_name in filtered_data_directory_names:
+    for directory_name in labels:
         if MICROPHONE_SEPARATOR:
             category_name = directory_name.split( MICROPHONE_SEPARATOR )[0] 
         else:
@@ -191,6 +190,11 @@ def load_data( dir_path, max_files, input_type ):
             grouped_data_directories[ category_name ] = []
         data_directory = f"{ DATASET_FOLDER }/{ directory_name.lower() }"
         grouped_data_directories[ category_name ].append( data_directory )
+    return grouped_data_directories
+
+def load_data( dir_path, max_files, input_type ):
+    filtered_data_directory_names = determine_labels( dir_path )
+    grouped_data_directories =  get_grouped_data_directories( filtered_data_directory_names )
 
     # Generate the training set and labels with them
     dataset = []
