@@ -51,6 +51,17 @@ python settings.py
 
 If any errors occur, try opening the requirements-posix.txt file and installing each line seperately and run again.
 
+On the M1 Macs, some issues can still occur after this, in that case, you can follow these instructions to append additional ENVIRONMENT variables to the session.
+
+```bash
+export CPATH=/opt/homebrew/include                         
+export LIBRARY_PATH=/opt/homebrew/lib
+export DYLD_LIBRARY_PATH="/opt/homebrew/lib:$DYLD_LIBRARY_PATH"
+export PATH=$PATH:/opt/homebrew/Cellar/libsndfile/1.1.0/bin
+export PATH="/opt/homebrew/opt/python@3.8/libexec/bin:$PATH"
+python settings.py
+```
+
 Step four - Enabling permissions
 ---------------
 
