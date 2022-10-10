@@ -7,16 +7,14 @@ import random
 import math
 
 class AudioDataset(Dataset):
-    samples = []
-    augmented_samples = []
-    paths = []
-    length = 0
-    settings = {}
-    training = False
 
     def __init__(self, grouped_data_directories, settings):
         self.paths = list( grouped_data_directories.keys() )
         self.settings = settings
+        self.samples = []
+        self.augmented_samples = []
+        self.length = 0
+        self.training = False
         rebuild_cache = False
 
         for index, label in enumerate( grouped_data_directories ):
