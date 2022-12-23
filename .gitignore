@@ -12,6 +12,7 @@ lib/modes/__pycache__/*
 config/__pycache__/*
 __pycache__*
 ffmpeg
+*.pyc
 lib/private/*
 data/code/*
 data/README.md
