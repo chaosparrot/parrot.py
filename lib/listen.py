@@ -148,7 +148,7 @@ def classification_consumer( audio, stream, classifier, persist_files, high_spee
             prediction_time = time.time() - starttime - seconds_playing
             
             #long_comment = "Time: %0.2f - Prediction in: %0.2f - Winner: %s - Percentage: %0d - Frequency %0d                                        " % (seconds_playing, prediction_time, winner, probabilityDict[winner]['percent'], probabilityDict[winner]['frequency'])
-            short_comment = "T %0.3f - [%0d%s %s] F:%0d P:%0d" % (seconds_playing, probabilityDict[winner]['percent'], '%', winner, frequency, probabilityDict[winner]['power'])            
+            short_comment = "T %0.3f - [%0.6f%s %s] F:%0d P:%0d" % (seconds_playing, probabilityDict[winner]['probability'], '', winner, frequency, probabilityDict[winner]['power'])            
             if( winner != "silence" ):
                 print( short_comment )
             
@@ -309,36 +309,39 @@ def create_empty_probability_dict( classifier, data, frequency, intensity, power
     for label in classifier.classes_:
         winner = False
         percent = 0
+        probability =0.0 
         if( label == 'silence' ):
             predicted = index
             percent = 100
+            probability = 1.0
             winner = True
             
-        probabilityDict[ label ] = { 'percent': percent, 'intensity': int(intensity), 'winner': winner, 'frequency': frequency, 'power': power }
+        probabilityDict[ label ] = { 'probability': probability,  'percent': percent, 'intensity': int(intensity), 'winner': winner, 'frequency': frequency, 'power': power }
         index += 1
         
     if ('silence' not in classifier.classes_):
-        probabilityDict['silence'] = { 'percent': 100, 'intensity': int(intensity), 'winner': True, 'frequency': frequency, 'power': power }
+        probabilityDict['silence'] = { 'probability': 1.0, 'percent': 100, 'intensity': int(intensity), 'winner': True, 'frequency': frequency, 'power': power }
             
     return probabilityDict, predicted, frequency
     
 def create_probability_dict( classifier, data, frequency, intensity, power ):
     # Predict the outcome of the audio file    
-    probabilities = classifier.predict_proba( data ) * 100
-    probabilities = probabilities.astype(int)
+    probabilities = classifier.predict_proba( data )
+    percentages = probabilities * 100
+    percentages = percentages.astype(int)
 
     # Get the predicted winner        
-    predicted = np.argmax( probabilities[0] )
+    predicted = np.argmax( percentages[0] )
     if( isinstance(predicted, list) ):
         predicted = predicted[0]
     
     probabilityDict = {}
-    for index, percent in enumerate( probabilities[0] ):
+    for index, percent in enumerate( percentages[0] ):
         label = classifier.classes_[ index ]
-        probabilityDict[ label ] = { 'percent': percent, 'intensity': int(intensity), 'winner': index == predicted, 'frequency': frequency, 'power': power }
+        probabilityDict[ label ] = { 'probability': probabilities[0][index], 'percent': percent, 'intensity': int(intensity), 'winner': index == predicted, 'frequency': frequency, 'power': power }
         
     if ('silence' not in classifier.classes_):
-        probabilityDict['silence'] = { 'percent': 100, 'intensity': int(intensity), 'winner': False, 'frequency': frequency, 'power': power }
+        probabilityDict['silence'] = { 'probability': 1.0, 'percent': 100, 'intensity': int(intensity), 'winner': False, 'frequency': frequency, 'power': power }
         
     return probabilityDict, predicted, frequency
     

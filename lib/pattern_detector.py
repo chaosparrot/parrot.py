@@ -89,6 +89,8 @@ class PatternDetector:
             index = 0 - ( i + 1 )
             if( 'percentage' in thresholds ):
                 detection_calls.append( lambda self, dictIndex=index, threshold=thresholds['percentage'], sounds=sounds: sum( self.predictionDicts[dictIndex][sound]['percent'] for sound in sounds) >= threshold )
+            if( 'probability' in thresholds ):
+                detection_calls.append( lambda self, dictIndex=index, threshold=thresholds['probability'], sounds=sounds: sum( self.predictionDicts[dictIndex][sound]['probability'] for sound in sounds) >= threshold )
             if( 'power' in thresholds ):
                 detection_calls.append( lambda self, dictIndex=index, threshold=thresholds['power']: self.predictionDicts[dictIndex]['silence']['power'] >= threshold )
             if( 'ratio' in thresholds and len(sounds) > 1 ):
