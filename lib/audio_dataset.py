@@ -7,12 +7,10 @@ import random
 import math
 
 class AudioDataset(Dataset):
-
     def __init__(self, grouped_data_directories, settings):
         self.paths = list( grouped_data_directories.keys() )
         self.settings = settings
         self.samples = []
-        self.augmented_samples = []
         self.length = 0
         self.training = False
         rebuild_cache = False
@@ -37,7 +35,6 @@ class AudioDataset(Dataset):
                     rebuild_cache = len(self.feature_engineering_cached(full_filename, False)) != len(self.feature_engineering_augmented(full_filename))
 
                 self.samples.append([full_filename, index, torch.tensor(self.feature_engineering_cached(full_filename, rebuild_cache)).float()])
-                self.augmented_samples.append(None)
 
     def set_training(self, training):
         self.training = training
@@ -65,9 +62,8 @@ class AudioDataset(Dataset):
     def __getitem__(self, idx):
         # During training, get a 10% probability that you get an augmented sample
         if (self.training and random.uniform(0, 1) >= 0.9 ):
-            if (self.augmented_samples[idx] is None):
-                self.augmented_samples[idx] = [self.samples[idx][0], self.samples[idx][1], torch.tensor(self.feature_engineering_augmented(self.samples[idx][0])).float()]
-            return self.augmented_samples[idx][2], self.augmented_samples[idx][1]
+            augmented = [self.samples[idx][0], self.samples[idx][1], torch.tensor(self.feature_engineering_augmented(self.samples[idx][0])).float()]
+            return augmented[2], augmented[1]
         else:
             return self.samples[idx][2], self.samples[idx][1]
 		
