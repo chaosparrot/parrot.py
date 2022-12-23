@@ -1,18 +1,22 @@
+import csv
+import os
+import random
+import time
+
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch.utils.data import Dataset, DataLoader
-from torch.utils.data.sampler import SubsetRandomSampler
-import os
-from lib.machinelearning import *
-import numpy as np
-import csv
-from config.config import *
 import torch.optim as optim
-import time 
+from numpy.random import default_rng
+from torch.utils.data import DataLoader, Dataset
+from torch.utils.data.sampler import SubsetRandomSampler
+
+from config.config import *
 from lib.combine_models import connect_model
 from lib.key_poller import KeyPoller
-import random
+from lib.machinelearning import *
+
 
 class TinyAudioNet(nn.Module):
 
@@ -69,18 +73,20 @@ class AudioNetTrainer:
     dataset_size = 0
     
     optimizers = []
-    validation_loaders = []
-    train_loaders = []
+    schedulers = []
+    validation_loader: torch.utils.data.DataLoader = None
+    train_loader: torch.utils.data.DataLoader = None
     criterion = nn.NLLLoss()
     batch_size = 256
     validation_split = .2
     max_epochs = 300
-    random_seeds = []
+    random_seed = 42
     use_cuda = torch.cuda.is_available()
     device = torch.device("cuda" if use_cuda else "cpu")
     dataset = False
     train_indices = []
     input_size = 120
+    data_seed = 42
     
     def __init__(self, dataset, net_count = 1, audio_settings = None):
         self.net_count = net_count
@@ -94,23 +100,20 @@ class AudioNetTrainer:
         
         split = int(np.floor(self.validation_split * self.dataset_size))
 
+        # Split the dataset into validation and training data loaders
+        dataset_rng = torch.Generator().manual_seed(self.data_seed)
+        train_dataset, val_dataset = torch.utils.data.random_split(dataset, [self.dataset_size - split, split], generator=dataset_rng)
+
+        np.random.seed(self.random_seed)
+
         for i in range(self.net_count):
             self.nets.append(TinyAudioNet(self.input_size, len(self.dataset_labels), True))
-            self.optimizers.append(optim.SGD(self.nets[i].parameters(), lr=0.003, momentum=0.9, nesterov=True))
-            self.random_seeds.append(random.randint(0, 100000))
-            
- 
-            # Split the dataset into validation and training data loaders
-            indices = list(range(self.dataset_size))
-            np.random.seed(self.random_seeds[i])
-            np.random.shuffle(indices)
-            train_indices, val_indices = indices[split:], indices[:split]
-            self.train_indices.append( train_indices)
-            
-            train_sampler = SubsetRandomSampler(self.train_indices[i])
-            valid_sampler = SubsetRandomSampler(val_indices)
-            self.train_loaders.append(torch.utils.data.DataLoader(dataset, batch_size=self.batch_size, sampler=train_sampler))
-            self.validation_loaders.append(torch.utils.data.DataLoader(dataset, batch_size=self.batch_size, sampler=valid_sampler))
+            optimizer = optim.SGD(self.nets[i].parameters(), lr=0.003, momentum=0.9, nesterov=True)
+            self.optimizers.append(optimizer)
+            self.schedulers.append( torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min'))
+
+            self.train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=self.batch_size, shuffle=True)
+            self.validation_loader = torch.utils.data.DataLoader(val_dataset, batch_size=self.batch_size)
         
     def train(self, filename):
         best_accuracy = []
@@ -121,8 +124,6 @@ class AudioNetTrainer:
             best_accuracy.append(0)
         starttime = int(time.time())
         combined_model = TinyAudioNetEnsemble(self.nets).to(self.device)
-        
-        input_size = 120
         
         with open(REPLAYS_FOLDER + "/model_training_" + filename + str(starttime) + ".csv", 'a', newline='') as csvfile:	
             headers = ['epoch', 'loss', 'avg_validation_accuracy']
@@ -138,14 +139,9 @@ class AudioNetTrainer:
                     running_loss.append(0.0)
                     self.nets[j].train(True)
                     
-                    # Reshuffle the indexes in the training batch to ensure the net does not memories the order of data being fed in
-                    np.random.shuffle(self.train_indices[j])
-                    train_sampler = SubsetRandomSampler(self.train_indices[j])
-                    self.train_loaders[j] = torch.utils.data.DataLoader(self.dataset, batch_size=self.batch_size, sampler=train_sampler)                
-                    
                     i = 0
                     with torch.set_grad_enabled(True):
-                        for local_batch, local_labels in self.train_loaders[j]:
+                        for local_batch, local_labels in self.train_loader:
                             # Transfer to GPU
                             local_batch, local_labels = local_batch.to(self.device), local_labels.to(self.device)
                             
@@ -196,7 +192,7 @@ class AudioNetTrainer:
                             accuracy_batch['correct'][dataset_label] = 0
                             accuracy_batch['percent'][dataset_label] = 0
                     
-                        for local_batch, local_labels in self.validation_loaders[j]:
+                        for local_batch, local_labels in self.validation_loader:
                             # Transfer to GPU
                             local_batch, local_labels = local_batch.to(self.device), local_labels.to(self.device)
                             
@@ -228,6 +224,7 @@ class AudioNetTrainer:
                 for j in range(self.net_count):
                     epoch_loss.append(epoch_validation_loss[j] / ( self.dataset_size * self.validation_split ) )
                     accuracy.append( correct[j] / ( self.dataset_size * self.validation_split ) )
+                    self.schedulers[j].step(epoch_loss[j])
                     print('[Net: %d] Validation loss: %.4f accuracy %.3f' % (j + 1, epoch_loss[j], accuracy[j]))
 
                 print('[Combined] Sum validation loss: %.4f average accuracy %.3f' % (np.sum(epoch_loss), combined_correct / ( self.dataset_size * self.validation_split )))
@@ -253,7 +250,6 @@ class AudioNetTrainer:
                         'last_row': csv_row,
                         'loss': epoch_loss[j],
                         'epoch': epoch,
-                        'random_seed': self.random_seeds[j],
                         }, os.path.join(CLASSIFIER_FOLDER, current_filename) + '-weights.pth.tar')
                 
                 # Persist a new combined model with the best weights if new best weights are given
