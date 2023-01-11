@@ -1,6 +1,8 @@
 # Installation guide
 -----------
 
+This guide focuses on Windows installation.  See also [Mac installation](./MAC_INSTALLATION.md) and [Linux installation](./LINUX_INSTALLATION.md) for some platform-specific help
+
 For this program to work, you must atleast have access to a microphone and a machine that can run Python 3.8 64 bit.
 This document describes installing the program on a Windows machine.
 
