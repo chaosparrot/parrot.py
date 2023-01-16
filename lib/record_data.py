@@ -12,6 +12,7 @@ from scipy.fftpack import fftfreq
 from scipy.signal import blackmanharris
 from lib.machinelearning import get_loudest_freq, get_recording_power
 import os
+import glob
 from queue import *
 import threading
 import traceback
@@ -109,6 +110,24 @@ def record_sound():
     if len(valid_mics) == 0:
         print("No usable microphones selected - Exiting")
         return;    
+
+    try:
+        if os.path.exists(RECORDINGS_FOLDER):
+            glob_path = RECORDINGS_FOLDER + "/*/"
+            existing_dirs = glob.glob(glob_path)
+            if existing_dirs:
+                print("")
+                print("These sounds already have a folder:")
+            for dirname in existing_dirs:
+                # cut off glob path, but leave two more characters
+                # at the start to account for */
+                # also remove the trailing slash
+                print(" - ", dirname[len(glob_path) - 2:-1])
+            print("")
+    except:
+        # Since this is just a convenience feature, exceptions shall not
+        # cause recording to abort, whatever happens
+        pass
 
     directory = input("Whats the name of the sound are you recording? ")
     while (directory == ""):
