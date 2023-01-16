@@ -12,6 +12,7 @@ from scipy.fftpack import fftfreq
 from scipy.signal import blackmanharris
 from lib.machinelearning import get_loudest_freq, get_recording_power
 import os
+import glob
 from queue import *
 import threading
 import traceback
@@ -110,6 +111,24 @@ def record_sound():
         print("No usable microphones selected - Exiting")
         return;    
 
+    try:
+        if os.path.exists(RECORDINGS_FOLDER):
+            glob_path = RECORDINGS_FOLDER + "/*/"
+            existing_dirs = glob.glob(glob_path)
+            if existing_dirs:
+                print("")
+                print("These sounds already have a folder:")
+            for dirname in existing_dirs:
+                # cut off glob path, but leave two more characters
+                # at the start to account for */
+                # also remove the trailing slash
+                print(" - ", dirname[len(glob_path) - 2:-1])
+            print("")
+    except:
+        # Since this is just a convenience feature, exceptions shall not
+        # cause recording to abort, whatever happens
+        pass
+
     directory = input("Whats the name of the sound are you recording? ")
     while (directory == ""):
         directory = input("")
@@ -119,13 +138,18 @@ def record_sound():
     if not os.path.exists(RECORDINGS_FOLDER + "/" + directory + "/source"):
         os.makedirs(RECORDINGS_FOLDER + "/"  + directory + "/source")
 
-    power_threshold = input("What signal power ( loudness ) threshold do you need? " )
+    print("What signal power ( loudness ) threshold do you need?")
+    print("(if you do not know, start with something like 10000 and see afterwards")
+    print("what power values you get while recording.)")
+    power_threshold = input("power: ")
     if( power_threshold == "" ):
         power_threshold = 0
     else:
         power_threshold = int( power_threshold )
         
-    frequency_threshold = input("What frequency threshold do you need? " )
+    print("What frequency threshold do you need?")
+    print("(you may not need this at all, so feel free to just press enter here)")
+    frequency_threshold = input("frequency: ")
     if( frequency_threshold == "" ):
         frequency_threshold = 0
     else:
