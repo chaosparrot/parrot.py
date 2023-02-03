@@ -59,4 +59,4 @@ dragonfly_spec = importlib.util.find_spec("dragonfly")
 if( SPEECHREC_ENABLED == True ):
     SPEECHREC_ENABLED = dragonfly_spec is not None
     
-    
+BACKGROUND_LABEL = "silence"
