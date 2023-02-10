@@ -2,6 +2,8 @@ from .typing import DetectionLabel, DetectionFrame, DetectionEvent, DetectionSta
 from config.config import BACKGROUND_LABEL
 from typing import List
 
+CURRENT_VERSION = 1
+
 def determine_detection_state(detection_frames: List[DetectionFrame], detection_state: DetectionState) -> DetectionState:
     # Filter out very low power dbFS values as we can assume the hardware microphone is off
     # And we do not want to skew the mean for that as it would create more false positives
