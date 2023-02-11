@@ -6,7 +6,7 @@ from python_speech_features import mfcc
 from .mfsc import Mfsc
 from typing import List, Tuple
 
-_mfscs = []
+_mfscs = {}
 
 # Determine the decibel based on full scale of 16 bit ints ( same as Audacity )
 def determine_dBFS(waveData: np.array) -> float:
@@ -83,23 +83,21 @@ def determine_formant_frequencies(waveData: np.array, bin_size: float = 241) -> 
     return f1, f2
 
 def determine_mfcc_type1(waveData: np.array, sampleRate: int = 16000) -> List[float]:
-    return mfcc( wavData, samplerate=sampleRate, nfft=1103, numcep=13, appendEnergy=True )
+    return mfcc( waveData, samplerate=sampleRate, nfft=1103, numcep=13, appendEnergy=True )
     
 def determine_mfcc_type2(waveData: np.array, sampleRate: int = 16000) -> List[float]:
-    return mfcc( wavData, samplerate=sampleRate, nfft=1103, numcep=30, nfilt=40, preemph=0.5, winstep=0.005, winlen=0.015, appendEnergy=False )
+    return mfcc( waveData, samplerate=sampleRate, nfft=1103, numcep=30, nfilt=40, preemph=0.5, winstep=0.005, winlen=0.015, appendEnergy=False )
 
 def determine_mfsc(waveData: np.array, sampleRate:int = 16000) -> List[float]:
     global _mfscs
     if ( sampleRate not in _mfscs ):
         _mfscs[sampleRate] = Mfsc(sr=sampleRate, n_mel=40, preem_coeff=0.5, frame_stride_ms=5, frame_size_ms=15)
     _mfsc = _mfscs[sampleRate]
-    mfsc_result = _mfsc.apply( wavData )
+    return _mfsc.apply( waveData )
 
 # Get a feeling of how much the signal changes based on the total distance between mel frames
 def determine_euclidean_dist(mfscData: np.array) -> float:
-    filter_number = 40
-    mel_frame_amount = int(len(mfscData) / filter_number)
-    mfscData = np.reshape(mfscData, (mel_frame_amount, filter_number) )
+    mel_frame_amount = len(mfscData)
     distance = 0
     for i in range(0, mel_frame_amount):
         if i > 0:

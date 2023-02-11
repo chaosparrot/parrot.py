@@ -2,6 +2,7 @@ import time
 from config.config import BACKGROUND_LABEL
 from .typing import TransitionEvent, DetectionEvent, DetectionFrame
 from typing import List
+import math
 
 def ms_to_srt_timestring( ms: int, include_hours=True):
     if ms <= 0:

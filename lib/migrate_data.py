@@ -1,7 +1,8 @@
 from config.config import *
 import os
-from lib.stream_processing import CURRENT_VERSION
-from lib.print_status import create_progress_bar, clear_previous_lines
+from lib.stream_processing import CURRENT_VERSION, process_wav_file
+from lib.print_status import create_progress_bar, clear_previous_lines, get_current_status
+from .typing import DetectionState
 import time
 
 def check_migration():
@@ -24,26 +25,39 @@ def check_migration():
 def migrate_data():
     print("----------------------------")
     recording_dirs = os.listdir(RECORDINGS_FOLDER)
-    for file in recording_dirs:
-        source_dir = os.path.join(RECORDINGS_FOLDER, file, "source")
+    for label in recording_dirs:
+        source_dir = os.path.join(RECORDINGS_FOLDER, label, "source")
         if os.path.isdir(source_dir):
-            segments_dir = os.path.join(RECORDINGS_FOLDER, file, "segments")
+            segments_dir = os.path.join(RECORDINGS_FOLDER, label, "segments")
             if not os.path.exists(segments_dir):
                 os.makedirs(segments_dir)
-            print( "Resegmenting " + file + "..." )
+            print( "Resegmenting " + label + "..." )
+            print( "" )
             wav_files = [x for x in os.listdir(source_dir) if os.path.isfile(os.path.join(source_dir, x)) and x.endswith(".wav")]            
             progress = 0
             progress_chunk = 1 / len( wav_files )
-            print( create_progress_bar(progress) )
             for index, wav_file in enumerate(wav_files):
-                srt_file = os.path.join(segments_dir, wav_file.replace(".wav", ".v1.srt"))
-                
+                wav_file_location = os.path.join(source_dir, wav_file)            
+                srt_file_location = os.path.join(segments_dir, wav_file.replace(".wav", ".v" + str(CURRENT_VERSION) + ".srt"))
+                output_file_location = os.path.join(segments_dir, wav_file.replace(".wav", "_detection.wav"))
+
+                process_wav_file(wav_file_location, srt_file_location, output_file_location, [label], \
+                    lambda internal_progress, state: print_migration_progress(progress + (internal_progress * progress_chunk), state) )
                 progress = index / len( wav_files ) + progress_chunk
                 clear_previous_lines(1)
                 print( create_progress_bar(progress) )
             clear_previous_lines(1)
-            clear_previous_lines(1)            
-            print( file + " updated!" )            
+            clear_previous_lines(1)
+            print( label + " updated!" )
 
-    time.sleep(1)    
+    time.sleep(1)
+
+def print_migration_progress(progress, state: DetectionState):
+    status_lines = get_current_status(state)
+    line_count = 1 + len(status_lines) if state.ms_recorded > 0 else 1
+    clear_previous_lines(line_count)
+    print( create_progress_bar(progress) )
+    if progress < 1:
+        for line in status_lines:
+            print( line )
     

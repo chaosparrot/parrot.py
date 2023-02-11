@@ -41,11 +41,11 @@ def get_current_status(detection_state: DetectionState) -> List[str]:
         
     lines = [
         ".".ljust(LINE_LENGTH - 2, "-") + ".",
-        "| " + "Listening for:" + recorded_timestring.rjust(LINE_LENGTH - 12) + " |",
+        "| " + "Listening for:" + recorded_timestring.rjust(LINE_LENGTH - 19) + " |",
     ]
     
     if detection_state.state == "recording":
-        lines.append("| " + "Mic Quality: " + quality.rjust(LINE_LENGTH - 13) + " |")
+        lines.append("| " + "Mic Quality: " + quality.rjust(LINE_LENGTH - 18) + " |")
     elif detection_state.state == "processing":
         lines.append("| " + "PROCESSING...".ljust(LINE_LENGTH) + " |")
     elif detection_state.state == "paused":
@@ -56,10 +56,10 @@ def get_current_status(detection_state: DetectionState) -> List[str]:
     if detection_state.advanced_logging:
        lines.extend([
            "|".ljust(LINE_LENGTH - 2,"-") + "|",
-           "| " + "Est. values for thresholding".ljust(LINE_LENGTH) + " |",
+           "| " + "Est. values for thresholding".ljust(LINE_LENGTH - 5) + " |",
            "|".ljust(LINE_LENGTH - 2,"-") + "|",
-           "| " + ("Noise floor (dBFS):" + str(round(detection_state.expected_noise_floor)).rjust(LINE_LENGTH - 19)) + " |",
-           "| " + ("SNR:" + str(round(detection_state.expected_snr)).rjust(LINE_LENGTH - 4)) + " |",
+           "| " + ("Noise floor (dBFS):" + str(round(detection_state.expected_noise_floor)).rjust(LINE_LENGTH - 24)) + " |",
+           "| " + ("SNR:" + str(round(detection_state.expected_snr)).rjust(LINE_LENGTH - 9)) + " |",
        ])
 
     for label in detection_state.labels:
@@ -78,14 +78,14 @@ def get_current_status(detection_state: DetectionState) -> List[str]:
 
         lines.extend([
            "|".ljust(LINE_LENGTH - 2,"-") + "|",
-            "| " + label.label.ljust(LINE_LENGTH) + " |",
-            "| " + "Recorded: " + ms_to_srt_timestring( label.ms_detected, False ).rjust(LINE_LENGTH - 10) + " |",
-            "| " + "Data Quantity: " + quantity.rjust(LINE_LENGTH - 15) + " |",
+            "| " + label.label.ljust(LINE_LENGTH - 5) + " |",
+            "| " + "Recorded: " + ms_to_srt_timestring( label.ms_detected, False ).rjust(LINE_LENGTH - 15) + " |",
+            "| " + "Data Quantity: " + quantity.rjust(LINE_LENGTH - 20) + " |",
         ])
         
         if detection_state.advanced_logging:
-            lines.append( "| " + ("type:" + str(label.duration_type if label.duration_type else "Unknown").upper().rjust(33)) + " |" )
-            lines.append( "| " + ("dbFS treshold:" + str(round(label.min_dBFS, 2)).rjust(LINE_LENGTH - 14)) + " |" )
+            lines.append( "| " + ("type:" + str(label.duration_type if label.duration_type else "Unknown").upper().rjust(LINE_LENGTH - 10)) + " |" )
+            lines.append( "| " + ("dBFS treshold:" + str(round(label.min_dBFS, 2)).rjust(LINE_LENGTH - 19)) + " |" )
     lines.append("'".ljust(LINE_LENGTH - 2,"-") + "'")
     
     return lines
