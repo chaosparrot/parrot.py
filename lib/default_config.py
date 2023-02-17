@@ -1,7 +1,15 @@
-import pyaudio
-import pyautogui
 import importlib
 import sys
+
+import pyaudio
+
+if sys.platform == "darwin":
+    # This is necessary to import before pyautogui
+    # See https://github.com/asweigart/pyautogui/issues/495#issuecomment-778241850
+    import AppKit
+
+import pyautogui
+
 pyautogui.FAILSAFE = False
 
 default_audio = pyaudio.PyAudio().get_default_input_device_info()
