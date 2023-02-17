@@ -4,15 +4,9 @@ from typing import List
 import wave
 import math
 import numpy as np
-from .signal_processing import determine_power, determine_dBFS, determine_mfsc, determine_euclidean_dist
+from .signal_processing import determine_power, determine_dBFS, determine_mfsc, determine_euclidean_dist, resample_audio
 from .srt import persist_srt_file, print_detection_performance_compared_to_srt
 import os
-import audioop
-
-# When converting to ints from bytes, Windows uses a 32 bit number.
-# Other OSes use the bytes shown. So for Windows we need different calculations for frame count
-# ( https://stackoverflow.com/questions/72482769/numpy-returns-different-results-on-windows-and-unix )
-long_byte_size = 4 if os.name == 'nt' else 2
 
 CURRENT_VERSION = 1
 
@@ -54,10 +48,7 @@ def process_wav_file(input_file, srt_file, output_file, labels, progress_callbac
         
         # Do online downsampling if the files frame rate is higher than our 16k Hz rate
         # To make sure all the calculations stay accurate
-        if frame_rate > RATE:
-            raw_wav, _ = audioop.ratecv(raw_wav, sample_width, number_channels, frame_rate, RATE, None)
-            if number_channels > 1:
-                raw_wav = audioop.tomono(raw_wav[0], 2, 1, 0)
+        raw_wav = resample_audio(raw_wav, frame_rate, number_channels)
 
         audioFrames.append(raw_wav)
         if( len( audioFrames ) >= SLIDING_WINDOW_AMOUNT ):
