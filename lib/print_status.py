@@ -45,13 +45,13 @@ def get_current_status(detection_state: DetectionState) -> List[str]:
     ]
     
     if detection_state.state == "recording":
-        lines.append("| " + "Mic Quality: " + quality.rjust(LINE_LENGTH - 18) + " |")
+        lines.append("| " + "Sound Quality: " + quality.rjust(LINE_LENGTH - 20) + " |")
     elif detection_state.state == "processing":
-        lines.append("| " + "PROCESSING...".ljust(LINE_LENGTH) + " |")
+        lines.append("| " + "PROCESSING...".ljust(LINE_LENGTH - 5) + " |")
     elif detection_state.state == "paused":
-        lines.append("| " + "PAUSED - Resume using SPACE".ljust(LINE_LENGTH) + " |")
+        lines.append("| " + "PAUSED - Resume using SPACE".ljust(LINE_LENGTH - 5) + " |")
     else:
-        lines.append("| " + detection_state.state.upper().ljust(LINE_LENGTH) + " |")
+        lines.append("| " + detection_state.state.upper().ljust(LINE_LENGTH - 5) + " |")
     
     if detection_state.advanced_logging:
        lines.extend([
@@ -90,8 +90,12 @@ def get_current_status(detection_state: DetectionState) -> List[str]:
     
     return lines
 
-def clear_previous_lines(line_count):
+def reset_previous_lines(line_count):
     line = "";
     for i in range(0,line_count):
         line += ANSI_CODE_LINE_UP
     print(line, end=ANSI_CODE_LINE_CLEAR )
+
+def clear_previous_lines(line_count):
+    for i in range(0,line_count):
+        print(ANSI_CODE_LINE_UP, end=ANSI_CODE_LINE_CLEAR )

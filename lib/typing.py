@@ -44,7 +44,6 @@ class DetectionLabel:
 class DetectionState:
     strategy: str
     state: str
-    frames_to_read: int
     ms_per_frame: int
     ms_recorded: int
     advanced_logging: bool

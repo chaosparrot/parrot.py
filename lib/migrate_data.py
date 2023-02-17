@@ -1,7 +1,7 @@
 from config.config import *
 import os
 from lib.stream_processing import CURRENT_VERSION, process_wav_file
-from lib.print_status import create_progress_bar, clear_previous_lines, get_current_status
+from lib.print_status import create_progress_bar, clear_previous_lines, get_current_status, reset_previous_lines
 from .typing import DetectionState
 import time
 
@@ -18,9 +18,8 @@ def check_migration():
         print("----------------------------")
         print("!! Improvement to segmentation found !!")
         print("This can help improve the data gathering from your recordings which make newer models better")
-        update = input("Do you want to reprocess your recordings? [y/N] ")
-        if (update.lower() == "y"):
-            migrate_data()
+        print("Resegmenting your data may take a while")
+        migrate_data()
 
 def migrate_data():
     print("----------------------------")
@@ -32,7 +31,6 @@ def migrate_data():
             if not os.path.exists(segments_dir):
                 os.makedirs(segments_dir)
             print( "Resegmenting " + label + "..." )
-            print( "" )
             wav_files = [x for x in os.listdir(source_dir) if os.path.isfile(os.path.join(source_dir, x)) and x.endswith(".wav")]            
             progress = 0
             progress_chunk = 1 / len( wav_files )
@@ -44,20 +42,22 @@ def migrate_data():
                 process_wav_file(wav_file_location, srt_file_location, output_file_location, [label], \
                     lambda internal_progress, state: print_migration_progress(progress + (internal_progress * progress_chunk), state) )
                 progress = index / len( wav_files ) + progress_chunk
+                
+            if progress == 1:
                 clear_previous_lines(1)
-                print( create_progress_bar(progress) )
+
             clear_previous_lines(1)
-            clear_previous_lines(1)
-            print( label + " updated!" )
+            print( label + " resegmented!" )
 
     time.sleep(1)
+    print("Finished migrating data!")
+    print("----------------------------")
 
 def print_migration_progress(progress, state: DetectionState):
     status_lines = get_current_status(state)
-    line_count = 1 + len(status_lines) if state.ms_recorded > 0 else 1
-    clear_previous_lines(line_count)
+    line_count = 1 + len(status_lines) if progress > 0 or state.state == "processing" else 0
+    reset_previous_lines(line_count) if progress < 1 else clear_previous_lines(line_count)
     print( create_progress_bar(progress) )
-    if progress < 1:
+    if progress != 1:
         for line in status_lines:
             print( line )
-    

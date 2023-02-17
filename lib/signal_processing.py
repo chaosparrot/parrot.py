@@ -5,6 +5,12 @@ import audioop
 from python_speech_features import mfcc
 from .mfsc import Mfsc
 from typing import List, Tuple
+import os
+
+# When converting to ints from bytes, Windows uses a 32 bit number.
+# Other OSes use the bytes shown. So for Windows we need different calculations for frame count
+# ( https://stackoverflow.com/questions/72482769/numpy-returns-different-results-on-windows-and-unix )
+long_byte_size = 4 if os.name == 'nt' else 2
 
 _mfscs = {}
 
@@ -13,11 +19,11 @@ def determine_dBFS(waveData: np.array) -> float:
     return 20 * math.log10(determine_power(waveData) / math.pow(32767, 2))
 
 def determine_power(waveData: np.array) -> float:
-    return audioop.rms(waveData, 4)    
+    return audioop.rms(waveData, long_byte_size)
 
 # This power measurement is the old representation for human readability
 def determine_legacy_power(waveData: np.array) -> float:
-    return determine_power( ) / 1000
+    return determine_power(audioop.rms(waveData, 4)) / 1000
 
 # Old fundamental frequency finder - this one doesn't show frequency in Hz
 def determine_legacy_frequency(waveData: np.array) -> float:
