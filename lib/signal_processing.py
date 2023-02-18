@@ -110,13 +110,3 @@ def determine_euclidean_dist(mfscData: np.array) -> float:
         if i > 0:
             distance += np.linalg.norm(mfscData[i-1] - mfscData[i])
     return distance
-
-# Resamples the audio down to 16kHz ( or any other RATE filled in )
-# To make sure all the other calculations are stable and correct
-def resample_audio(wavData: np.array, frame_rate, number_channels) -> np.array:
-    if frame_rate > RATE:
-        sample_width = 2# 16 bit = 2 bytes
-        wavData, _ = audioop.ratecv(wavData, sample_width, number_channels, frame_rate, RATE, None)
-        if number_channels > 1:
-            wavData = audioop.tomono(wavData[0], 2, 1, 0)
-    return wavData

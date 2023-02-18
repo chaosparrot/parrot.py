@@ -4,7 +4,8 @@ from typing import List
 import wave
 import math
 import numpy as np
-from .signal_processing import determine_power, determine_dBFS, determine_mfsc, determine_euclidean_dist, resample_audio
+from .signal_processing import determine_power, determine_dBFS, determine_mfsc, determine_euclidean_dist
+from .wav import resample_audio
 from .srt import persist_srt_file, print_detection_performance_compared_to_srt
 import os
 
@@ -12,7 +13,6 @@ CURRENT_VERSION = 1
 
 def process_wav_file(input_file, srt_file, output_file, labels, progress_callback = None, comparison_srt_file = None, print_statistics = False):
     audioFrames = []
-    edgesAudioFrames = []
     wf = wave.open(input_file, 'rb')
     number_channels = wf.getnchannels()
     total_frames = wf.getnframes()
