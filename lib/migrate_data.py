@@ -10,9 +10,17 @@ def check_migration():
     recording_dirs = os.listdir(RECORDINGS_FOLDER)
     for file in recording_dirs:
         if os.path.isdir(os.path.join(RECORDINGS_FOLDER, file)):
-            if not os.path.exists(os.path.join(RECORDINGS_FOLDER, file, "segments")) \
-                or not os.listdir(os.path.join(RECORDINGS_FOLDER, file, "segments")):
+            segments_folder = os.path.join(RECORDINGS_FOLDER, file, "segments")
+            if not os.path.exists(segments_folder):
                 version_detected = 0
+                break
+            else:
+                source_files = os.listdir(os.path.join(RECORDINGS_FOLDER, file, "source"))
+                for source_file in source_files:
+                    srt_file = source_file.replace(".wav", ".v" + str(CURRENT_VERSION) + ".srt")
+                    if not os.path.exists(os.path.join(segments_folder, srt_file)):
+                        version_detected = 0
+                        break
 
     if version_detected < CURRENT_VERSION:
         print("----------------------------")
@@ -34,20 +42,25 @@ def migrate_data():
             wav_files = [x for x in os.listdir(source_dir) if os.path.isfile(os.path.join(source_dir, x)) and x.endswith(".wav")]            
             progress = 0
             progress_chunk = 1 / len( wav_files )
+            skipped_amount = 0
             for index, wav_file in enumerate(wav_files):
-                wav_file_location = os.path.join(source_dir, wav_file)            
+                wav_file_location = os.path.join(source_dir, wav_file)
                 srt_file_location = os.path.join(segments_dir, wav_file.replace(".wav", ".v" + str(CURRENT_VERSION) + ".srt"))
                 output_file_location = os.path.join(segments_dir, wav_file.replace(".wav", "_detection.wav"))
-
-                process_wav_file(wav_file_location, srt_file_location, output_file_location, [label], \
-                    lambda internal_progress, state: print_migration_progress(progress + (internal_progress * progress_chunk), state) )
+                
+                # Only resegment if the new version does not exist already
+                if not os.path.exists(srt_file_location):
+                    process_wav_file(wav_file_location, srt_file_location, output_file_location, [label], \
+                        lambda internal_progress, state: print_migration_progress(progress + (internal_progress * progress_chunk), state) )
+                else:
+                    skipped_amount += 1
                 progress = index / len( wav_files ) + progress_chunk
                 
-            if progress == 1:
+            if progress == 1 and skipped_amount < len(wav_files):
                 clear_previous_lines(1)
 
             clear_previous_lines(1)
-            print( label + " resegmented!" )
+            print( label + " resegmented!" if skipped_amount < len(wav_files) else label + " already properly segmented!" )
 
     time.sleep(1)
     print("Finished migrating data!")
