@@ -10,6 +10,7 @@ from .srt import persist_srt_file, print_detection_performance_compared_to_srt
 import os
 
 CURRENT_VERSION = 1
+CURRENT_DETECTION_STRATEGY = "auto_dBFS_mend_dBFS_30ms_secondary_dBFS_reject_cont_45ms_repair"
 
 def process_wav_file(input_file, srt_file, output_file, labels, progress_callback = None, comparison_srt_file = None, print_statistics = False):
     audioFrames = []
@@ -21,7 +22,7 @@ def process_wav_file(input_file, srt_file, output_file, labels, progress_callbac
     ms_per_frame = math.floor(RECORD_SECONDS / SLIDING_WINDOW_AMOUNT * 1000)
     sample_width = 2# 16 bit = 2 bytes
     
-    detection_strategy = "auto_dBFS_mend_dBFS_30ms_secondary_dBFS_reject_cont_45ms_repair"
+    detection_strategy = CURRENT_DETECTION_STRATEGY
     
     detection_labels = []
     for label in labels:
@@ -34,7 +35,7 @@ def process_wav_file(input_file, srt_file, output_file, labels, progress_callbac
     detection_frames = []
 
     if progress_callback is not None:
-        progress_callback(0, detection_state)    
+        progress_callback(0, detection_state)
     
     while( wf.tell() < total_frames ):
         index = index + 1
@@ -51,65 +52,8 @@ def process_wav_file(input_file, srt_file, output_file, labels, progress_callbac
         raw_wav = resample_audio(raw_wav, frame_rate, number_channels)
 
         audioFrames.append(raw_wav)
-        if( len( audioFrames ) >= SLIDING_WINDOW_AMOUNT ):
-            audioFrames = audioFrames[-SLIDING_WINDOW_AMOUNT:]
-            
-            byteString = b''.join(audioFrames)
-            wave_data = np.frombuffer( byteString, dtype=np.int16 )
-            power = determine_power( wave_data )
-            dBFS = determine_dBFS( wave_data )
-            mfsc_data = determine_mfsc( wave_data, RATE )
-            distance = determine_euclidean_dist( mfsc_data )                
-
-            # Attempt to detect a label
-            detected_label = BACKGROUND_LABEL
-            for label in detection_state.labels:
-                if is_detected(detection_state.strategy, power, dBFS, distance, label.min_dBFS):
-                    detected = True
-                    label.ms_detected += ms_per_frame
-                    detected_label = label.label
-                    break
-
-            detection_frames.append(DetectionFrame(index, ms_per_frame, detected, power, dBFS, distance, mfsc_data, detected_label))
-            if detected:
-                current_occurrence.append(detection_frames[-1])
-            else:
-                false_occurrence.append(detection_frames[-1])
-        else:
-            detection_frames.append(DetectionFrame(index, ms_per_frame, False, 0, 0, 0, [], BACKGROUND_LABEL))
-            false_occurrence.append(detection_frames[-1])                
-            
-        # Recalculate the noise floor / signal strength every 10 frames
-        # For performance reason and because the statistical likelyhood of things changing every 150ms is pretty low
-        if len(detection_frames) % 10 == 0:
-            detection_state = determine_detection_state(detection_frames, detection_state)            
-
-        # On-line rejection - This may be undone in post-processing later
-        # Only add occurrences longer than 75 ms as no sound a human produces is shorter
-        if detected == False and len(current_occurrence) > 0:
-            is_continuous = False
-            for label in detection_state.labels:
-                if label == current_occurrence[0].label:
-                    is_continuous = label.duration_type == "continuous"
-                    break
-
-            if is_rejected(detection_state.strategy, current_occurrence, detection_state.ms_per_frame, is_continuous):
-                total_rejected_frames = len(current_occurrence)
-                for frame_index in range(-total_rejected_frames - 1, 0, 1):
-                    rejected_frame_index = frame_index
-                    detection_frames[rejected_frame_index].label = BACKGROUND_LABEL
-                    detection_frames[rejected_frame_index].positive = False
-            current_occurrence = []
-        # On-line mending - This may be undone in post-processing later
-        # Only keep false detections longer than a certain amount ( because a human can't make them shorter )
-        elif detected and len(false_occurrence) > 0:            
-            if is_mended(detection_state.strategy, false_occurrence, detection_state, detected_label):
-                total_mended_frames = len(false_occurrence)
-                for frame_index in range(-total_mended_frames - 1, 0, 1):
-                    mended_frame_index = frame_index
-                    detection_frames[mended_frame_index].label = detected_label
-                    detection_frames[mended_frame_index].positive = True                
-            false_occurrence = []
+        audioFrames, detection_state, detection_frames, current_occurrence, false_occurrence = \
+            process_audio_frame(index, audioFrames, detection_state, detection_frames, current_occurrence, false_occurrence)
         
         # Convert from different byte sizes to 16bit for proper progress
         progress = wf.tell() / total_frames
@@ -129,6 +73,74 @@ def process_wav_file(input_file, srt_file, output_file, labels, progress_callbac
     progress = 1
     if progress_callback is not None:
         progress_callback(progress, detection_state)    
+
+def process_audio_frame(index, audioFrames, detection_state, detection_frames, current_occurrence, false_occurrence):
+    detection_frames.append(determine_detection_frame(index, detection_state, audioFrames))
+    detected = detection_frames[-1].positive
+    detected_label = detection_frames[-1].label
+    if detected:
+        current_occurrence.append(detection_frames[-1])
+    else:
+        false_occurrence.append(detection_frames[-1])
+    
+    # Recalculate the noise floor / signal strength every 10 frames
+    # For performance reason and because the statistical likelyhood of things changing every 150ms is pretty low
+    if len(detection_frames) % 10 == 0:
+        detection_state = determine_detection_state(detection_frames, detection_state)            
+
+    # On-line rejection - This may be undone in post-processing later
+    # Only add occurrences longer than 75 ms as no sound a human produces is shorter
+    if detected == False and len(current_occurrence) > 0:
+        is_continuous = False
+        for label in detection_state.labels:
+            if label == current_occurrence[0].label:
+                is_continuous = label.duration_type == "continuous"
+                break
+
+        if is_rejected(detection_state.strategy, current_occurrence, detection_state.ms_per_frame, is_continuous):
+            total_rejected_frames = len(current_occurrence)
+            for frame_index in range(-total_rejected_frames - 1, 0, 1):
+                rejected_frame_index = frame_index
+                detection_frames[rejected_frame_index].label = BACKGROUND_LABEL
+                detection_frames[rejected_frame_index].positive = False
+        current_occurrence = []
+    # On-line mending - This may be undone in post-processing later
+    # Only keep false detections longer than a certain amount ( because a human can't make them shorter )
+    elif detected and len(false_occurrence) > 0:            
+        if is_mended(detection_state.strategy, false_occurrence, detection_state, detected_label):
+            total_mended_frames = len(false_occurrence)
+            for frame_index in range(-total_mended_frames - 1, 0, 1):
+                mended_frame_index = frame_index
+                detection_frames[mended_frame_index].label = detected_label
+                detection_frames[mended_frame_index].positive = True                
+        false_occurrence = []
+    
+    return audioFrames, detection_state, detection_frames, current_occurrence, false_occurrence
+
+def determine_detection_frame(index, detection_state, audioFrames) -> DetectionFrame:
+    detected = False
+    if( len( audioFrames ) >= SLIDING_WINDOW_AMOUNT ):
+        audioFrames = audioFrames[-SLIDING_WINDOW_AMOUNT:]
+        
+        byteString = b''.join(audioFrames)
+        wave_data = np.frombuffer( byteString, dtype=np.int16 )
+        power = determine_power( wave_data )
+        dBFS = determine_dBFS( wave_data )
+        mfsc_data = determine_mfsc( wave_data, RATE )
+        distance = determine_euclidean_dist( mfsc_data )
+
+        # Attempt to detect a label
+        detected_label = BACKGROUND_LABEL
+        for label in detection_state.labels:
+            if is_detected(detection_state.strategy, power, dBFS, distance, label.min_dBFS):
+                detected = True
+                label.ms_detected += detection_state.ms_per_frame
+                detected_label = label.label
+                break
+
+        return DetectionFrame(index, detection_state.ms_per_frame, detected, power, dBFS, distance, mfsc_data, detected_label)
+    else:
+        return DetectionFrame(index, detection_state.ms_per_frame, detected, 0, 0, 0, [], BACKGROUND_LABEL)
 
 def post_processing(frames: List[DetectionFrame], detection_state: DetectionState, output_filename: str, progress_callback = None, output_wave_file: wave.Wave_write = None, comparison_srt_file: str = None, print_statistics = False) -> List[DetectionFrame]:
     detection_state.state = "processing"

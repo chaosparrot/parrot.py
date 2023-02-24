@@ -19,13 +19,13 @@ def create_progress_bar(percentage: float = 1.0) -> str:
     filled_characters = round(max(0, min(LINE_LENGTH, LINE_LENGTH * percentage)))
     return "".rjust(filled_characters, PROGRESS_FILLED).ljust(LINE_LENGTH, PROGRESS_AVAILABLE)
 
-def get_current_status(detection_state: DetectionState) -> List[str]:
-    recorded_timestring = ms_to_srt_timestring( detection_state.ms_recorded, False)
+def get_current_status(detection_state: DetectionState, multiplier = 1) -> List[str]:
+    recorded_timestring = ms_to_srt_timestring( detection_state.ms_recorded * multiplier, False)
 
     # Quality rating was manually established by doing some testing with added noise
     # And finding the results becoming worse when the SNR went lower than 10
     quality = ""
-    if detection_state.ms_recorded > 10000:
+    if detection_state.ms_recorded * multiplier > 10000:
         if detection_state.expected_snr >= 25:
             quality = "Excellent"
         elif detection_state.expected_snr >= 20:
@@ -67,24 +67,24 @@ def get_current_status(detection_state: DetectionState) -> List[str]:
         # And 1000 30ms windows being enough to train a label decently
         # With atleast 10 percent extra for a possible hold-out set during training
         quantity = ""
-        if label.ms_detected < 16500:
+        if label.ms_detected * multiplier < 16500:
             quantity = "Not enough"
-        elif label.ms_detected > 16500 and label.ms_detected < 41250:
+        elif label.ms_detected * multiplier > 16500 and label.ms_detected * multiplier < 41250:
             quantity = "Sufficient"
-        elif label.ms_detected >= 41250 and label.ms_detected < 82500:
+        elif label.ms_detected * multiplier >= 41250 and label.ms_detected * multiplier < 82500:
             quantity = "Good"
-        elif label.ms_detected >= 82500:
+        elif label.ms_detected * multiplier >= 82500:
             quantity = "Excellent"
 
         lines.extend([
            "|".ljust(LINE_LENGTH - 2,"-") + "|",
             "| " + label.label.ljust(LINE_LENGTH - 5) + " |",
-            "| " + "Recorded: " + ms_to_srt_timestring( label.ms_detected, False ).rjust(LINE_LENGTH - 15) + " |",
+            "| " + "Recorded: " + ms_to_srt_timestring( label.ms_detected * multiplier, False ).rjust(LINE_LENGTH - 15) + " |",
             "| " + "Data Quantity: " + quantity.rjust(LINE_LENGTH - 20) + " |",
         ])
         
         if detection_state.advanced_logging:
-            lines.append( "| " + ("type:" + str(label.duration_type if label.duration_type else "Unknown").upper().rjust(LINE_LENGTH - 10)) + " |" )
+            lines.append( "| " + ("type:" + str(label.duration_type if label.duration_type else "DETERMINING...").upper().rjust(LINE_LENGTH - 10)) + " |" )
             lines.append( "| " + ("dBFS treshold:" + str(round(label.min_dBFS, 2)).rjust(LINE_LENGTH - 19)) + " |" )
     lines.append("'".ljust(LINE_LENGTH - 2,"-") + "'")
     
