@@ -1,5 +1,5 @@
 import wave
-from config.config import BACKGROUND_LABEL, RECORD_SECONDS, SLIDING_WINDOW_AMOUNT, RATE, TYPE_FEATURE_ENGINEERING_NORM_MFSC
+from config.config import BACKGROUND_LABEL, RECORD_SECONDS, SLIDING_WINDOW_AMOUNT, RATE, TYPE_FEATURE_ENGINEERING_NORM_MFSC, PYTORCH_AVAILABLE
 from lib.machinelearning import feature_engineering_raw
 from .srt import parse_srt_file
 import numpy as np
@@ -8,6 +8,8 @@ from typing import List
 import os
 import time
 import math
+if (PYTORCH_AVAILABLE == True):
+    from audiomentations import Compose, AddGaussianNoise, Shift, TimeStretch
 
 # Resamples the audio down to 16kHz ( or any other RATE filled in )
 # To make sure all the other calculations are stable and correct
@@ -66,7 +68,15 @@ def load_wav_files_with_srts( directories, label, int_label, start, end, input_t
         print( "Loaded " + str( len( category_dataset_labels ) ) + " .wav files for category " + label + " (id: " + str(int_label) + ")" )
     return category_dataset_x, category_dataset_labels, totalFeatureEngineeringTime
 
-def load_wav_data_from_srt(srt_file: str, source_file: str, feature_engineering_type = TYPE_FEATURE_ENGINEERING_NORM_MFSC, with_offset = True) -> List[List[float]]:
+def augment_wav_data(wavData, sample_rate):
+    augmenter = Compose([
+        AddGaussianNoise(min_amplitude=0.001, max_amplitude=0.015, p=0.5),
+        TimeStretch(min_rate=0.8, max_rate=1.25, p=0.5),
+        Shift(min_fraction=-0.5, max_fraction=0.5, p=0.5),
+    ])
+    return augmenter(samples=np.array(wavData, dtype="float32"), sample_rate=sample_rate)
+
+def load_wav_data_from_srt(srt_file: str, source_file: str, feature_engineering_type = TYPE_FEATURE_ENGINEERING_NORM_MFSC, with_offset = True, should_augment=False) -> List[List[float]]:
     wav_file_data = []
     wf = wave.open(source_file, 'rb')
     frame_rate = wf.getframerate()
@@ -100,13 +110,15 @@ def load_wav_data_from_srt(srt_file: str, source_file: str, feature_engineering_
                         keep_collecting = False
                         break
                         
-                    raw_wav = resample_audio(raw_wav, frame_rate, number_channels)
+                    raw_wav = resample_audio(raw_wav, frame_rate, number_channels)                    
                     audioFrames.append(raw_wav)
                     if( len( audioFrames ) >= SLIDING_WINDOW_AMOUNT ):
                         audioFrames = audioFrames[-SLIDING_WINDOW_AMOUNT:]
                 
                         byteString = b''.join(audioFrames)
                         wave_data = np.frombuffer( byteString, dtype=np.int16 )
+                        if should_augment and PYTORCH_AVAILABLE:
+                            wave_data = augment_wav_data(wave_data, RATE)
                         wav_file_data.append( feature_engineering_raw(wave_data, RATE, 0, RECORD_SECONDS, feature_engineering_type)[0] )
                     
                         if wf.tell() >= ( next_event_index * frames_to_read ) + offset:
