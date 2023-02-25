@@ -47,7 +47,8 @@ class DetectionState:
     ms_per_frame: int
     ms_recorded: int
     advanced_logging: bool
-    
+
+    latest_dBFS: float
     expected_snr: float
     expected_noise_floor: float
     labels: List[DetectionLabel]

@@ -53,6 +53,7 @@ def get_current_status(detection_state: DetectionState, multiplier = 1) -> List[
     else:
         lines.append("| " + detection_state.state.upper().ljust(LINE_LENGTH - 5) + " |")
     
+    lines.append("| " + ("dBFS:" + str(round(detection_state.latest_dBFS)).rjust(LINE_LENGTH - 10)) + " |")
     if detection_state.advanced_logging:
        lines.extend([
            "|".ljust(LINE_LENGTH - 2,"-") + "|",

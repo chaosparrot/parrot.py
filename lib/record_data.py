@@ -19,7 +19,7 @@ import traceback
 import sys
 from lib.listen import validate_microphone_input
 from lib.key_poller import KeyPoller
-from lib.stream_processing import CURRENT_VERSION, CURRENT_DETECTION_STRATEGY, process_audio_frame
+from lib.stream_processing import CURRENT_VERSION, CURRENT_DETECTION_STRATEGY, process_audio_frame, post_processing
 from lib.srt import persist_srt_file
 from lib.print_status import get_current_status, reset_previous_lines, clear_previous_lines
 from lib.typing import DetectionLabel, DetectionState
@@ -47,7 +47,8 @@ def record_controls( key_poller, recordQueue=None ):
     character = key_poller.poll()
     if(character is not None):    
         if( character == SPACEBAR ):
-            print( "Recording paused!" )
+            if( recordQueue == None ):
+                print( "Recording paused!" )
             with lock:
                 if( recordQueue != None ):
                     recordQueue['status'] = 'paused'
@@ -62,8 +63,9 @@ def record_controls( key_poller, recordQueue=None ):
                 ## If the audio queue exists - make sure to clear it continuously
                 if( recordQueue != None ):
                     for key in recordQueue:
-                        recordQueue[key].queue.clear()
-                
+                        if not key.startswith('status'):
+                            recordQueue[key].queue.clear()
+
                 character = key_poller.poll()
                 if(character is not None and ( recordQueue is None or recordQueue['status'] != 'processing') ):
                     if( character == SPACEBAR ):
@@ -170,8 +172,8 @@ def record_sound():
     time_string = str(int(time.time()))
     for index, microphone_index in enumerate(valid_mics):
         FULL_WAVE_OUTPUT_FILENAME = RECORDINGS_FOLDER + "/" + directory + "/source/mici_" + str(microphone_index) + "__" + time_string + ".wav"
-        SRT_FILENAME = RECORDINGS_FOLDER + "/" + directory + "/segments/mici_" + str(microphone_index) + "__" + time_string + "v" + str(CURRENT_VERSION) + ".srt"
-        non_blocking_record(labels, FULL_WAVE_OUTPUT_FILENAME, SRT_FILENAME, microphone_index, index==0)
+        SRT_FILENAME = RECORDINGS_FOLDER + "/" + directory + "/segments/mici_" + str(microphone_index) + "__" + time_string + ".v" + str(CURRENT_VERSION) + ".srt"
+        non_blocking_record(labels, FULL_WAVE_OUTPUT_FILENAME, SRT_FILENAME, microphone_index, index==0, len(valid_mics))
     
     # wait for stream to finish (5)
     while currently_recording:
@@ -183,7 +185,7 @@ def record_sound():
         audios['index' + str(microphone_index)].terminate()
     
 # Consumes the recordings in a sliding window fashion - Always combining the two latest chunks together    
-def record_consumer(labels, FULL_WAVE_OUTPUT_FILENAME, SRT_FILE, MICROPHONE_INPUT_INDEX, audio, streams, print_stuff=False):
+def record_consumer(labels, FULL_WAVE_OUTPUT_FILENAME, SRT_FILE, MICROPHONE_INPUT_INDEX, audio, streams, print_stuff=False, mic_amount = 1):
     global recordQueue
     global currently_recording
     global files_recorded
@@ -196,7 +198,7 @@ def record_consumer(labels, FULL_WAVE_OUTPUT_FILENAME, SRT_FILE, MICROPHONE_INPU
     detection_labels = []
     for label in labels:
         detection_labels.append(DetectionLabel(label, 0, "", 0, 0, 0, 0))
-    detection_state = DetectionState(detection_strategy, "recording", ms_per_frame, 0, True, 0, 0, detection_labels)
+    detection_state = DetectionState(detection_strategy, "recording", ms_per_frame, 0, True, 0, 0, 0, detection_labels)
 
     audioFrames = []    
     false_occurrence = []
@@ -205,10 +207,11 @@ def record_consumer(labels, FULL_WAVE_OUTPUT_FILENAME, SRT_FILE, MICROPHONE_INPU
     detection_frames = []
     
     if print_stuff:
-        current_status = get_current_status(detection_state)
+        current_status = get_current_status(detection_state, mic_amount)
         for line in current_status:
             print( line )
     
+    comparison_wav_file = wave.open(SRT_FILE.replace(".v" + str(CURRENT_VERSION) + ".srt", "_comparison.wav"), 'wb')
     totalAudioFrames = []
     try:
         with KeyPoller() as key_poller:
@@ -226,16 +229,29 @@ def record_consumer(labels, FULL_WAVE_OUTPUT_FILENAME, SRT_FILE, MICROPHONE_INPU
 
             LITTLE_ENDIAN_INT = struct.Struct('<I')
             totalFrameCount = 0
-        
+            
+            processing = False
             while( currently_recording ):
+                if recordQueue['status'] == "paused" and not processing:
+                    detection_state.status = "processing"
+                    if print_stuff:
+                        current_status = get_current_status(detection_state, mic_amount)
+                        reset_previous_lines(len(current_status))
+                        for line in current_status:
+                            print( line )
+                    
+                    processing = True
+                    post_processing(detection_frames, detection_state, SRT_FILE)
+
                 while( not indexedQueue.empty() ):
+                    processing = False
                     audioFrames.append( indexedQueue.get() )
                     detection_state.ms_recorded += ms_per_frame
                     audioFrames, detection_state, detection_frames, current_occurrence, false_occurrence = \
                         process_audio_frame(index, audioFrames, detection_state, detection_frames, current_occurrence, false_occurrence)
                     totalAudioFrames.append( audioFrames[-1] )
                     index += 1
-                                                
+
                     if( record_controls( key_poller, recordQueue ) == False ):
                         for stream in streams:
                             streams[stream].stop_stream()
@@ -243,7 +259,7 @@ def record_consumer(labels, FULL_WAVE_OUTPUT_FILENAME, SRT_FILE, MICROPHONE_INPU
                         break;
                          
                     if print_stuff:
-                        current_status = get_current_status(detection_state)
+                        current_status = get_current_status(detection_state, mic_amount)
                         reset_previous_lines(len(current_status))
                         for line in current_status:
                             print( line )
@@ -271,7 +287,25 @@ def record_consumer(labels, FULL_WAVE_OUTPUT_FILENAME, SRT_FILE, MICROPHONE_INPU
                         appendTotalFile.write(LITTLE_ENDIAN_INT.pack(sample_length))
                         appendTotalFile.close()
                 sleep(0.001)
-                    
+            
+            detection_state.status = "processing"
+            if print_stuff:
+                current_status = get_current_status(detection_state, mic_amount)
+                reset_previous_lines(len(current_status))
+                for line in current_status:
+                    print( line )
+                
+            processing = True
+            comparison_wav_file.setnchannels(1)
+            comparison_wav_file.setsampwidth(2)
+            comparison_wav_file.setframerate(RATE)
+            post_processing(detection_frames, detection_state, SRT_FILE, None, comparison_wav_file)
+            if print_stuff:
+                current_status = get_current_status(detection_state, mic_amount)
+                reset_previous_lines(len(current_status))
+                for line in current_status:
+                    print( line )
+
     except Exception as e:
         print( "----------- ERROR DURING RECORDING -------------- " )
         exc_type, exc_value, exc_tb = sys.exc_info()
@@ -286,7 +320,7 @@ def multithreaded_record( in_data, frame_count, time_info, status, queue ):
     return in_data, pyaudio.paContinue
                 
 # Records a non blocking audio stream and saves the source and SRT file for it
-def non_blocking_record(labels, FULL_WAVE_OUTPUT_FILENAME, SRT_FILE, MICROPHONE_INPUT_INDEX, print_logs):
+def non_blocking_record(labels, FULL_WAVE_OUTPUT_FILENAME, SRT_FILE, MICROPHONE_INPUT_INDEX, print_logs, mic_amount):
     global recordQueue
     global streams
     global audios
@@ -302,7 +336,7 @@ def non_blocking_record(labels, FULL_WAVE_OUTPUT_FILENAME, SRT_FILE, MICROPHONE_
         frames_per_buffer=round( RATE * RECORD_SECONDS / SLIDING_WINDOW_AMOUNT ),
         stream_callback=micindexed_lambda)
 
-    consumer = threading.Thread(name='consumer', target=record_consumer, args=(labels, FULL_WAVE_OUTPUT_FILENAME, SRT_FILE, MICROPHONE_INPUT_INDEX, audios[mic_index], streams, print_logs))
+    consumer = threading.Thread(name='consumer', target=record_consumer, args=(labels, FULL_WAVE_OUTPUT_FILENAME, SRT_FILE, MICROPHONE_INPUT_INDEX, audios[mic_index], streams, print_stuff, mic_amount))
     consumer.setDaemon( True )
     consumer.start()
     streams[mic_index].start_stream()

@@ -27,7 +27,7 @@ def process_wav_file(input_file, srt_file, output_file, labels, progress_callbac
     detection_labels = []
     for label in labels:
         detection_labels.append(DetectionLabel(label, 0, "", 0, 0, 0, 0))
-    detection_state = DetectionState(detection_strategy, "recording", ms_per_frame, 0, True, 0, 0, detection_labels)    
+    detection_state = DetectionState(detection_strategy, "recording", ms_per_frame, 0, True, 0, 0, 0, detection_labels)
 
     false_occurrence = []
     current_occurrence = []
@@ -277,16 +277,29 @@ def determine_detection_state(detection_frames: List[DetectionFrame], detection_
     # Filter out very low power dbFS values as we can assume the hardware microphone is off
     # And we do not want to skew the mean for that as it would create more false positives
     # ( -70 dbFS was selected as a cut off after a bit of testing with a HyperX Quadcast microphone )
-    dBFS_frames = [x.dBFS for x in detection_frames]    
+    dBFS_frames = [x.dBFS for x in detection_frames if x.dBFS > -70]    
     std_dbFS = np.std(dBFS_frames)
+    
+    minimum_dBFS = np.min(dBFS_frames)
+    
+    # For noisy signals and for clean signals we need different noise floor and threshold estimation
+    # Because noisy thresholds have a lower standard deviation across the signal
+    # Whereas clean signals have a very clear floor and do not need as high of a threshold
+    noisy_threshold = False
     detection_state.expected_snr = math.floor(std_dbFS * 2)
-    detection_state.expected_noise_floor = np.min(dBFS_frames) + std_dbFS
+    if detection_state.expected_snr < 25:
+        noisy_threshold = True
+        detection_state.expected_noise_floor = minimum_dBFS + std_dbFS
+    else:
+        detection_state.expected_noise_floor = minimum_dBFS
+
     for label in detection_state.labels:
 
         # Recalculate the duration type every 15 seconds
         if label.duration_type == "" or len(detection_frames) % round(15 / RECORD_SECONDS):
             label.duration_type = determine_duration_type(label, detection_frames)
-        label.min_dBFS = detection_state.expected_noise_floor + detection_state.expected_snr
+        label.min_dBFS = detection_state.expected_noise_floor + ( detection_state.expected_snr if noisy_threshold else detection_state.expected_snr / 2 )
+    detection_state.latest_dBFS = detection_frames[-1].dBFS
     return detection_state
 
 # Approximately determine whether the label in the stream is discrete or continuous
@@ -294,7 +307,7 @@ def determine_detection_state(detection_frames: List[DetectionFrame], detection_
 # Whereas continuous sounds have a steady stream of energy from a source
 def determine_duration_type(label: DetectionLabel, detection_frames: List[DetectionFrame]) -> str:
     label_events = [x for x in detection_frames_to_events(detection_frames) if x.label == label.label]
-    if len(label_events) < 10:
+    if len(label_events) < 4:
         return ""
     else:
         # The assumption here is that discrete sounds cannot vary in length much as you cannot elongate the sound of a click for example
