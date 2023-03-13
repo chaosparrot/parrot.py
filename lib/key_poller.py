@@ -30,7 +30,10 @@ class KeyPoller():
     def poll(self):
         if( IS_WINDOWS == True ):
             if( msvcrt.kbhit() ):
-                return msvcrt.getch().decode()
+                ch = msvcrt.getch()
+                if ch == b'\xe0' or ch == b'\000':
+                    ch = msvcrt.getch()
+                return ch.decode()
         else:
             dr,dw,de = select.select([sys.stdin], [], [], 0)
             if not dr == []:

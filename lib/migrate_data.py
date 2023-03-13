@@ -38,8 +38,10 @@ def migrate_data():
             segments_dir = os.path.join(RECORDINGS_FOLDER, label, "segments")
             if not os.path.exists(segments_dir):
                 os.makedirs(segments_dir)
-            print( "Resegmenting " + label + "..." )
             wav_files = [x for x in os.listdir(source_dir) if os.path.isfile(os.path.join(source_dir, x)) and x.endswith(".wav")]            
+            if len(wav_files) == 0:
+                continue
+            print( "Resegmenting " + label + "..." )
             progress = 0
             progress_chunk = 1 / len( wav_files )
             skipped_amount = 0

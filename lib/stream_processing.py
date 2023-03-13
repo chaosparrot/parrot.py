@@ -154,7 +154,7 @@ def post_processing(frames: List[DetectionFrame], detection_state: DetectionStat
         current_label = None
         detected_label = None
         
-        # Recalculate the MS detection and duratoin type
+        # Recalculate the MS detection and duration type
         for label in detection_state.labels:
             label.ms_detected = 0
             label.duration_type = determine_duration_type(label, frames)            

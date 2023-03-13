@@ -19,13 +19,16 @@ def create_progress_bar(percentage: float = 1.0) -> str:
     filled_characters = round(max(0, min(LINE_LENGTH, LINE_LENGTH * percentage)))
     return "".rjust(filled_characters, PROGRESS_FILLED).ljust(LINE_LENGTH, PROGRESS_AVAILABLE)
 
-def get_current_status(detection_state: DetectionState, multiplier = 1) -> List[str]:
-    recorded_timestring = ms_to_srt_timestring( detection_state.ms_recorded * multiplier, False)
+def get_current_status(detection_state: DetectionState, extra_states: List[DetectionState] = []) -> List[str]:
+    total_ms_recorded = detection_state.ms_recorded
+    for extra_state in extra_states:
+        total_ms_recorded += extra_state.ms_recorded
+    recorded_timestring = ms_to_srt_timestring( total_ms_recorded, False)
 
     # Quality rating was manually established by doing some testing with added noise
     # And finding the results becoming worse when the SNR went lower than 10
     quality = ""
-    if detection_state.ms_recorded * multiplier > 10000:
+    if total_ms_recorded > 10000:
         if detection_state.expected_snr >= 25:
             quality = "Excellent"
         elif detection_state.expected_snr >= 20:
@@ -61,26 +64,32 @@ def get_current_status(detection_state: DetectionState, multiplier = 1) -> List[
            "|".ljust(LINE_LENGTH - 2,"-") + "|",
            "| " + ("Noise floor (dBFS):" + str(round(detection_state.expected_noise_floor)).rjust(LINE_LENGTH - 24)) + " |",
            "| " + ("SNR:" + str(round(detection_state.expected_snr)).rjust(LINE_LENGTH - 9)) + " |",
-       ])
+       ])    
 
     for label in detection_state.labels:
         # Quantity rating is based on 5000 30ms windows being good enough to train a label from the example model
         # And 1000 30ms windows being enough to train a label decently
         # With atleast 10 percent extra for a possible hold-out set during training
+        total_ms_detected = label.ms_detected
+        for extra_state in extra_states:
+            for extra_label in extra_state.labels:
+                if extra_label.label == label.label:
+                    total_ms_detected += extra_label.ms_detected
+        
         quantity = ""
-        if label.ms_detected * multiplier < 16500:
+        if total_ms_detected < 16500:
             quantity = "Not enough"
-        elif label.ms_detected * multiplier > 16500 and label.ms_detected * multiplier < 41250:
+        elif total_ms_detected > 16500 and total_ms_detected < 41250:
             quantity = "Sufficient"
-        elif label.ms_detected * multiplier >= 41250 and label.ms_detected * multiplier < 82500:
+        elif total_ms_detected >= 41250 and total_ms_detected < 82500:
             quantity = "Good"
-        elif label.ms_detected * multiplier >= 82500:
+        elif total_ms_detected >= 82500:
             quantity = "Excellent"
 
         lines.extend([
            "|".ljust(LINE_LENGTH - 2,"-") + "|",
             "| " + label.label.ljust(LINE_LENGTH - 5) + " |",
-            "| " + "Recorded: " + ms_to_srt_timestring( label.ms_detected * multiplier, False ).rjust(LINE_LENGTH - 15) + " |",
+            "| " + "Recorded: " + ms_to_srt_timestring( total_ms_detected, False ).rjust(LINE_LENGTH - 15) + " |",
             "| " + "Data Quantity: " + quantity.rjust(LINE_LENGTH - 20) + " |",
         ])
         
