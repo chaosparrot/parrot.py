@@ -22,6 +22,7 @@ from lib.machinelearning import *
 from sklearn.neural_network import *
 from lib.combine_models import define_settings, get_current_default_settings
 from lib.audio_model import AudioModel
+from lib.wav import load_wav_files_with_srts
 
 def learn_data():
     dir_path = os.path.join( os.path.dirname( os.path.dirname( os.path.realpath(__file__)) ), DATASET_FOLDER)    
@@ -205,7 +206,7 @@ def load_data( dir_path, max_files, input_type ):
     for str_label, directories in grouped_data_directories.items():
         # Add a label used for classifying the sounds
         id_label = get_label_for_directory( "".join( directories ) )
-        cat_dataset_x, cat_dataset_labels, featureEngineeringTime = load_wav_files( directories, str_label, id_label, 0, max_files, input_type )
+        cat_dataset_x, cat_dataset_labels, featureEngineeringTime = load_wav_files_with_srts( directories, str_label, id_label, 0, max_files, input_type )
         totalFeatureEngineeringTime += featureEngineeringTime
         dataset_x.extend( cat_dataset_x )
         dataset_labels.extend( cat_dataset_labels )

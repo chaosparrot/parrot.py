@@ -114,7 +114,6 @@ def augmented_feature_engineering( wavFile, settings ):
         print( "OLD MFCC TYPE IS NOT SUPPORTED FOR TRAINING PYTORCH" )    
     return data_row
 
-    
 def get_label_for_directory( setdir ):
     return float( int(hashlib.sha256( setdir.encode('utf-8')).hexdigest(), 16) % 10**8 )
 

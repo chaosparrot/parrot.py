@@ -1,16 +1,7 @@
 from config.config import *
 import pyaudio
-import wave
 import time
-from time import sleep
-import scipy.io.wavfile
-import audioop
 import math
-import numpy as np
-from scipy.fftpack import fft
-from scipy.fftpack import fftfreq
-from scipy.signal import blackmanharris
-from lib.machinelearning import get_loudest_freq, get_recording_power
 import os
 import glob
 from queue import *
@@ -19,14 +10,20 @@ import traceback
 import sys
 from lib.listen import validate_microphone_input
 from lib.key_poller import KeyPoller
-import struct
+from lib.print_status import get_current_status, reset_previous_lines, clear_previous_lines
+from lib.typing import DetectionLabel, DetectionState
+from lib.stream_processing import CURRENT_VERSION, CURRENT_DETECTION_STRATEGY
+from lib.typing import DetectionState, DetectionFrame
+from lib.stream_recorder import StreamRecorder
+from lib.srt import count_total_label_ms, ms_to_srt_timestring
+from typing import List
 
 # Countdown from seconds to 0
 def countdown( seconds ):
     with KeyPoller() as key_poller:
         for i in range( -seconds, 0 ):
             print("recording in... " + str(abs(i)), end="\r")
-            sleep( 1 )
+            time.sleep( 1 )
             if( record_controls(key_poller) == False ):
                 return False;
     print("                          ", end="\r")
@@ -34,44 +31,131 @@ def countdown( seconds ):
 
 def record_controls( key_poller, recordQueue=None ):
     global currently_recording
-    global streams
+    global recorders
     ESCAPEKEY = '\x1b'
     SPACEBAR = ' '
+    BACKSPACE = '\x08'
+    MINUS = '-'
     
     character = key_poller.poll()
-    if(character is not None):    
-        if( character == SPACEBAR ):
-            print( "Recording paused!" )
+    if(character is not None):
+        # Clear the last 3 seconds if backspace was pressed
+        if character == BACKSPACE or character == MINUS:
+            if (recorders is not None):
+                main_state = None
+                secondary_states = []
+                for mic_index in recorders:
+                    if main_state is None:
+                        main_state = recorders[mic_index].get_detection_state()
+                    else:
+                        secondary_states.append(recorders[mic_index].get_detection_state())                
+                    recorders[mic_index].pause()
+                should_resume = False
+                
+                # Clear and update the detection states
+                index = 0
+                if main_state is not None:
+                    main_state.state = "deleting"
+                    print_status(main_state, secondary_states)
+                
+                for mic_index in recorders:
+                    should_resume = recorders[mic_index].clear(3)
+                    if index == 0:
+                        main_state = recorders[mic_index].get_detection_state()
+                    else:
+                        secondary_states[index - 1] = secondary_states[index - 1].get_detection_state()
+                    index += 1
+                    print_status(main_state, secondary_states)
 
-            if (streams is not None):
-                for stream in streams:
-                    streams[stream].stop_stream()
+                if main_state is not None:
+                    main_state.state = "recording"
+                    print_status(main_state, secondary_states)
+                
+                # Wait for the sound of the space bar to dissipate before continuing recording
+                time.sleep(0.3)
+                if should_resume:
+                    for mic_index in recorders:
+                        recorders[mic_index].resume()
+        elif( character == ESCAPEKEY ):
+            currently_recording = False
+            return False
+
+        elif character == SPACEBAR:
+            if( recordQueue == None ):
+                print( "Recording paused!" )
+
+            main_state = None
+            secondary_states = []
+            if (recorders is not None):
+                for mic_index in recorders:
+                    if main_state is None:
+                        main_state = recorders[mic_index].get_detection_state()
+                    else:
+                        secondary_states.append(recorders[mic_index].get_detection_state())
+                    recorders[mic_index].pause()
+                    recorders[mic_index].reset_label_count()
+                    
+                # Do post processing and printing of the status
+                if main_state is not None:
+                    index = 0
+                    main_state.state = "deleting"
+                    print_status(main_state, secondary_states)
+                    
+                    for mic_index in recorders:
+                        recorders[mic_index].post_processing(
+                            lambda internal_progress, state, extra=secondary_states: print_status(main_state, extra)
+                        )
+                        
+                        # Update the states so the numbers count up nicely
+                        if index == 0:
+                            main_state = recorders[mic_index].get_detection_state()
+                        else:
+                            secondary_states[index - 1] = recorders[mic_index].get_detection_state()
+                        index += 1
+
+                    main_state.state = "paused"
+                    print_status(main_state, secondary_states)
 
             # Pause the recording by looping until we get a new keypress
             while( True ):
-                
-                ## If the audio queue exists - make sure to clear it continuously
+                # If the audio queue exists - make sure to clear it continuously
                 if( recordQueue != None ):
                     for key in recordQueue:
                         recordQueue[key].queue.clear()
-            
+
                 character = key_poller.poll()
-                if(character is not None):                
-                    if( character == SPACEBAR ):
-                        print( "Recording resumed!" )
-                        if (streams is not None):
-                            for stream in streams:
-                                streams[stream].start_stream()
+                if character is not None:
+                    if character == SPACEBAR:
+                        if main_state is not None:
+                            main_state.state = "recording"
+                            print_status(main_state, secondary_states)
+                        
+                        # Wait for the sound of the space bar to dissipate before continuing recording
+                        time.sleep(0.3)
+                        if recorders is not None:
+                            for mic_index in recorders:
+                                recorders[mic_index].resume()
                         return True
-                    elif( character == ESCAPEKEY ):
-                        print( "Recording stopped" )
+                    # Clear the last 3 seconds if backspace was pressed
+                    elif character == BACKSPACE or character == MINUS:
+                        if recorders is not None and main_state is not None:
+                            index = 0
+                            for mic_index in recorders:
+                                recorders[mic_index].clear(3)
+                                if index == 0:
+                                    main_state = recorders[mic_index].get_detection_state()
+                                else:
+                                    secondary_states[index - 1] = secondary_states[index - 1].get_detection_state()
+                                index += 1
+                                print_status(main_state, secondary_states)
+                            main_state.state = "paused"
+                            print_status(main_state, secondary_states)
+                    
+                    # Stop the recording session
+                    elif character == ESCAPEKEY:
                         currently_recording = False
                         return False
                 time.sleep(0.3)
-        elif( character == ESCAPEKEY ):
-            print( "Recording stopped" )
-            currently_recording = False
-            return False            
     return True    
     
 def record_sound():
@@ -83,6 +167,45 @@ def record_sound():
     print( "And record tiny audio files to be used for learning later" )
     print( "-------------------------" )
     
+    ms_per_frame = math.floor(RECORD_SECONDS / SLIDING_WINDOW_AMOUNT * 1000)
+    directory_counts = {}
+    try:
+        if os.path.exists(RECORDINGS_FOLDER):
+            glob_path = RECORDINGS_FOLDER + "/*/"
+            existing_dirs = glob.glob(glob_path)
+            if existing_dirs:
+                print("")
+                print("These sounds already have a folder:")
+            for dirname in existing_dirs:
+                # cut off glob path, but leave two more characters
+                # at the start to account for */
+                # also remove the trailing slash
+                directory_name = dirname[len(glob_path) - 2:-1]
+
+                # Count the currently recorded amount of data
+                current_count = count_total_label_ms(directory_name, os.path.join(RECORDINGS_FOLDER, directory_name), ms_per_frame)
+                directory_counts[directory_name] = current_count
+                time_recorded = " ( " + ms_to_srt_timestring(current_count, False).split(",")[0] + " )"
+                
+                print(" - ", directory_name.ljust(30) + time_recorded )
+            print("")
+            print("NOTE: It is recommended to record roughly the same amount for each sound")
+            print("As it will improve the ability for the machine learning models to learn from the data")
+            print("")            
+    except:
+        # Since this is just a convenience feature, exceptions shall not
+        # cause recording to abort, whatever happens
+        pass
+
+    directory = input("Whats the name of the sound are you recording? ")
+    while (directory == ""):
+        directory = input("")
+    
+    if not os.path.exists(RECORDINGS_FOLDER + "/" + directory):
+        os.makedirs(RECORDINGS_FOLDER + "/"  + directory)
+    if not os.path.exists(RECORDINGS_FOLDER + "/" + directory + "/source"):
+        os.makedirs(RECORDINGS_FOLDER + "/"  + directory + "/source")
+
     # Note - this assumes a maximum of 10 possible input devices, which is probably wrong but eh
     print("What microphone do you want to record with? ( Empty is the default system mic, [X] exits the recording menu )")
     print("You can put a space in between numbers to record with multiple microphones")
@@ -109,64 +232,22 @@ def record_sound():
     
     if len(valid_mics) == 0:
         print("No usable microphones selected - Exiting")
-        return;    
+        return;
 
-    try:
-        if os.path.exists(RECORDINGS_FOLDER):
-            glob_path = RECORDINGS_FOLDER + "/*/"
-            existing_dirs = glob.glob(glob_path)
-            if existing_dirs:
-                print("")
-                print("These sounds already have a folder:")
-            for dirname in existing_dirs:
-                # cut off glob path, but leave two more characters
-                # at the start to account for */
-                # also remove the trailing slash
-                print(" - ", dirname[len(glob_path) - 2:-1])
-            print("")
-    except:
-        # Since this is just a convenience feature, exceptions shall not
-        # cause recording to abort, whatever happens
-        pass
-
-    directory = input("Whats the name of the sound are you recording? ")
-    while (directory == ""):
-        directory = input("")
-    
-    if not os.path.exists(RECORDINGS_FOLDER + "/" + directory):
-        os.makedirs(RECORDINGS_FOLDER + "/"  + directory)
-    if not os.path.exists(RECORDINGS_FOLDER + "/" + directory + "/source"):
-        os.makedirs(RECORDINGS_FOLDER + "/"  + directory + "/source")
-
-    print("What signal power ( loudness ) threshold do you need?")
-    print("(if you do not know, start with something like 10000 and see afterwards")
-    print("what power values you get while recording.)")
-    power_threshold = input("power: ")
-    if( power_threshold == "" ):
-        power_threshold = 0
-    else:
-        power_threshold = int( power_threshold )
-        
-    print("What frequency threshold do you need?")
-    print("(you may not need this at all, so feel free to just press enter here)")
-    frequency_threshold = input("frequency: ")
-    if( frequency_threshold == "" ):
-        frequency_threshold = 0
-    else:
-        frequency_threshold = int( frequency_threshold )
-    begin_threshold = 10000
-    
     print("")
-    print("You can pause/resume the recording session using the [SPACE] key, and stop the recording using the [ESC] key" )
+    print("Record keyboard controls:")
+    print("[SPACE] is used to pause and resume the recording session")
+    print("[BACKSPACE] or [-] removes the last 3 seconds of the recording")
+    print("[ESC] stops the current recording")
+    print("")    
 
-    global streams
     global recordQueue
-    global audios
-    global files_recorded
-    files_recorded = 0
-    streams = {}
-    audios = {}
+    global recorders
+    recorders = {}
     recordQueue = {}
+    labels = {}
+    labels[directory] = directory_counts[directory] if directory in directory_counts else 0    
+    
     if( countdown( 5 ) == False ):
         return;
     
@@ -175,158 +256,129 @@ def record_sound():
     
     time_string = str(int(time.time()))
     for index, microphone_index in enumerate(valid_mics):
-        FULL_WAVE_OUTPUT_FILENAME = RECORDINGS_FOLDER + "/" + directory + "/source/i_0__p_" + str(power_threshold) + \
-        "__f_" + str(frequency_threshold) + "__begin_" + str(begin_threshold) + "__mici_" + str(microphone_index) + "__" + time_string + ".wav"
-        WAVE_OUTPUT_FILENAME = RECORDINGS_FOLDER + "/" + directory + "/" + time_string + "__mici_" + str(microphone_index) + "__file";
-        WAVE_OUTPUT_FILE_EXTENSION = ".wav";
-        
-        non_blocking_record(power_threshold, frequency_threshold, begin_threshold, WAVE_OUTPUT_FILENAME, WAVE_OUTPUT_FILE_EXTENSION, FULL_WAVE_OUTPUT_FILENAME, microphone_index, index==0)
+        FULL_WAVE_OUTPUT_FILENAME = RECORDINGS_FOLDER + "/" + directory + "/source/mici_" + str(microphone_index) + "__" + time_string + ".wav"
+        SRT_FILENAME = RECORDINGS_FOLDER + "/" + directory + "/segments/mici_" + str(microphone_index) + "__" + time_string + ".v" + str(CURRENT_VERSION) + ".srt"
+        non_blocking_record(labels, FULL_WAVE_OUTPUT_FILENAME, SRT_FILENAME, microphone_index, index==0)
     
-    # wait for stream to finish (5)
-    while currently_recording:
+    # wait for stream to finish
+    while currently_recording == True:
         time.sleep(0.1)
     
-    for microphone_index in valid_mics:
-        streams['index' + str(microphone_index)].stop_stream()
-        streams['index' + str(microphone_index)].close()
-        audios['index' + str(microphone_index)].terminate()
+    main_state = None
+    secondary_states = []
+    for mic_index in recorders:
+        if main_state is None:
+            main_state = recorders[mic_index].get_detection_state()
+        else:
+            secondary_states.append(recorders[mic_index].get_detection_state())
+        recorders[mic_index].pause()
+
+    index = 0
+    for mic_index in recorders:
+        callback = None if currently_recording == -1 else lambda internal_progress, state, extra=secondary_states: print_status(main_state, extra)
+        recorders[mic_index].stop(
+            callback
+        )
+        
+        # Update the states so the numbers count up nicely
+        if index == 0:
+            main_state = recorders[mic_index].get_detection_state()
+        else:
+            secondary_states[index - 1] = recorders[mic_index].get_detection_state()
+        index += 1
     
+    if currently_recording != -1:    
+        main_state.state = "processed"
+        print_status(main_state, secondary_states)    
+
 # Consumes the recordings in a sliding window fashion - Always combining the two latest chunks together    
-def record_consumer(power_threshold, frequency_threshold, begin_threshold, WAVE_OUTPUT_FILENAME, WAVE_OUTPUT_FILE_EXTENSION, FULL_WAVE_OUTPUT_FILENAME, MICROPHONE_INPUT_INDEX, audio, streams, print_stuff=False):
+def record_consumer(labels, FULL_WAVE_OUTPUT_FILENAME, SRT_FILE, MICROPHONE_INPUT_INDEX, print_stuff=False):
     global recordQueue
     global currently_recording
-    global files_recorded
-    indexedQueue = recordQueue['index' + str(MICROPHONE_INPUT_INDEX)]
+    global recorders
+    mic_index = 'index' + str(MICROPHONE_INPUT_INDEX)
+    indexedQueue = recordQueue[mic_index]
+    recorder = recorders[mic_index]
 
-    j = 0
-    record_wave_file_count = 0
-    audioFrames = []
+    if print_stuff:
+        current_status = recorder.get_status()
+        for line in current_status:
+            print( line )
     
-    # Set the proper thresholds for starting recordings
-    delay_threshold = 0
-    if( begin_threshold < 0 ):
-        delay_threshold = begin_threshold * -1
-        begin_threshold = 1000
-    
-    totalAudioFrames = []
     try:
         with KeyPoller() as key_poller:
-            # Write the source file first with the right settings to add the headers, and write the data later
-            totalWaveFile = wave.open(FULL_WAVE_OUTPUT_FILENAME, 'wb')
-            totalWaveFile.setnchannels(CHANNELS)
-            totalWaveFile.setsampwidth(audio.get_sample_size(FORMAT))
-            totalWaveFile.setframerate(RATE)
-            totalWaveFile.close()
-            
-            # This is used to modify the wave file directly later
-            # Thanks to hydrogen18.com for offering the wav file explanation and code
-            CHUNK_SIZE_OFFSET = 4
-            DATA_SUB_CHUNK_SIZE_SIZE_OFFSET = 40
-
-            LITTLE_ENDIAN_INT = struct.Struct('<I')
-            totalFrameCount = 0
-        
             while( currently_recording ):
                 while( not indexedQueue.empty() ):
-                    audioFrames.append( indexedQueue.get() )
-                    totalAudioFrames.append( audioFrames[-1] )
-                    if( len( audioFrames ) >= SLIDING_WINDOW_AMOUNT ):
-                        j+=1
-                        audioFrames = audioFrames[-SLIDING_WINDOW_AMOUNT:]
-                                                
-                        byteString = b''.join(audioFrames)
-                        fftData = np.frombuffer( byteString, dtype=np.int16 )
-                        frequency = get_loudest_freq( fftData, RECORD_SECONDS )
-                        power = get_recording_power( fftData, RECORD_SECONDS )
-                        
-                        fileid = "%0.2f" % ((j) * RECORD_SECONDS )
+                    recorder.add_audio_frame(indexedQueue.get())
                     
-                        if( record_controls( key_poller, recordQueue ) == False ):
-                            for stream in streams:
-                                streams[stream].stop_stream()
-                            currently_recording = False
-                            break;
-                             
-                        if( frequency > frequency_threshold and power > power_threshold ):
-                            record_wave_file_count += 1
-                            if( record_wave_file_count <= begin_threshold and record_wave_file_count > delay_threshold ):
-                                files_recorded += 1
-                                if print_stuff:
-                                    print( "Files recorded: %0d - Power: %0d - Freq: %0d - Saving %s" % ( files_recorded, power, frequency, fileid ) )
-                                waveFile = wave.open(WAVE_OUTPUT_FILENAME + fileid + WAVE_OUTPUT_FILE_EXTENSION, 'wb')
-                                waveFile.setnchannels(CHANNELS)
-                                waveFile.setsampwidth(audio.get_sample_size(FORMAT))
-                                waveFile.setframerate(RATE)
-                                waveFile.writeframes(byteString)
-                                waveFile.close()
-                            else:
-                                if print_stuff:
-                                    print( "Files recorded: %0d - Power: %0d - Freq: %0d" % ( files_recorded, power, frequency ) )
-                        else:
-                            record_wave_file_count = 0
-                            if print_stuff:
-                                print( "Files recorded: %0d - Power: %0d - Freq: %0d" % ( files_recorded, power, frequency ) )
-                            
-                    # Append to the total wav file only once every ten audio frames ( roughly once every 225 milliseconds )
-                    if (len(totalAudioFrames) >= 15 ):
-                        byteString = b''.join(totalAudioFrames)
-                        totalFrameCount += len(byteString)
-                        totalAudioFrames = []
-                        appendTotalFile = open(FULL_WAVE_OUTPUT_FILENAME, 'ab')
-                        appendTotalFile.write(byteString)
-                        appendTotalFile.close()
-                        
-                        # Set the amount of frames available and chunk size
-                        # By overriding the header part of the wave file manually
-                        # Which wouldn't be needed if the wave package supported appending properly                        
-                        # Thanks to hydrogen18.com for the explanation and code
-                        appendTotalFile = open(FULL_WAVE_OUTPUT_FILENAME, 'r+b')
-                        appendTotalFile.seek(0,2)
-                        chunk_size = appendTotalFile.tell() - 8
-                        appendTotalFile.seek(CHUNK_SIZE_OFFSET)
-                        appendTotalFile.write(LITTLE_ENDIAN_INT.pack(chunk_size))
-                        appendTotalFile.seek(DATA_SUB_CHUNK_SIZE_SIZE_OFFSET)
-                        sample_length = 2 * totalFrameCount
-                        appendTotalFile.write(LITTLE_ENDIAN_INT.pack(sample_length))
-                        appendTotalFile.close()
-                sleep(0.001)
-                    
+                    if print_stuff:
+                        extra_states = []
+                        for recorder_mic_index in recorders:
+                            if mic_index != recorder_mic_index and recorder:
+                                extra_states.append(recorders[recorder_mic_index].get_detection_state())
+                        current_status = recorder.get_status(extra_states)
+                        reset_previous_lines(len(current_status))
+                        for line in current_status:
+                            print( line )
+                
+                # Only listen for keys in the main listener
+                if print_stuff:
+                    record_controls( key_poller, recordQueue )
+
+                time.sleep(0.001)
+                
     except Exception as e:
         print( "----------- ERROR DURING RECORDING -------------- " )
         exc_type, exc_value, exc_tb = sys.exc_info()
         traceback.print_exception(exc_type, exc_value, exc_tb)
-        for stream in streams:
-            streams[stream].stop_stream()
-        currently_recording = False
+        currently_recording = -1
 
 def multithreaded_record( in_data, frame_count, time_info, status, queue ):
     queue.put( in_data )
     
     return in_data, pyaudio.paContinue
                 
-# Records a non blocking audio stream and saves the chunks onto a queue
-# The queue will be used as a sliding window over the audio, where two chunks are combined into one audio file
-def non_blocking_record(power_threshold, frequency_threshold, begin_threshold, WAVE_OUTPUT_FILENAME, WAVE_OUTPUT_FILE_EXTENSION, FULL_WAVE_OUTPUT_FILENAME, MICROPHONE_INPUT_INDEX, print_logs):
+# Records a non blocking audio stream and saves the source and SRT file for it
+def non_blocking_record(labels, FULL_WAVE_OUTPUT_FILENAME, SRT_FILE, MICROPHONE_INPUT_INDEX, print_logs):
     global recordQueue
-    global streams
-    global audios
+    global recorders
     
     mic_index = 'index' + str(MICROPHONE_INPUT_INDEX)
-    
+
     recordQueue[mic_index] = Queue(maxsize=0)
-    micindexed_lambda = lambda in_data, frame_count, time_info, status, queue=recordQueue['index' + str(MICROPHONE_INPUT_INDEX)]: multithreaded_record(in_data, frame_count, time_info, status, queue) 
-    audios[mic_index] = pyaudio.PyAudio()
-    streams[mic_index] = audios[mic_index].open(format=FORMAT, channels=CHANNELS,
-        rate=RATE, input=True,
-        input_device_index=MICROPHONE_INPUT_INDEX,
-        frames_per_buffer=round( RATE * RECORD_SECONDS / SLIDING_WINDOW_AMOUNT ),
-        stream_callback=micindexed_lambda)
-        
-    consumer = threading.Thread(name='consumer', target=record_consumer, args=(power_threshold, frequency_threshold, begin_threshold, WAVE_OUTPUT_FILENAME, WAVE_OUTPUT_FILE_EXTENSION, FULL_WAVE_OUTPUT_FILENAME, MICROPHONE_INPUT_INDEX, audios[mic_index], streams, print_logs))
+    micindexed_lambda = lambda in_data, frame_count, time_info, status, queue=recordQueue[mic_index]: multithreaded_record(in_data, frame_count, time_info, status, queue)
+    
+    detection_strategy = CURRENT_DETECTION_STRATEGY
+    ms_per_frame = math.floor(RECORD_SECONDS / SLIDING_WINDOW_AMOUNT * 1000)
+    detection_labels = []
+    for label in list(labels.keys()):
+        detection_labels.append(DetectionLabel(label, 0, labels[label], "", 0, 0, 0, 0))
+    
+    audio = pyaudio.PyAudio()
+
+    recorders[mic_index] = StreamRecorder(
+        audio,
+        audio.open(format=FORMAT, channels=CHANNELS,
+            rate=RATE, input=True,
+            input_device_index=MICROPHONE_INPUT_INDEX,
+            frames_per_buffer=round( RATE * RECORD_SECONDS / SLIDING_WINDOW_AMOUNT ),
+            stream_callback=micindexed_lambda),
+        FULL_WAVE_OUTPUT_FILENAME,
+        SRT_FILE,
+        DetectionState(detection_strategy, "recording", ms_per_frame, 0, True, 0, 0, 0, detection_labels)
+    )
+
+    consumer = threading.Thread(name='consumer', target=record_consumer, args=(labels, FULL_WAVE_OUTPUT_FILENAME, SRT_FILE, MICROPHONE_INPUT_INDEX, print_logs))
     consumer.setDaemon( True )
     consumer.start()
-    streams[mic_index].start_stream()
-    
+    recorders[mic_index].resume()
+
+def print_status(detection_state: DetectionState, extra_states: List[DetectionState]):
+    current_status = get_current_status(detection_state, extra_states)
+    reset_previous_lines(len(current_status))
+    for line in current_status:
+        print( line )
+
 def validate_microphone_index(audio, input_index):
     micDict = {'name': 'Missing Microphone index ' + str(input_index)}
     try:

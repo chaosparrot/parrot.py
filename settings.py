@@ -4,6 +4,7 @@ from lib.learn_data import learn_data
 from lib.test_data import test_data
 from lib.convert_files import convert_files
 from lib.combine_models import combine_models
+from lib.migrate_data import check_migration
 
 def root_navigation( first):
     if( first ):
@@ -41,5 +42,6 @@ def select_mode():
         root_navigation( False )
     elif( setup_mode.lower() == 'x' ):
         print( "Goodbye." )
-    
+
+check_migration()
 root_navigation( True )

@@ -5,26 +5,33 @@ In order to train a model, you need to record sounds first. You can do this by r
 
 ![Installing packages](media/settings-record.png)
 
-This script will record sounds in seperate files of 30 milliseconds each and save them in your recordings folder ( data/recordings is the default place, which can be changed in the data/code/config.py file using the examples in lib/default_conifg.py ). 
+This script will record your microphone and save the detected areas inside of an SRT file. It will record in overlapping segments of 30 milliseconds.
 You have to be sure to record as little noise as possible. For example, if you are recording a bell sound, it is imperative that you only record that sound.
-If you accidentally recorded a different sound, you can always delete the specific file from the recordings directory.
+
 
 ![Installing packages](media/settings-record-progress.png)
 
-In order to make sure you only record the sound you want to record, you can alter the power setting at the start. I usually choose a value between 1000 and 2000. 
-You can also trim out stuff below a specific frequency value. Neither the intensity, power or the frequency values I am using isn't actually an SI unit like dB or Hz, just some rough calculations which will go up when the loudness or frequency goes up.
+During the recording, you can also pause the recording using SPACE or quit it using ESC.
+If you feel a sneeze coming up, or a car passes by, you can press these keys to make sure you don't have to remove data.
+If you accidentally did record a different sound, you can always press BACKSPACE or - to remove some data from the recording.
 
-During the recording, you can also pause the recording using SPACE or quit it using ESC. If you feel a sneeze coming up, or a car passes by, you can press these keys to make sure you don't have to prune away a lot of files.
+You can look at the 'Recorded' part during the recording session to see how much of your sound has been detected.
 
 ### Amount of data needed
 
-I found that you need around 30 seconds of recorded sound, roughly 1000 samples, to get a working recognition of a specific sound. Depending on the noise it would take between a minute and two minutes to record the sounds ( there are less samples to pick from with short sounds like clicks, whereas longer sounds like vowels give more samples ).
-You will start getting diminishing returns past two and a half minutes of recorded sound ( 5000 samples ), but the returns are still there. As of the moment of this writing, I used 15000 samples for the Hollow Knight demo.
+The Data quantity part of the recording shows you whether we think you have enough data for a model.
+The minimum required is about 16 seconds, 41 seconds is a good amount, and anything above 1 minute 22 seconds is considered excellent.
+You will start getting diminishing returns after that, but the returns are still there. I used about 4 minutes per sound for the Hollow Knight demo.
 You can try any amount and see if they recognize well.
 
-From this version onward, there will also be full recordings of the recording session saved in the source directory inside of the sound you are recording. This might come in handy when we start adding more sophisticated models in the future.
+If you want the model to do well, you should aim to have about the same amount of recordings for every sound you record.
 
-You can use these source files to resegment the recordings you have made as well, by using the [V] menu at the start and then navigating to [S]. This will reuse the source files available to read out the wav data and persist them inside the data/output folder.
+### Checking the quality of the detection
+
+If you want to see if the detection was alright, you can either open up the SRT file inside the segments folder of your recorded sound and compare it to the source file, or use the comparison.wav file inside of the segments folder.
+If you place both the source file and the comparison.wav file inside a program like Audacity, you can see the spots where it detected a sound.
+
+![Audacity comparing detection](media/settings-compare-detection.png)
 
 ### Background noise
 

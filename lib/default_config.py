@@ -67,4 +67,8 @@ dragonfly_spec = importlib.util.find_spec("dragonfly")
 if( SPEECHREC_ENABLED == True ):
     SPEECHREC_ENABLED = dragonfly_spec is not None
     
-    
+BACKGROUND_LABEL = "silence"
+
+# Detection strategies
+CURRENT_VERSION = 1
+CURRENT_DETECTION_STRATEGY = "auto_dBFS_mend_dBFS_30ms_secondary_dBFS_reject_cont_45ms_repair"
