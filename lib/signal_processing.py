@@ -8,11 +8,7 @@ from typing import List, Tuple
 import os
 from config.config import RATE
 
-# When converting to ints from bytes, Windows uses a 32 bit number.
-# Other OSes use the bytes shown. So for Windows we need different calculations for frame count
-# ( https://stackoverflow.com/questions/72482769/numpy-returns-different-results-on-windows-and-unix )
-long_byte_size = 4 if os.name == 'nt' else 2
-
+long_byte_size = 4
 _mfscs = {}
 
 # Determine the decibel based on full scale of 16 bit ints ( same as Audacity )

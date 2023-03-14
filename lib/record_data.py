@@ -35,11 +35,12 @@ def record_controls( key_poller, recordQueue=None ):
     ESCAPEKEY = '\x1b'
     SPACEBAR = ' '
     BACKSPACE = '\x08'
+    MINUS = '-'
     
     character = key_poller.poll()
     if(character is not None):
-        # Clear the last 5 seconds if backspace was pressed
-        if character == BACKSPACE:
+        # Clear the last 3 seconds if backspace was pressed
+        if character == BACKSPACE or character == MINUS:
             if (recorders is not None):
                 main_state = None
                 secondary_states = []
@@ -136,7 +137,7 @@ def record_controls( key_poller, recordQueue=None ):
                                 recorders[mic_index].resume()
                         return True
                     # Clear the last 3 seconds if backspace was pressed
-                    elif character == BACKSPACE:
+                    elif character == BACKSPACE or character == MINUS:
                         if recorders is not None and main_state is not None:
                             index = 0
                             for mic_index in recorders:
@@ -236,7 +237,7 @@ def record_sound():
     print("")
     print("Record keyboard controls:")
     print("[SPACE] is used to pause and resume the recording session")
-    print("[BACKSPACE] removes the last 3 seconds of the recording")
+    print("[BACKSPACE] or [-] removes the last 3 seconds of the recording")
     print("[ESC] stops the current recording")
     print("")    
 

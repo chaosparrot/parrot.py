@@ -73,7 +73,7 @@ class StreamRecorder:
         if len(self.total_audio_frames) >= 15:
             self.persist_total_wav_file()
     
-    def persist_total_wav_file(self):
+    def persist_total_wav_file(self):    
         # This is used to modify the wave file directly
         CHUNK_SIZE_OFFSET = 4
         DATA_SUB_CHUNK_SIZE_SIZE_OFFSET = 40
@@ -177,6 +177,8 @@ class StreamRecorder:
     def stop(self, callback = None):
         self.pause()
         self.persist_total_wav_file()
+        if self.index == 0:
+            os.remove(self.total_wav_filename)        
 
         comparison_wav_file = wave.open(self.comparison_wav_filename, 'wb')
         comparison_wav_file.setnchannels(1)
