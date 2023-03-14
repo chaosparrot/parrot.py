@@ -2,11 +2,13 @@ from config.config import *
 import pyaudio
 import struct
 import wave
+import math
 import numpy as np
 from lib.print_status import get_current_status
 from lib.stream_processing import process_audio_frame, post_processing
 from lib.typing import DetectionState, DetectionFrame
 from typing import List
+import io
 
 class StreamRecorder:
     total_wav_filename: str
@@ -93,7 +95,7 @@ class StreamRecorder:
         appendTotalFile.seek(CHUNK_SIZE_OFFSET)
         appendTotalFile.write(LITTLE_ENDIAN_INT.pack(chunk_size))
         appendTotalFile.seek(DATA_SUB_CHUNK_SIZE_SIZE_OFFSET)
-        sample_length = 2 * ( (self.index ) * self.length_per_frame )
+        sample_length = 2 * ( self.index * self.length_per_frame )
         
         appendTotalFile.write(LITTLE_ENDIAN_INT.pack(sample_length))
         appendTotalFile.close()
@@ -104,15 +106,59 @@ class StreamRecorder:
     
     def pause(self):
         self.stream.stop_stream()
+        self.index -= len(self.total_audio_frames)
         self.total_audio_frames = []
         self.audio_frames = []
     
     # Clear out the last N seconds and pauses the stream, returns whether it should resume after
     def clear(self, seconds: float) -> bool:
-        should_resume = self.detection_state == "recording"
+        should_resume = self.detection_state != "paused"
         self.pause()
         
-        # TODO Clear last N seconds in data frames, audio frames etc
+        ms_per_frame = self.detection_state.ms_per_frame
+        frames_to_remove = math.floor(seconds * 1000 / ms_per_frame)
+        clear_file = False
+        if (self.index < frames_to_remove):
+            clear_file = True
+        self.index -= self.index if clear_file else frames_to_remove
+        self.current_occurrence = []
+        self.false_occurrence = []
+        
+        self.detection_frames = self.detection_frames[:-frames_to_remove]        
+        self.detection_state.ms_recorded = len(self.detection_frames) * ms_per_frame
+        for label in self.detection_state.labels:
+            label.ms_detected = 0
+            for frame in self.detection_frames:
+                if frame.label == label.label:
+                    label.ms_detected += ms_per_frame
+
+        # Just completely overwrite the file if we go back to the start for simplicities sake
+        if clear_file:
+            totalWaveFile = wave.open(self.total_wav_filename, 'wb')
+            totalWaveFile.setnchannels(CHANNELS)
+            totalWaveFile.setsampwidth(self.audio.get_sample_size(FORMAT))
+            totalWaveFile.setframerate(RATE)
+            totalWaveFile.close()
+            
+        # Truncate the frames from the total wav file
+        else:
+            with open(self.total_wav_filename, 'r+b') as f:
+                # Drop the last N bytes from the file
+                f.seek(-frames_to_remove * self.length_per_frame, io.SEEK_END)
+                f.truncate()
+                
+                # Overwrite the total recording length
+                CHUNK_SIZE_OFFSET = 4
+                DATA_SUB_CHUNK_SIZE_SIZE_OFFSET = 40
+                LITTLE_ENDIAN_INT = struct.Struct('<I')
+
+                f.seek(0,2)
+                chunk_size = f.tell() - 8
+                f.seek(CHUNK_SIZE_OFFSET)
+                f.write(LITTLE_ENDIAN_INT.pack(chunk_size))
+                f.seek(DATA_SUB_CHUNK_SIZE_SIZE_OFFSET)
+                sample_length = 2 * ( self.index * self.length_per_frame )
+                f.write(LITTLE_ENDIAN_INT.pack(sample_length))        
         
         return should_resume
     

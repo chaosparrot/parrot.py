@@ -41,13 +41,37 @@ def record_controls( key_poller, recordQueue=None ):
         # Clear the last 5 seconds if backspace was pressed
         if character == BACKSPACE:
             if (recorders is not None):
+                main_state = None
+                secondary_states = []
                 for mic_index in recorders:
+                    if main_state is None:
+                        main_state = recorders[mic_index].get_detection_state()
+                    else:
+                        secondary_states.append(recorders[mic_index].get_detection_state())                
                     recorders[mic_index].pause()
                 should_resume = False
                 
-                for mic_index in recorders:
-                    should_resume = recorders[mic_index].clear()
+                # Clear and update the detection states
+                index = 0
+                if main_state is not None:
+                    main_state.state = "deleting"
+                    print_status(main_state, secondary_states)
                 
+                for mic_index in recorders:
+                    should_resume = recorders[mic_index].clear(3)
+                    if index == 0:
+                        main_state = recorders[mic_index].get_detection_state()
+                    else:
+                        secondary_states[index - 1] = secondary_states[index - 1].get_detection_state()
+                    index += 1
+                    print_status(main_state, secondary_states)
+
+                if main_state is not None:
+                    main_state.state = "recording"
+                    print_status(main_state, secondary_states)
+                
+                # Wait for the sound of the space bar to dissipate before continuing recording
+                time.sleep(0.3)
                 if should_resume:
                     for mic_index in recorders:
                         recorders[mic_index].resume()
@@ -73,6 +97,9 @@ def record_controls( key_poller, recordQueue=None ):
                 # Do post processing and printing of the status
                 if main_state is not None:
                     index = 0
+                    main_state.state = "deleting"
+                    print_status(main_state, secondary_states)
+                    
                     for mic_index in recorders:
                         recorders[mic_index].post_processing(
                             lambda internal_progress, state, extra=secondary_states: print_status(main_state, extra)
@@ -84,6 +111,7 @@ def record_controls( key_poller, recordQueue=None ):
                         else:
                             secondary_states[index - 1] = recorders[mic_index].get_detection_state()
                         index += 1
+
                     main_state.state = "paused"
                     print_status(main_state, secondary_states)
 
@@ -107,11 +135,20 @@ def record_controls( key_poller, recordQueue=None ):
                             for mic_index in recorders:
                                 recorders[mic_index].resume()
                         return True
-                    # Clear the last 5 seconds if backspace was pressed
+                    # Clear the last 3 seconds if backspace was pressed
                     elif character == BACKSPACE:
-                        if recorders is not None:
+                        if recorders is not None and main_state is not None:
+                            index = 0
                             for mic_index in recorders:
-                                recorders[mic_index].clear()
+                                recorders[mic_index].clear(3)
+                                if index == 0:
+                                    main_state = recorders[mic_index].get_detection_state()
+                                else:
+                                    secondary_states[index - 1] = secondary_states[index - 1].get_detection_state()
+                                index += 1
+                                print_status(main_state, secondary_states)
+                            main_state.state = "paused"
+                            print_status(main_state, secondary_states)
                     
                     # Stop the recording session
                     elif character == ESCAPEKEY:
@@ -129,6 +166,45 @@ def record_sound():
     print( "And record tiny audio files to be used for learning later" )
     print( "-------------------------" )
     
+    ms_per_frame = math.floor(RECORD_SECONDS / SLIDING_WINDOW_AMOUNT * 1000)
+    directory_counts = {}
+    try:
+        if os.path.exists(RECORDINGS_FOLDER):
+            glob_path = RECORDINGS_FOLDER + "/*/"
+            existing_dirs = glob.glob(glob_path)
+            if existing_dirs:
+                print("")
+                print("These sounds already have a folder:")
+            for dirname in existing_dirs:
+                # cut off glob path, but leave two more characters
+                # at the start to account for */
+                # also remove the trailing slash
+                directory_name = dirname[len(glob_path) - 2:-1]
+
+                # Count the currently recorded amount of data
+                current_count = count_total_label_ms(directory_name, os.path.join(RECORDINGS_FOLDER, directory_name), ms_per_frame)
+                directory_counts[directory_name] = current_count
+                time_recorded = " ( " + ms_to_srt_timestring(current_count, False).split(",")[0] + " )"
+                
+                print(" - ", directory_name.ljust(30) + time_recorded )
+            print("")
+            print("NOTE: It is recommended to record roughly the same amount for each sound")
+            print("As it will improve the ability for the machine learning models to learn from the data")
+            print("")            
+    except:
+        # Since this is just a convenience feature, exceptions shall not
+        # cause recording to abort, whatever happens
+        pass
+
+    directory = input("Whats the name of the sound are you recording? ")
+    while (directory == ""):
+        directory = input("")
+    
+    if not os.path.exists(RECORDINGS_FOLDER + "/" + directory):
+        os.makedirs(RECORDINGS_FOLDER + "/"  + directory)
+    if not os.path.exists(RECORDINGS_FOLDER + "/" + directory + "/source"):
+        os.makedirs(RECORDINGS_FOLDER + "/"  + directory + "/source")
+
     # Note - this assumes a maximum of 10 possible input devices, which is probably wrong but eh
     print("What microphone do you want to record with? ( Empty is the default system mic, [X] exits the recording menu )")
     print("You can put a space in between numbers to record with multiple microphones")
@@ -155,47 +231,14 @@ def record_sound():
     
     if len(valid_mics) == 0:
         print("No usable microphones selected - Exiting")
-        return;    
+        return;
 
-    ms_per_frame = math.floor(RECORD_SECONDS / SLIDING_WINDOW_AMOUNT * 1000)
-    directory_counts = {}
-    try:
-        if os.path.exists(RECORDINGS_FOLDER):
-            glob_path = RECORDINGS_FOLDER + "/*/"
-            existing_dirs = glob.glob(glob_path)
-            if existing_dirs:
-                print("")
-                print("These sounds already have a folder:")
-            for dirname in existing_dirs:
-                # cut off glob path, but leave two more characters
-                # at the start to account for */
-                # also remove the trailing slash
-                directory_name = dirname[len(glob_path) - 2:-1]
-
-                # Count the currently recorded amount of data
-                current_count = count_total_label_ms(directory_name, os.path.join(RECORDINGS_FOLDER, directory_name), ms_per_frame)
-                directory_counts[directory_name] = current_count
-                time_recorded = " ( " + ms_to_srt_timestring(current_count, False).split(",")[0] + " )"
-                
-                print(" - ", directory_name.ljust(30) + time_recorded )
-            print("")
-            print("NOTE: It is recommended to record roughly the same amount for each sound")
-            print("As it will improve the ability for the machine learning models to learn from the data")
-    except:
-        # Since this is just a convenience feature, exceptions shall not
-        # cause recording to abort, whatever happens
-        pass
-
-    directory = input("Whats the name of the sound are you recording? ")
-    while (directory == ""):
-        directory = input("")
-    
-    if not os.path.exists(RECORDINGS_FOLDER + "/" + directory):
-        os.makedirs(RECORDINGS_FOLDER + "/"  + directory)
-    if not os.path.exists(RECORDINGS_FOLDER + "/" + directory + "/source"):
-        os.makedirs(RECORDINGS_FOLDER + "/"  + directory + "/source")
-
-    print("You can pause/resume the recording session using the [SPACE] key, and stop the recording using the [ESC] key" )
+    print("")
+    print("Record keyboard controls:")
+    print("[SPACE] is used to pause and resume the recording session")
+    print("[BACKSPACE] removes the last 3 seconds of the recording")
+    print("[ESC] stops the current recording")
+    print("")    
 
     global recordQueue
     global recorders
@@ -231,8 +274,9 @@ def record_sound():
 
     index = 0
     for mic_index in recorders:
+        callback = None if currently_recording == -1 else lambda internal_progress, state, extra=secondary_states: print_status(main_state, extra)
         recorders[mic_index].stop(
-            lambda internal_progress, state, extra=secondary_states: print_status(main_state, extra)
+            callback
         )
         
         # Update the states so the numbers count up nicely
@@ -242,8 +286,9 @@ def record_sound():
             secondary_states[index - 1] = recorders[mic_index].get_detection_state()
         index += 1
     
-    main_state.state = "processed"
-    print_status(main_state, secondary_states)    
+    if currently_recording != -1:    
+        main_state.state = "processed"
+        print_status(main_state, secondary_states)    
 
 # Consumes the recordings in a sliding window fashion - Always combining the two latest chunks together    
 def record_consumer(labels, FULL_WAVE_OUTPUT_FILENAME, SRT_FILE, MICROPHONE_INPUT_INDEX, print_stuff=False):
