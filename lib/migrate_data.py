@@ -1,6 +1,6 @@
 from config.config import *
 import os
-from lib.stream_processing import CURRENT_VERSION, process_wav_file
+from lib.stream_processing import process_wav_file
 from lib.print_status import create_progress_bar, clear_previous_lines, get_current_status, reset_previous_lines
 from .typing import DetectionState
 import time

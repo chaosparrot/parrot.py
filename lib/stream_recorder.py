@@ -4,7 +4,7 @@ import struct
 import wave
 import numpy as np
 from lib.print_status import get_current_status
-from lib.stream_processing import CURRENT_VERSION, CURRENT_DETECTION_STRATEGY, process_audio_frame, post_processing
+from lib.stream_processing import process_audio_frame, post_processing
 from lib.typing import DetectionState, DetectionFrame
 from typing import List
 

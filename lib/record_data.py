@@ -15,6 +15,7 @@ from lib.typing import DetectionLabel, DetectionState
 from lib.stream_processing import CURRENT_VERSION, CURRENT_DETECTION_STRATEGY
 from lib.typing import DetectionState, DetectionFrame
 from lib.stream_recorder import StreamRecorder
+from lib.srt import count_total_label_ms, ms_to_srt_timestring
 from typing import List
 
 # Countdown from seconds to 0
@@ -156,6 +157,8 @@ def record_sound():
         print("No usable microphones selected - Exiting")
         return;    
 
+    ms_per_frame = math.floor(RECORD_SECONDS / SLIDING_WINDOW_AMOUNT * 1000)
+    directory_counts = {}
     try:
         if os.path.exists(RECORDINGS_FOLDER):
             glob_path = RECORDINGS_FOLDER + "/*/"
@@ -167,8 +170,17 @@ def record_sound():
                 # cut off glob path, but leave two more characters
                 # at the start to account for */
                 # also remove the trailing slash
-                print(" - ", dirname[len(glob_path) - 2:-1])
+                directory_name = dirname[len(glob_path) - 2:-1]
+
+                # Count the currently recorded amount of data
+                current_count = count_total_label_ms(directory_name, os.path.join(RECORDINGS_FOLDER, directory_name), ms_per_frame)
+                directory_counts[directory_name] = current_count
+                time_recorded = " ( " + ms_to_srt_timestring(current_count, False).split(",")[0] + " )"
+                
+                print(" - ", directory_name.ljust(30) + time_recorded )
             print("")
+            print("NOTE: It is recommended to record roughly the same amount for each sound")
+            print("As it will improve the ability for the machine learning models to learn from the data")
     except:
         # Since this is just a convenience feature, exceptions shall not
         # cause recording to abort, whatever happens
@@ -189,7 +201,9 @@ def record_sound():
     global recorders
     recorders = {}
     recordQueue = {}
-    labels = [directory]
+    labels = {}
+    labels[directory] = directory_counts[directory] if directory in directory_counts else 0    
+    
     if( countdown( 5 ) == False ):
         return;
     
@@ -291,8 +305,8 @@ def non_blocking_record(labels, FULL_WAVE_OUTPUT_FILENAME, SRT_FILE, MICROPHONE_
     detection_strategy = CURRENT_DETECTION_STRATEGY
     ms_per_frame = math.floor(RECORD_SECONDS / SLIDING_WINDOW_AMOUNT * 1000)
     detection_labels = []
-    for label in labels:
-        detection_labels.append(DetectionLabel(label, 0, "", 0, 0, 0, 0))
+    for label in list(labels.keys()):
+        detection_labels.append(DetectionLabel(label, 0, labels[label], "", 0, 0, 0, 0))
     
     audio = pyaudio.PyAudio()
 

@@ -1,8 +1,9 @@
 import time
-from config.config import BACKGROUND_LABEL
+from config.config import BACKGROUND_LABEL, CURRENT_VERSION
 from .typing import TransitionEvent, DetectionEvent, DetectionFrame
 from typing import List
 import math
+import os
 
 def ms_to_srt_timestring( ms: int, include_hours=True):
     if ms <= 0:
@@ -36,7 +37,7 @@ def persist_srt_file(srt_filename: str, events: List[DetectionEvent]):
             srt_file.write( ms_to_srt_timestring(event.start_ms) + " --> " + ms_to_srt_timestring(event.end_ms) + '\n' )
             srt_file.write( event.label + '\n\n' )
 
-def parse_srt_file(srt_filename: str, rounding_ms: int) -> List[TransitionEvent]:
+def parse_srt_file(srt_filename: str, rounding_ms: int, show_errors: bool = True) -> List[TransitionEvent]:
     transition_events = []
     positive_event_list = []
 
@@ -65,7 +66,7 @@ def parse_srt_file(srt_filename: str, rounding_ms: int) -> List[TransitionEvent]
                   if time_start < time_end:
                       positive_event_list.append(str(time_start) + "---" + type_sound + "---start")
                       positive_event_list.append(str(time_end) + "---" + type_sound + "---end")
-                  else:
+                  elif show_errors:
                       print( ".SRT error at line " + str(line_index) + " - Start time not before end time! Not adding this event - Numbers won't be valid!" )
 
     # Sort chronologically by time
@@ -73,7 +74,8 @@ def parse_srt_file(srt_filename: str, rounding_ms: int) -> List[TransitionEvent]
     for time_index, time_event in enumerate(positive_event_list):
         # Remove duplicates if found
         if time_index != 0 and len(transition_events) > 0 and transition_events[-1].start_index == math.floor(int(time_event.split("---")[0]) / rounding_ms):  
-            print( "Found duplicate entry at second " + str(math.floor(int(time_event.split("---")[0]) / rounding_ms) / 1000) + " - Not adding duplicate")
+            if show_errors:
+                print( "Found duplicate entry at second " + str(math.floor(int(time_event.split("---")[0]) / rounding_ms) / 1000) + " - Not adding duplicate")
             continue;
 
         if time_event.endswith("---start"):
@@ -93,6 +95,27 @@ def parse_srt_file(srt_filename: str, rounding_ms: int) -> List[TransitionEvent]
     
     return transition_events
 
+def count_total_label_ms(label: str, base_folder: str, rounding_ms: int) -> int:
+    total_ms = 0
+    segments_dir = os.path.join(base_folder, "segments")
+    if os.path.isdir(segments_dir):
+        srt_files = [x for x in os.listdir(segments_dir) if os.path.isfile(os.path.join(segments_dir, x)) and x.endswith(".v" + str(CURRENT_VERSION) + ".srt")]
+        for srt_file in srt_files:
+            total_ms += count_label_ms_in_srt(label, os.path.join(segments_dir, srt_file), rounding_ms)
+    return total_ms
+
+def count_label_ms_in_srt(label: str, srt_filename: str, rounding_ms: int) -> int:
+    transition_events = parse_srt_file(srt_filename, rounding_ms, False)
+    total_ms = 0
+    start_ms = -1
+    for transition_event in transition_events:
+        if transition_event.label == label:
+            start_ms = transition_event.start_ms
+        elif start_ms > -1 and transition_event.label != label:
+            total_ms += transition_event.start_ms - start_ms
+            start_ms = -1
+    
+    return total_ms
 
 def print_detection_performance_compared_to_srt(actual_frames: List[DetectionFrame], frames_to_read: int, srt_file_location: str, output_wave_file = None):
     ms_per_frame = actual_frames[0].duration_ms

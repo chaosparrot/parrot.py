@@ -70,21 +70,28 @@ def get_current_status(detection_state: DetectionState, extra_states: List[Detec
         # Quantity rating is based on 5000 30ms windows being good enough to train a label from the example model
         # And 1000 30ms windows being enough to train a label decently
         # With atleast 10 percent extra for a possible hold-out set during training
-        total_ms_detected = label.ms_detected
+        total_ms_detected = label.ms_detected + label.previous_detected
         for extra_state in extra_states:
             for extra_label in extra_state.labels:
                 if extra_label.label == label.label:
-                    total_ms_detected += extra_label.ms_detected
+                    total_ms_detected += extra_label.ms_detected + extra_label.previous_detected
         
+        percent_to_next = 0
         quantity = ""
         if total_ms_detected < 16500:
+            percent_to_next = (total_ms_detected / 16500 ) * 100
             quantity = "Not enough"
         elif total_ms_detected > 16500 and total_ms_detected < 41250:
+            percent_to_next = ((total_ms_detected - 16500) / (41250 - 16500) ) * 100
             quantity = "Sufficient"
         elif total_ms_detected >= 41250 and total_ms_detected < 82500:
+            percent_to_next = ((total_ms_detected - 41250) / (82500 - 41250) ) * 100        
             quantity = "Good"
         elif total_ms_detected >= 82500:
             quantity = "Excellent"
+            
+        if percent_to_next != 0:
+            quantity += " (" + str(round(percent_to_next)) + "%)"
 
         lines.extend([
            "|".ljust(LINE_LENGTH - 2,"-") + "|",

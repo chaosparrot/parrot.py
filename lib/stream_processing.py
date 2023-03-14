@@ -1,5 +1,5 @@
 from .typing import DetectionLabel, DetectionFrame, DetectionEvent, DetectionState
-from config.config import BACKGROUND_LABEL, RECORD_SECONDS, SLIDING_WINDOW_AMOUNT, RATE
+from config.config import BACKGROUND_LABEL, RECORD_SECONDS, SLIDING_WINDOW_AMOUNT, RATE, CURRENT_VERSION, CURRENT_DETECTION_STRATEGY
 from typing import List
 import wave
 import math
@@ -8,9 +8,6 @@ from .signal_processing import determine_power, determine_dBFS, determine_mfsc, 
 from .wav import resample_audio
 from .srt import persist_srt_file, print_detection_performance_compared_to_srt
 import os
-
-CURRENT_VERSION = 1
-CURRENT_DETECTION_STRATEGY = "auto_dBFS_mend_dBFS_30ms_secondary_dBFS_reject_cont_45ms_repair"
 
 def process_wav_file(input_file, srt_file, output_file, labels, progress_callback = None, comparison_srt_file = None, print_statistics = False):
     audioFrames = []
@@ -26,7 +23,7 @@ def process_wav_file(input_file, srt_file, output_file, labels, progress_callbac
     
     detection_labels = []
     for label in labels:
-        detection_labels.append(DetectionLabel(label, 0, "", 0, 0, 0, 0))
+        detection_labels.append(DetectionLabel(label, 0, 0, "", 0, 0, 0, 0))
     detection_state = DetectionState(detection_strategy, "recording", ms_per_frame, 0, True, 0, 0, 0, detection_labels)
 
     false_occurrence = []
@@ -313,7 +310,7 @@ def determine_duration_type(label: DetectionLabel, detection_frames: List[Detect
         # The assumption here is that discrete sounds cannot vary in length much as you cannot elongate the sound of a click for example
         # So if the length doesn't vary much, we assume discrete over continuous
         lengths = [x.end_ms - x.start_ms for x in label_events]
-        continuous_length_threshold = detection_frames[0].duration_ms * SLIDING_WINDOW_AMOUNT
+        continuous_length_threshold = 35
         return "discrete" if np.std(lengths) < continuous_length_threshold else "continuous"
 
 def detection_frames_to_events(detection_frames: List[DetectionFrame]) -> List[DetectionEvent]:

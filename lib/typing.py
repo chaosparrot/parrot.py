@@ -33,6 +33,7 @@ class DetectionEvent:
 class DetectionLabel:
     label: str
     ms_detected: int
+    previous_detected: int
     duration_type: str
     
     min_ms: float
