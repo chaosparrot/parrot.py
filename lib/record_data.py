@@ -205,6 +205,8 @@ def record_sound():
         os.makedirs(RECORDINGS_FOLDER + "/"  + directory)
     if not os.path.exists(RECORDINGS_FOLDER + "/" + directory + "/source"):
         os.makedirs(RECORDINGS_FOLDER + "/"  + directory + "/source")
+    if not os.path.exists(RECORDINGS_FOLDER + "/" + directory + "/segments"):
+        os.makedirs(RECORDINGS_FOLDER + "/"  + directory + "/segments")
 
     # Note - this assumes a maximum of 10 possible input devices, which is probably wrong but eh
     print("What microphone do you want to record with? ( Empty is the default system mic, [X] exits the recording menu )")
