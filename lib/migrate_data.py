@@ -49,6 +49,7 @@ def migrate_data():
                 wav_file_location = os.path.join(source_dir, wav_file)
                 srt_file_location = os.path.join(segments_dir, wav_file.replace(".wav", ".v" + str(CURRENT_VERSION) + ".srt"))
                 output_file_location = os.path.join(segments_dir, wav_file.replace(".wav", "_detection.wav"))
+                file_data = ""
                 
                 # Only resegment if the new version does not exist already
                 if not os.path.exists(srt_file_location):

@@ -16,6 +16,9 @@ class AudioDataset(Dataset):
         self.augmented_samples = []
         self.length = 0
         self.training = False
+        self.device = "cuda" if torch.cuda.is_available() else "cpu"
+        self.generator = torch.Generator(device=self.device)
+        self.random_tensor = torch.tensor(1.0, requires_grad=False, device=self.device)
 
         for index, label in enumerate( grouped_data_directories ):
             directories = grouped_data_directories[ label ]
@@ -66,8 +69,9 @@ class AudioDataset(Dataset):
 
     def __getitem__(self, idx):
         # During training, get a 10% probability that you get an augmented sample
-        if (self.training and random.uniform(0, 1) >= 0.9 ):
-            if (idx in self.augmented_samples):
+        if self.training:
+            self.random_tensor.uniform_(0, 1, generator=self.generator)
+            if self.random_tensor.item() >= 0.9:
                 return self.augmented_samples[idx][2], self.augmented_samples[idx][1]
         return self.samples[idx][2], self.samples[idx][1]
 

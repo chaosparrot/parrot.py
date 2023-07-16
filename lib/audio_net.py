@@ -72,7 +72,7 @@ class AudioNetTrainer:
     validation_loaders = []
     train_loaders = []
     criterion = nn.NLLLoss()
-    batch_size = 256
+    batch_size = 512
     validation_split = .2
     max_epochs = 300
     random_seeds = []
@@ -98,7 +98,6 @@ class AudioNetTrainer:
             self.nets.append(TinyAudioNet(self.input_size, len(self.dataset_labels), True))
             self.optimizers.append(optim.SGD(self.nets[i].parameters(), lr=0.003, momentum=0.9, nesterov=True))
             self.random_seeds.append(random.randint(0, 100000))
-            
  
             # Split the dataset into validation and training data loaders
             indices = list(range(self.dataset_size))
@@ -109,8 +108,8 @@ class AudioNetTrainer:
             
             train_sampler = SubsetRandomSampler(self.train_indices[i])
             valid_sampler = SubsetRandomSampler(val_indices)
-            self.train_loaders.append(torch.utils.data.DataLoader(dataset, batch_size=self.batch_size, sampler=train_sampler))
-            self.validation_loaders.append(torch.utils.data.DataLoader(dataset, batch_size=self.batch_size, sampler=valid_sampler))
+            self.train_loaders.append(torch.utils.data.DataLoader(dataset, batch_size=self.batch_size, sampler=train_sampler, pin_memory=False, num_workers=0))
+            self.validation_loaders.append(torch.utils.data.DataLoader(dataset, batch_size=self.batch_size, sampler=valid_sampler, pin_memory=False, num_workers=0))
         
     def train(self, filename):
         best_accuracy = []
@@ -133,18 +132,14 @@ class AudioNetTrainer:
                 # Training
                 self.dataset.set_training(True)
                 epoch_loss = 0.0
-                running_loss = []                
+                running_loss = []
                 for j in range(self.net_count):
                     running_loss.append(0.0)
                     self.nets[j].train(True)
                     
-                    # Reshuffle the indexes in the training batch to ensure the net does not memories the order of data being fed in
-                    np.random.shuffle(self.train_indices[j])
-                    train_sampler = SubsetRandomSampler(self.train_indices[j])
-                    self.train_loaders[j] = torch.utils.data.DataLoader(self.dataset, batch_size=self.batch_size, sampler=train_sampler)                
-                    
                     i = 0
                     with torch.set_grad_enabled(True):
+                        st_batch= time.time()
                         for local_batch, local_labels in self.train_loaders[j]:
                             # Transfer to GPU
                             local_batch, local_labels = local_batch.to(self.device), local_labels.to(self.device)

@@ -274,9 +274,12 @@ def determine_detection_state(detection_frames: List[DetectionFrame], detection_
     # Filter out very low power dbFS values as we can assume the hardware microphone is off
     # And we do not want to skew the mean for that as it would create more false positives
     # ( -70 dbFS was selected as a cut off after a bit of testing with a HyperX Quadcast microphone )
-    dBFS_frames = [x.dBFS for x in detection_frames if x.dBFS > -70]    
+    dBFS_frames = [x.dBFS for x in detection_frames if x.dBFS > -70 and x.dBFS != 0]
+    if len(dBFS_frames) == 0:
+        dBFS_frames = [0]
     std_dbFS = np.std(dBFS_frames)
-    
+
+    maximum_dBFS = np.max(dBFS_frames)
     minimum_dBFS = np.min(dBFS_frames)
     
     # For noisy signals and for clean signals we need different noise floor and threshold estimation
@@ -284,7 +287,7 @@ def determine_detection_state(detection_frames: List[DetectionFrame], detection_
     # Whereas clean signals have a very clear floor and do not need as high of a threshold
     noisy_threshold = False
     detection_state.expected_snr = math.floor(std_dbFS * 2)
-    if detection_state.expected_snr < 25:
+    if detection_state.expected_snr < 25 and maximum_dBFS > -25:
         noisy_threshold = True
         detection_state.expected_noise_floor = minimum_dBFS + std_dbFS
     else:
@@ -296,7 +299,7 @@ def determine_detection_state(detection_frames: List[DetectionFrame], detection_
         if label.duration_type == "" or len(detection_frames) % round(15 / RECORD_SECONDS):
             label.duration_type = determine_duration_type(label, detection_frames)
         label.min_dBFS = detection_state.expected_noise_floor + ( detection_state.expected_snr if noisy_threshold else detection_state.expected_snr / 2 )
-    detection_state.latest_dBFS = detection_frames[-1].dBFS
+    detection_state.latest_dBFS = max(detection_state.latest_dBFS, detection_frames[-1].dBFS) if detection_state.latest_dBFS != 0 else detection_frames[-1].dBFS
     return detection_state
 
 # Approximately determine whether the label in the stream is discrete or continuous
