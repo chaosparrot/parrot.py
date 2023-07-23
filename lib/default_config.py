@@ -68,6 +68,9 @@ if( SPEECHREC_ENABLED == True ):
     SPEECHREC_ENABLED = dragonfly_spec is not None
     
 BACKGROUND_LABEL = "silence"
+SHOULD_FIT_INSIDE_RAM = True # Ensure the dataset fits inside RAM for faster training
+# Turning this to FALSE might crash the dataloading
+MAX_RAM = 7000000000 # 7GB of usable RAM is assumed to be the maximum size to be loaded in for data
 
 # Detection strategies
 CURRENT_VERSION = 1

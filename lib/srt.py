@@ -4,6 +4,7 @@ from .typing import TransitionEvent, DetectionEvent, DetectionFrame
 from typing import List
 import math
 import os
+import numpy as np
 
 def ms_to_srt_timestring( ms: int, include_hours=True):
     if ms <= 0:
@@ -94,6 +95,15 @@ def parse_srt_file(srt_filename: str, rounding_ms: int, show_errors: bool = True
             transition_events.append( TransitionEvent(BACKGROUND_LABEL, math.floor(ms_start / rounding_ms), ms_start) )
     
     return transition_events
+
+def count_total_silence_ms(base_folder: str, rounding_ms: int) -> int:
+    total_silence = 0
+    segments_dir = os.path.join(base_folder, "segments")
+    if os.path.isdir(segments_dir):
+        srt_files = [x for x in os.listdir(segments_dir) if os.path.isfile(os.path.join(segments_dir, x)) and x.endswith(".v" + str(CURRENT_VERSION) + ".srt")]
+        for srt_file in srt_files:
+            total_silence += count_label_ms_in_srt(BACKGROUND_LABEL, os.path.join(segments_dir, srt_file), rounding_ms)
+    return total_silence
 
 def count_total_label_ms(label: str, base_folder: str, rounding_ms: int) -> int:
     total_ms = 0

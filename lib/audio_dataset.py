@@ -6,6 +6,7 @@ import numpy as np
 import random
 import math
 from lib.wav import load_wav_data_from_srt
+from lib.srt import count_total_label_ms
 
 class AudioDataset(Dataset):
 
@@ -19,7 +20,7 @@ class AudioDataset(Dataset):
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
         self.generator = torch.Generator(device=self.device)
         self.random_tensor = torch.tensor(1.0, requires_grad=False, device=self.device)
-
+        
         for index, label in enumerate( grouped_data_directories ):
             directories = grouped_data_directories[ label ]
 
