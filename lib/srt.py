@@ -96,14 +96,23 @@ def parse_srt_file(srt_filename: str, rounding_ms: int, show_errors: bool = True
     
     return transition_events
 
-def count_total_silence_ms(base_folder: str, rounding_ms: int) -> int:
-    total_silence = 0
+def count_total_frames(label: str, base_folder: str, rounding_ms: int) -> int:
+    frames = 0
     segments_dir = os.path.join(base_folder, "segments")
     if os.path.isdir(segments_dir):
         srt_files = [x for x in os.listdir(segments_dir) if os.path.isfile(os.path.join(segments_dir, x)) and x.endswith(".v" + str(CURRENT_VERSION) + ".srt")]
         for srt_file in srt_files:
-            total_silence += count_label_ms_in_srt(BACKGROUND_LABEL, os.path.join(segments_dir, srt_file), rounding_ms)
-    return total_silence
+            frames += count_frames_in_srt(label, os.path.join(segments_dir, srt_file), rounding_ms)
+    return frames
+    
+def count_total_silence_frames(base_folder: str, rounding_ms: int) -> int:
+    frames = 0
+    segments_dir = os.path.join(base_folder, "segments")
+    if os.path.isdir(segments_dir):
+        srt_files = [x for x in os.listdir(segments_dir) if os.path.isfile(os.path.join(segments_dir, x)) and x.endswith(".v" + str(CURRENT_VERSION) + ".srt")]
+        for srt_file in srt_files:
+            frames += count_frames_in_srt(BACKGROUND_LABEL, os.path.join(segments_dir, srt_file), rounding_ms)
+    return frames
 
 def count_total_label_ms(label: str, base_folder: str, rounding_ms: int) -> int:
     total_ms = 0
@@ -126,6 +135,19 @@ def count_label_ms_in_srt(label: str, srt_filename: str, rounding_ms: int) -> in
             start_ms = -1
     
     return total_ms
+
+def count_frames_in_srt(label: str, srt_filename: str, rounding_ms: int) -> int:
+    transition_events = parse_srt_file(srt_filename, rounding_ms, False)
+    start_ms = -1
+    frames = 0
+    for transition_event in transition_events:
+        if transition_event.label == label:
+            start_ms = transition_event.start_ms
+        elif start_ms > -1 and transition_event.label != label:
+            frames += round((transition_event.start_ms - start_ms - rounding_ms) / 15)
+            start_ms = -1
+    
+    return frames
 
 def print_detection_performance_compared_to_srt(actual_frames: List[DetectionFrame], frames_to_read: int, srt_file_location: str, output_wave_file = None):
     ms_per_frame = actual_frames[0].duration_ms

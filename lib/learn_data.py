@@ -23,7 +23,7 @@ from sklearn.neural_network import *
 from lib.combine_models import define_settings, get_current_default_settings
 from lib.audio_model import AudioModel
 from lib.wav import load_wav_files_with_srts, load_wav_data_from_srt
-from lib.srt import count_total_label_ms, count_total_silence_ms
+from lib.srt import count_total_frames, count_total_silence_frames
 import math
 import random
 
@@ -92,46 +92,28 @@ def learn_data():
         from lib.audio_net import AudioNetTrainer
         from lib.audio_dataset import AudioDataset
         
-        print( "--------------------------" )        
+        print( "--------------------------" )
         dataset_labels = determine_labels( dir_path )
         print( "--------------------------" )
         grouped_data_directories = get_grouped_data_directories( dataset_labels )
         sample_strategies = generate_data_balance_strategy_map(grouped_data_directories )
         for label in grouped_data_directories:
             data_sample = sample_data_from_label( label, grouped_data_directories, sample_strategies, settings["FEATURE_ENGINEERING_TYPE"] )
-            print( sample_strategies[label] )
-            print( "Label samples: " + str(len(data_sample["label"])))
-            print( "Augmented samples: " + str(len(data_sample["augmented"])))
-            print( "Silence samples: " + str(len(data_sample["background"])))
         dataset = AudioDataset( grouped_data_directories, settings )
         trainer = AudioNetTrainer(dataset, net_count, settings)
         
         print( "Learning the data..." )
         trainer.train( clf_filename )
 
-def fit_sklearn_classifier( classifier,  dir_path, clf_filename, settings ):
-    max_files_per_category = input("How many files should we analyze per category? ( empty is all )" )
-    if( max_files_per_category == "" ):
-        max_files_per_category = 1000000
-    else:
-        max_files_per_category = int( max_files_per_category )
-    
+def fit_sklearn_classifier( classifier,  dir_path, clf_filename, settings ):    
     print( "--------------------------" )
-    dataX, dataY, directory_names, total_feature_engineering_time = load_data( dir_path, max_files_per_category, settings['FEATURE_ENGINEERING_TYPE'] )
+    dataX, dataY, directory_names = load_data( dir_path, settings['FEATURE_ENGINEERING_TYPE'] )
     print( "--------------------------" )
 
     print( "Learning the data..." )
     classifier.fit( dataX, dataY )
     print( "Data analyzed!               " )
-    
-    print( "Testing algorithm speed... ", end="\r" )
-    feature_engineering_speed_ms = int(total_feature_engineering_time) / len( dataX )
-    prediction_speed_ms = average_prediction_speed( classifier, dataX )
-    print( "Worst case reaction speed: +- %0.4f milliseconds " % ( feature_engineering_speed_ms + prediction_speed_ms + ( RECORD_SECONDS * 1000 ) ) )
-    print( "- Preparing data speed %0.4f ms " % feature_engineering_speed_ms )
-    print( "- Predicting label speed %0.4f ms" % prediction_speed_ms )
-    print( "- Recording length %0.4f ms" % ( RECORD_SECONDS * 1000 ) )
-    
+
     persisted_classifier = AudioModel( settings, classifier )
     
     print( "Saving the model to " + CLASSIFIER_FOLDER + "/" + clf_filename )
@@ -148,30 +130,6 @@ def fit_sklearn_classifier( classifier,  dir_path, clf_filename, settings ):
         create_confusion_matrix( classifier, dataX, dataY, directory_names )
         print( "--------------------------" )
     
-    
-def load_wav_files( directories, label, int_label, start, end, input_type ):
-    category_dataset_x = []
-    category_dataset_labels = []
-    totalFeatureEngineeringTime = 0
-    category_file_index = 0
-
-    for directory in directories:
-        for fileindex, file in enumerate(os.listdir(directory)):
-            if ( file.endswith(".wav") and fileindex >= start and len(category_dataset_x) < end ):
-                full_filename = os.path.join(directory, file)
-                print( "Loading " + str(category_file_index) + " files for " + label + "... ", end="\r" )
-                category_file_index += 1
-
-                # Load the WAV file and turn it into a onedimensional array of numbers
-                feature_engineering_start = time.time() * 1000
-                data_row, frequency = feature_engineering( full_filename, RECORD_SECONDS, input_type )
-                category_dataset_x.append( data_row )
-                category_dataset_labels.append( label )
-                totalFeatureEngineeringTime += time.time() * 1000 - feature_engineering_start
-
-    print( "Loaded " + str( len( category_dataset_labels ) ) + " .wav files for category " + label + " (id: " + str(int_label) + ")" )
-    return category_dataset_x, category_dataset_labels, totalFeatureEngineeringTime
-
 def determine_labels( dir_path ):
     data_directory_names =  [directory for directory in os.listdir( dir_path ) if not directory.startswith(".")]
     
@@ -214,8 +172,8 @@ def generate_data_balance_strategy_map(grouped_data_directories):
         if label != BACKGROUND_LABEL:
             label_count = 0
             for directory in directories:
-                label_count += count_total_label_ms(label, directory, ms_per_frame) / ms_per_frame
-                background_label_size += count_total_silence_ms(directory, ms_per_frame) / ms_per_frame
+                label_count += count_total_frames(label, directory, ms_per_frame)
+                background_label_size += count_total_silence_frames(directory, ms_per_frame)
             directory_counts[label] = label_count
             max_size = max(max_size, label_count)
             if label_count > 0:
@@ -229,15 +187,16 @@ def generate_data_balance_strategy_map(grouped_data_directories):
     total_truncation = math.floor(average + std / 2)
     
     sampling_strategies = {}
-    for label in directory_counts:
+    for label in directory_counts:            
         strategy = strategies[2]
-        total_loaded = directory_counts[label]        
-        if directory_counts[label] < total_truncation / 1.25:
-            strategy = strategies[0]
-            total_loaded = min(directory_counts[label] * max_oversample_ratio, total_truncation)
-        elif directory_counts[label] > total_truncation * 1.25:
-            strategy = strategies[1]
-            total_loaded = total_truncation
+        total_loaded = directory_counts[label]
+        if AUTOMATIC_DATASET_BALANCING:
+            if directory_counts[label] < total_truncation / 1.25:
+                strategy = strategies[0]
+                total_loaded = min(directory_counts[label] * max_oversample_ratio, total_truncation)
+            elif directory_counts[label] > total_truncation * 1.25:
+                strategy = strategies[1]
+                total_loaded = total_truncation
 
         sampling_strategies[label] = {
             "strategy": strategy,
@@ -258,7 +217,7 @@ def generate_data_balance_strategy_map(grouped_data_directories):
     return rebalance_sampling_strategies_for_memory(sampling_strategies)
 
 def rebalance_sampling_strategies_for_memory(sampling_strategies):
-    if not SHOULD_FIT_INSIDE_RAM:
+    if not SHOULD_FIT_INSIDE_RAM or not AUTOMATIC_DATASET_BALANCING:
         return sampling_strategies
 
     # Make sure the additional data loaded does not increase past a certain point
@@ -354,14 +313,16 @@ def sample_data_from_label(label, grouped_data_directories, sample_strategies, i
             return data
         else:
             print( f"Loading in {label}" )
-            
+        
+        should_oversample = strategy == "oversample"
+        
         listed_source_files = listed_files.keys()
         for file_index, full_filename in enumerate( listed_source_files ):
-            label_samples = load_wav_data_from_srt(listed_files[full_filename], full_filename, input_type, False)
+            label_samples = load_wav_data_from_srt(listed_files[full_filename], full_filename, input_type, should_oversample)
             for sample in label_samples:
                 total_label_samples.append([full_filename, sample])
 
-            augmented_samples = load_wav_data_from_srt(listed_files[full_filename], full_filename, input_type, False, True)
+            augmented_samples = load_wav_data_from_srt(listed_files[full_filename], full_filename, input_type, should_oversample, True)
             for augmented_sample in augmented_samples:
                 total_augmented_samples.append([full_filename, augmented_sample])
 
@@ -372,15 +333,6 @@ def sample_data_from_label(label, grouped_data_directories, sample_strategies, i
             augmented_background_samples = load_wav_data_from_srt(listed_files[full_filename], full_filename, input_type, True, False, True)
             for augmented_background_sample in augmented_background_samples:
                 total_augmented_background_samples.append([full_filename, augmented_background_sample])
-        
-        if strategy == "oversample":
-            label_samples = load_wav_data_from_srt(listed_files[full_filename], full_filename, input_type, True)
-            for sample in label_samples:
-                total_label_samples.append([full_filename, sample])
-            
-            augmented_samples = load_wav_data_from_srt(listed_files[full_filename], full_filename, input_type, True, True)
-            for augmented_sample in augmented_samples:
-                total_augmented_samples.append([full_filename, augmented_sample])
 
         seed = round(time.time() * 1000)
 
@@ -400,7 +352,8 @@ def sample_data_from_label(label, grouped_data_directories, sample_strategies, i
 
     data["label"] = total_label_samples
     data["augmented"] = total_augmented_samples
-    data["background"] = total_background_samples    
+    data["background"] = total_background_samples
+    data["background_augmented"] = total_augmented_background_samples
     return data
 
 def shannon_entropy(label_counts):
@@ -409,26 +362,29 @@ def shannon_entropy(label_counts):
     h = -sum([(count / n) * np.log((count / n)) for count in totals])
     return h / np.log(len(totals))
 
-def load_data( dir_path, max_files, input_type ):
+def load_data( dir_path, input_type ):
     filtered_data_directory_names = determine_labels( dir_path )
     grouped_data_directories = get_grouped_data_directories( filtered_data_directory_names )
     sample_strategies = generate_data_balance_strategy_map(grouped_data_directories )
+    
+    dataset = {}
+    dataset[BACKGROUND_LABEL] = []
     for label in grouped_data_directories:
-        data_sample = sample_data_from_label( label, grouped_data_directories, sample_strategies, input_type)
+        if label != BACKGROUND_LABEL:
+            data_sample = sample_data_from_label( label, grouped_data_directories, sample_strategies, input_type)
+            dataset[label] = [x[1] for x in data_sample["label"]]
+            dataset[label].extend([x[1] for x in data_sample["augmented"]])
+            dataset[BACKGROUND_LABEL].extend([x[1] for x in data_sample["background"]])
+            dataset[BACKGROUND_LABEL].extend([x[1] for x in data_sample["background_augmented"]])
 
     # Generate the training set and labels with them
-    dataset = []
     dataset_x = []
     dataset_labels = []
 
-    totalFeatureEngineeringTime = 0
-    for str_label, directories in grouped_data_directories.items():
+    for label, data in dataset.items():
         # Add a label used for classifying the sounds
-        id_label = get_label_for_directory( "".join( directories ) )
-        cat_dataset_x, cat_dataset_labels, featureEngineeringTime = load_wav_files_with_srts( directories, str_label, id_label, 0, max_files, input_type )
-        totalFeatureEngineeringTime += featureEngineeringTime
-        dataset_x.extend( cat_dataset_x )
-        dataset_labels.extend( cat_dataset_labels )
+        dataset_x.extend( data )
+        dataset_labels.extend([label for x in data])
 
-    return dataset_x, dataset_labels, grouped_data_directories.keys(), totalFeatureEngineeringTime
+    return dataset_x, dataset_labels, grouped_data_directories.keys()
 
