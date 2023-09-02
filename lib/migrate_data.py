@@ -18,10 +18,18 @@ def check_migration():
                 source_files = [x for x in os.listdir(os.path.join(RECORDINGS_FOLDER, file, "source")) if x.endswith(".wav")]
                 for source_file in source_files:
                     srt_file = source_file.replace(".wav", ".v" + str(CURRENT_VERSION) + ".srt")
+                    override_file_location = os.path.join(segments_folder, source_file.replace(".wav", "_overrides.txt"))
+                    
                     manual_srt_file = source_file.replace(".wav", ".MANUAL.srt")
                     if not os.path.exists(os.path.join(segments_folder, srt_file)) and not os.path.exists(os.path.join(segments_folder, manual_srt_file)):
                         version_detected = 0
                         break
+                    
+                    # If an override file exists and the time of modification is later than the manual SRT file generated, we need to resegment
+                    elif os.path.exists(override_file_location):
+                        srt_file_location = os.path.join(segments_folder, manual_srt_file)
+                        if not os.path.exists(srt_file_location) or os.path.getmtime(override_file_location) > os.path.getmtime(srt_file_location):
+                            version_detected = 0
                 
                 if version_detected == 0:
                     break
@@ -53,12 +61,19 @@ def migrate_data():
                 wav_file_location = os.path.join(source_dir, wav_file)
                 srt_file_location = os.path.join(segments_dir, wav_file.replace(".wav", ".v" + str(CURRENT_VERSION) + ".srt"))
                 output_file_location = os.path.join(segments_dir, wav_file.replace(".wav", "_detection.wav"))
-                file_data = ""
+                override_file_location = os.path.join(segments_dir, wav_file.replace(".wav", "_overrides.txt"))
+                file_data = ""                
+                should_resegment_file = not os.path.exists(srt_file_location)                
+                
+                # Make sure that manual overrides get a different SRT file postfix
+                if os.path.exists(override_file_location):
+                    srt_file_location = os.path.join(segments_dir, wav_file.replace(".wav", ".MANUAL.srt"))
+                    should_resegment_file = not os.path.exists(srt_file_location) or os.path.getmtime(override_file_location) > os.path.getmtime(srt_file_location)
                 
                 # Only resegment if the new version does not exist already
-                if not os.path.exists(srt_file_location):
+                if should_resegment_file:
                     process_wav_file(wav_file_location, srt_file_location, output_file_location, [label], \
-                        lambda internal_progress, state: print_migration_progress(progress + (internal_progress * progress_chunk), state) )
+                        lambda internal_progress, state: print_migration_progress(progress + (internal_progress * progress_chunk), state), None, override_file_location )
                 else:
                     skipped_amount += 1
                 progress = index / len( wav_files ) + progress_chunk

@@ -9,7 +9,7 @@ from .wav import resample_audio
 from .srt import persist_srt_file, print_detection_performance_compared_to_srt
 import os
 
-def process_wav_file(input_file, srt_file, output_file, labels, progress_callback = None, comparison_srt_file = None, print_statistics = False):
+def process_wav_file(input_file, srt_file, output_file, labels, progress_callback = None, comparison_srt_file = None, override_file = None, print_statistics = False):
     audioFrames = []
     wf = wave.open(input_file, 'rb')
     number_channels = wf.getnchannels()
@@ -22,9 +22,28 @@ def process_wav_file(input_file, srt_file, output_file, labels, progress_callbac
     detection_strategy = CURRENT_DETECTION_STRATEGY
     
     detection_labels = []
+    override_labels = []
     for label in labels:
         detection_labels.append(DetectionLabel(label, 0, 0, "", 0, 0, 0, 0))
     detection_state = DetectionState(detection_strategy, "recording", ms_per_frame, 0, True, 0, 0, 0, detection_labels)
+    
+    # Add manual overrides if the override file exists
+    if os.path.exists(override_file):
+        override_dict = generate_override_dict(override_file)
+    
+        for override_label in labels:
+            duration_type = ""
+            duration_type_key = (label + "_duration_type").lower()
+            if duration_type_key in override_dict and override_dict[duration_type_key].lower() in ["discrete", "continuous"]:
+                duration_type = override_dict[duration_type_key].lower()
+                
+            min_dBFS = -150
+            min_dBFS_key = (label + "_min_dbfs").lower()
+            if min_dBFS_key in override_dict and override_dict[min_dBFS_key] < 0:
+                min_dBFS = override_dict[min_dBFS_key]
+            
+            override_labels.append(DetectionLabel(label, 0, 0, duration_type, 0, min_dBFS, 0, 0))    
+    detection_state.override_labels = override_labels
 
     false_occurrence = []
     current_occurrence = []
@@ -114,6 +133,23 @@ def process_audio_frame(index, audioFrames, detection_state, detection_frames, c
     
     return audioFrames, detection_state, detection_frames, current_occurrence, false_occurrence
 
+def generate_override_dict(override_file):
+    lines = []
+    with open(override_file, "r") as f:
+        lines = f.readlines()
+        
+    override_dict = {}
+    for line in lines:
+        if "=" in line:
+            items = line.split("=")
+            if len(items) == 2:
+                value = items[1].strip().lower()
+                key = items[0].strip()
+                if key.endswith("dbfs"):
+                    value = int(value)
+                override_dict[key] = value
+    return override_dict
+
 def determine_detection_frame(index, detection_state, audioFrames) -> DetectionFrame:
     detected = False
     if( len( audioFrames ) >= SLIDING_WINDOW_AMOUNT ):
@@ -155,7 +191,11 @@ def post_processing(frames: List[DetectionFrame], detection_state: DetectionStat
         # Recalculate the MS detection and duration type
         for label in detection_state.labels:
             label.ms_detected = 0
-            label.duration_type = determine_duration_type(label, frames)            
+            label.duration_type = determine_duration_type(label, frames)
+            for override_label in detection_state.override_labels:
+                if label.label == override_label.label:
+                    label.min_dBFS = label.min_dBFS if override_label.min_dBFS <= -150 else override_label.min_dBFS
+                    label.duration_type = label.duration_type if not override_label.duration_type else override_label.duration_type
 
         for index, frame in enumerate(frames):
             detected = False
@@ -274,7 +314,7 @@ def post_processing(frames: List[DetectionFrame], detection_state: DetectionStat
 def determine_detection_state(detection_frames: List[DetectionFrame], detection_state: DetectionState) -> DetectionState:
     # Filter out very low power dbFS values as we can assume the hardware microphone is off
     # And we do not want to skew the mean for that as it would create more false positives
-    # ( -70 dbFS was selected as a cut off after a bit of testing with a HyperX Quadcast microphone )
+    # ( -70 dbFS was selected as a cut off after a bit of testing with a HyperX Quadcast microphone )            
     dBFS_frames = [x.dBFS for x in detection_frames if x.dBFS > -70 and x.dBFS != 0]
     if len(dBFS_frames) == 0:
         dBFS_frames = [0]
@@ -294,12 +334,20 @@ def determine_detection_state(detection_frames: List[DetectionFrame], detection_
         detection_state.expected_noise_floor = minimum_dBFS
 
     for label in detection_state.labels:
-
         # Recalculate the duration type every 15 seconds
         if label.duration_type == "" or len(detection_frames) % round(15 / RECORD_SECONDS):
             label.duration_type = determine_duration_type(label, detection_frames)
         label.min_dBFS = detection_state.expected_noise_floor + ( detection_state.expected_snr if noisy_threshold else detection_state.expected_snr / 2 )
     detection_state.latest_dBFS = detection_frames[-1].dBFS
+
+    # Override the detection by manual overrides
+    if detection_state.override_labels is not None:
+        for label in detection_state.labels:
+            for override_label in detection_state.override_labels:
+                if label.label == override_label.label:
+                    label.min_dBFS = label.min_dBFS if override_label.min_dBFS <= -150 else override_label.min_dBFS
+                    label.duration_type = label.duration_type if not override_label.duration_type else override_label.duration_type
+    
     return detection_state
 
 # Approximately determine whether the label in the stream is discrete or continuous

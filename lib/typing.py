@@ -54,3 +54,4 @@ class DetectionState:
     expected_snr: float
     expected_noise_floor: float
     labels: List[DetectionLabel]
+    override_labels: List[DetectionLabel] = None

@@ -67,7 +67,7 @@ def get_current_status(detection_state: DetectionState, extra_states: List[Detec
            "|".ljust(LINE_LENGTH - 2,"-") + "|",
            "| " + ("Noise floor (dBFS):" + str(round(detection_state.expected_noise_floor)).rjust(LINE_LENGTH - 24)) + " |",
            "| " + ("SNR:" + str(round(detection_state.expected_snr)).rjust(LINE_LENGTH - 9)) + " |",
-       ])    
+       ])
 
     for label in detection_state.labels:
         # Quantity rating is based on 5000 30ms windows being good enough to train a label from the example model
