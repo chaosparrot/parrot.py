@@ -14,6 +14,7 @@ class DetectionFrame:
     positive: bool
     power: float
     dBFS: float
+    filtered_dBFS: float
     euclid_dist: float
     mel_data: List[List[float]]
     label: str

@@ -4,7 +4,7 @@ from typing import List
 import wave
 import math
 import numpy as np
-from .signal_processing import determine_power, determine_dBFS, determine_mfsc, determine_euclidean_dist
+from .signal_processing import determine_power, determine_dBFS, determine_mfsc, determine_euclidean_dist, high_pass_filter
 from .wav import resample_audio
 from .srt import persist_srt_file, print_detection_performance_compared_to_srt
 import os
@@ -123,6 +123,7 @@ def determine_detection_frame(index, detection_state, audioFrames) -> DetectionF
         wave_data = np.frombuffer( byteString, dtype=np.int16 )
         power = determine_power( wave_data )
         dBFS = determine_dBFS( wave_data )
+        filtered_dBFS = determine_dBFS( high_pass_filter( wave_data ) )
         mfsc_data = determine_mfsc( wave_data, RATE )
         distance = determine_euclidean_dist( mfsc_data )
 
@@ -135,9 +136,9 @@ def determine_detection_frame(index, detection_state, audioFrames) -> DetectionF
                 detected_label = label.label
                 break
 
-        return DetectionFrame(index, detection_state.ms_per_frame, detected, power, dBFS, distance, mfsc_data, detected_label)
+        return DetectionFrame(index, detection_state.ms_per_frame, detected, power, dBFS, filtered_dBFS, distance, mfsc_data, detected_label)
     else:
-        return DetectionFrame(index, detection_state.ms_per_frame, detected, 0, 0, 0, [], BACKGROUND_LABEL)
+        return DetectionFrame(index, detection_state.ms_per_frame, detected, 0, 0, 0, 0, [], BACKGROUND_LABEL)
 
 def post_processing(frames: List[DetectionFrame], detection_state: DetectionState, output_filename: str, progress_callback = None, output_wave_file: wave.Wave_write = None, comparison_srt_file: str = None, print_statistics = False) -> List[DetectionFrame]:
     detection_state.state = "processing"
@@ -279,7 +280,6 @@ def determine_detection_state(detection_frames: List[DetectionFrame], detection_
         dBFS_frames = [0]
     std_dbFS = np.std(dBFS_frames)
 
-    maximum_dBFS = np.max(dBFS_frames)
     minimum_dBFS = np.min(dBFS_frames)
     
     # For noisy signals and for clean signals we need different noise floor and threshold estimation
@@ -287,7 +287,7 @@ def determine_detection_state(detection_frames: List[DetectionFrame], detection_
     # Whereas clean signals have a very clear floor and do not need as high of a threshold
     noisy_threshold = False
     detection_state.expected_snr = math.floor(std_dbFS * 2)
-    if detection_state.expected_snr < 25 and maximum_dBFS > -25:
+    if detection_state.expected_snr < 25:
         noisy_threshold = True
         detection_state.expected_noise_floor = minimum_dBFS + std_dbFS
     else:

@@ -7,6 +7,7 @@ from .mfsc import Mfsc
 from typing import List, Tuple
 import os
 from config.config import RATE
+from scipy import signal
 
 long_byte_size = 4
 _mfscs = {}
@@ -110,3 +111,17 @@ def determine_euclidean_dist(mfscData: np.array) -> float:
         if i > 0:
             distance += np.linalg.norm(mfscData[i-1] - mfscData[i])
     return distance
+
+# High pass filter that filters out most frequencies below voice level
+# In order to improve signal to noise ratio
+hp_filter = hp_filter = signal.butter(5, 100, 'highpass', fs=RATE, output='sos')
+def high_pass_filter(int16_data: np.array) -> np.array:
+    global hp_filter
+    if hp_filter is not None:
+        max_int16_value = 65535
+        signal_data = signal.sosfilt(hp_filter, int16_data.astype(np.float32) / max_int16_value) * max_int16_value
+        filtered_data = signal_data.astype(np.int16)
+        
+        return filtered_data
+    else:
+        return int16_data
