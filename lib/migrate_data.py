@@ -9,19 +9,23 @@ def check_migration():
     version_detected = CURRENT_VERSION
     recording_dirs = os.listdir(RECORDINGS_FOLDER)
     for file in recording_dirs:
-        if os.path.isdir(os.path.join(RECORDINGS_FOLDER, file)):
+        if file != BACKGROUND_LABEL and os.path.isdir(os.path.join(RECORDINGS_FOLDER, file)):
             segments_folder = os.path.join(RECORDINGS_FOLDER, file, "segments")
             if not os.path.exists(segments_folder):
                 version_detected = 0
                 break
             else:
-                source_files = os.listdir(os.path.join(RECORDINGS_FOLDER, file, "source"))
+                source_files = [x for x in os.listdir(os.path.join(RECORDINGS_FOLDER, file, "source")) if x.endswith(".wav")]
                 for source_file in source_files:
                     srt_file = source_file.replace(".wav", ".v" + str(CURRENT_VERSION) + ".srt")
-                    if not os.path.exists(os.path.join(segments_folder, srt_file)):
+                    manual_srt_file = source_file.replace(".wav", ".MANUAL.srt")
+                    if not os.path.exists(os.path.join(segments_folder, srt_file)) and not os.path.exists(os.path.join(segments_folder, manual_srt_file)):
                         version_detected = 0
                         break
-
+                
+                if version_detected == 0:
+                    break
+    
     if version_detected < CURRENT_VERSION:
         print("----------------------------")
         print("!! Improvement to segmentation found !!")

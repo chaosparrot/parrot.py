@@ -149,10 +149,16 @@ def sample_data_from_label(label, grouped_data_directories, sample_strategies, i
             # Find the highest version of the segmentation for this source file
             srt_file = possible_srt_files[0]
             for possible_srt_file in possible_srt_files:
-                current_version = int( srt_file.replace(".srt", "").replace(shared_key + ".v", "") )
-                version = int( possible_srt_file.replace(".srt", "").replace(shared_key + ".v", "") )
-                if version > current_version:
+                if srt_file.endswith(".MANUAL.srt"):
+                    break
+                
+                if possible_srt_file.endswith(".MANUAL.srt"):
                     srt_file = possible_srt_file
+                else:                
+                    current_version = int( srt_file.replace(".srt", "").replace(shared_key + ".v", "") )
+                    version = int( possible_srt_file.replace(".srt", "").replace(shared_key + ".v", "") )
+                    if version > current_version:
+                        srt_file = possible_srt_file
             
             listed_files[os.path.join(source_directory, source_file)] = os.path.join(segments_directory, srt_file)
     listed_files_size = len( listed_files )

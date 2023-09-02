@@ -6,6 +6,9 @@ import math
 import os
 import numpy as np
 
+current_v_ending = ".v" + str(CURRENT_VERSION) + ".srt"
+manual_ending = ".MANUAL.srt"
+
 def ms_to_srt_timestring( ms: int, include_hours=True):
     if ms <= 0:
         return "00:00:00,000" if include_hours else "00:00,000"    
@@ -27,8 +30,8 @@ def srt_timestring_to_ms( srt_timestring: str):
       return ms
 
 def persist_srt_file(srt_filename: str, events: List[DetectionEvent]):
-    if not srt_filename.endswith(".v1.srt"):
-        srt_filename += ".v1.srt"
+    if not srt_filename.endswith(current_v_ending) and not srt_filename.endswith(manual_ending):
+        srt_filename += current_v_ending
 
     # Sort events chronologically first
     events.sort(key = lambda event: event.start_index)    
@@ -100,27 +103,42 @@ def count_total_frames(label: str, base_folder: str, rounding_ms: int) -> int:
     frames = 0
     segments_dir = os.path.join(base_folder, "segments")
     if os.path.isdir(segments_dir):
-        srt_files = [x for x in os.listdir(segments_dir) if os.path.isfile(os.path.join(segments_dir, x)) and x.endswith(".v" + str(CURRENT_VERSION) + ".srt")]
+        srt_files = [x for x in os.listdir(segments_dir) if os.path.isfile(os.path.join(segments_dir, x)) and (x.endswith(current_v_ending) or x.endswith(manual_ending))]
         for srt_file in srt_files:
-            frames += count_frames_in_srt(label, os.path.join(segments_dir, srt_file), rounding_ms)
+        
+            # Skip the file if a manual override file of it exists
+            if srt_file.endswith(current_v_ending) and srt_file.replace(current_v_ending, manual_ending) in srt_files:
+                continue
+            else:
+                frames += count_frames_in_srt(label, os.path.join(segments_dir, srt_file), rounding_ms)
     return frames
     
 def count_total_silence_frames(base_folder: str, rounding_ms: int) -> int:
     frames = 0
     segments_dir = os.path.join(base_folder, "segments")
     if os.path.isdir(segments_dir):
-        srt_files = [x for x in os.listdir(segments_dir) if os.path.isfile(os.path.join(segments_dir, x)) and x.endswith(".v" + str(CURRENT_VERSION) + ".srt")]
+        srt_files = [x for x in os.listdir(segments_dir) if os.path.isfile(os.path.join(segments_dir, x)) and (x.endswith(current_v_ending) or x.endswith(manual_ending))]
         for srt_file in srt_files:
-            frames += count_frames_in_srt(BACKGROUND_LABEL, os.path.join(segments_dir, srt_file), rounding_ms)
+
+            # Skip the file if a manual override file of it exists
+            if srt_file.endswith(current_v_ending) and srt_file.replace(current_v_ending, manual_ending) in srt_files:
+                continue
+            else:
+                frames += count_frames_in_srt(BACKGROUND_LABEL, os.path.join(segments_dir, srt_file), rounding_ms)
     return frames
 
 def count_total_label_ms(label: str, base_folder: str, rounding_ms: int) -> int:
     total_ms = 0
     segments_dir = os.path.join(base_folder, "segments")
     if os.path.isdir(segments_dir):
-        srt_files = [x for x in os.listdir(segments_dir) if os.path.isfile(os.path.join(segments_dir, x)) and x.endswith(".v" + str(CURRENT_VERSION) + ".srt")]
+        srt_files = [x for x in os.listdir(segments_dir) if os.path.isfile(os.path.join(segments_dir, x)) and x.endswith(".v" + str(CURRENT_VERSION) + ".srt") or x.endswith(".MANUAL.srt")]
         for srt_file in srt_files:
-            total_ms += count_label_ms_in_srt(label, os.path.join(segments_dir, srt_file), rounding_ms)
+
+            # Skip the file if a manual override file of it exists
+            if srt_file.endswith(current_v_ending) and srt_file.replace(current_v_ending, manual_ending) in srt_files:
+                continue
+            else:
+                total_ms += count_label_ms_in_srt(label, os.path.join(segments_dir, srt_file), rounding_ms)
     return total_ms
 
 def count_label_ms_in_srt(label: str, srt_filename: str, rounding_ms: int) -> int:
