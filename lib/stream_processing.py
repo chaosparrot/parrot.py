@@ -299,7 +299,7 @@ def determine_detection_state(detection_frames: List[DetectionFrame], detection_
         if label.duration_type == "" or len(detection_frames) % round(15 / RECORD_SECONDS):
             label.duration_type = determine_duration_type(label, detection_frames)
         label.min_dBFS = detection_state.expected_noise_floor + ( detection_state.expected_snr if noisy_threshold else detection_state.expected_snr / 2 )
-    detection_state.latest_dBFS = max(detection_state.latest_dBFS, detection_frames[-1].dBFS) if detection_state.latest_dBFS != 0 else detection_frames[-1].dBFS
+    detection_state.latest_dBFS = detection_frames[-1].dBFS
     return detection_state
 
 # Approximately determine whether the label in the stream is discrete or continuous

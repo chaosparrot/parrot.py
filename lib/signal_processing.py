@@ -13,7 +13,11 @@ _mfscs = {}
 
 # Determine the decibel based on full scale of 16 bit ints ( same as Audacity )
 def determine_dBFS(waveData: np.array) -> float:
-    return 20 * math.log10(determine_power(waveData) / math.pow(32767, 2))
+    power = determine_power(waveData)
+    if power <= 0:
+        power = 0.0001
+
+    return 20 * math.log10(power / math.pow(32767, 2))
 
 def determine_power(waveData: np.array) -> float:
     return audioop.rms(waveData, long_byte_size)
