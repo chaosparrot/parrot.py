@@ -28,7 +28,7 @@ def process_wav_file(input_file, srt_file, output_file, labels, progress_callbac
     detection_state = DetectionState(detection_strategy, "recording", ms_per_frame, 0, True, 0, 0, 0, detection_labels)
     
     # Add manual overrides if the override file exists
-    if os.path.exists(override_file):
+    if override_file is not None and os.path.exists(override_file):
         override_dict = generate_override_dict(override_file)
     
         for override_label in labels:
