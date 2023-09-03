@@ -375,4 +375,4 @@ def print_detection_performance_compared_to_srt(actual_frames: List[DetectionFra
     print("--------------------------------------")
     
     print("Excel row")
-    print( "	".join(export_row) )
+    print( ",".join(export_row) )

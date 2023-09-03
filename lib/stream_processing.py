@@ -9,6 +9,8 @@ from .wav import resample_audio
 from .srt import persist_srt_file, print_detection_performance_compared_to_srt
 import os
 
+snr_cutoff = 30
+
 def process_wav_file(input_file, srt_file, output_file, labels, progress_callback = None, comparison_srt_file = None, override_file = None, print_statistics = False):
     audioFrames = []
     wf = wave.open(input_file, 'rb')
@@ -28,7 +30,7 @@ def process_wav_file(input_file, srt_file, output_file, labels, progress_callbac
     detection_state = DetectionState(detection_strategy, "recording", ms_per_frame, 0, True, 0, 0, 0, detection_labels)
     
     # Add manual overrides if the override file exists
-    if os.path.exists(override_file):
+    if override_file is not None and os.path.exists(override_file):
         override_dict = generate_override_dict(override_file)
     
         for override_label in labels:
@@ -166,7 +168,7 @@ def determine_detection_frame(index, detection_state, audioFrames) -> DetectionF
         # Attempt to detect a label
         detected_label = BACKGROUND_LABEL
         for label in detection_state.labels:
-            if is_detected(detection_state.strategy, power, dBFS, distance, label.min_dBFS):
+            if is_detected(detection_state.strategy, power, dBFS, filtered_dBFS, distance, label.min_dBFS, detection_state.expected_snr):
                 detected = True
                 label.ms_detected += detection_state.ms_per_frame
                 detected_label = label.label
@@ -200,7 +202,7 @@ def post_processing(frames: List[DetectionFrame], detection_state: DetectionStat
         for index, frame in enumerate(frames):
             detected = False
             for label in detection_state.labels:
-                if is_detected(detection_state.strategy, frame.power, frame.dBFS, frame.euclid_dist, label.min_dBFS):
+                if is_detected(detection_state.strategy, frame.power, frame.dBFS, frame.filtered_dBFS, frame.euclid_dist, label.min_dBFS, detection_state.expected_snr):
                     detected = True
                     label.ms_detected += detection_state.ms_per_frame
                     current_label = label
@@ -211,7 +213,7 @@ def post_processing(frames: List[DetectionFrame], detection_state: DetectionStat
             mending_offset = 0
             if detected and not frames[index - 1].positive:
                  for label in detection_state.labels:
-                     if current_label.label == label.label and is_detected_secondary(detection_state.strategy, frames[index - 1].power, frames[index - 1].dBFS, frames[index - 1].euclid_dist, label.min_dBFS - 4):
+                     if current_label.label == label.label and is_detected_secondary(detection_state.strategy, frames[index - 1].power, frames[index - 1].dBFS, frames[index - 1].dBFS, frames[index - 1].euclid_dist, label.min_dBFS - 4, detection_state.expected_snr):
                          label.ms_detected += detection_state.ms_per_frame
                          frames[index - 1].label = current_label.label
                          frames[index - 1].positive = True
@@ -220,7 +222,7 @@ def post_processing(frames: List[DetectionFrame], detection_state: DetectionStat
                              false_occurrence.pop()
                          
                          # Only do two frames of late start fixing as longer late starts statistically do not seem to occur
-                         if not frames[index - 2].positive and is_detected_secondary(detection_state.strategy, frames[index - 2].power, frames[index - 2].dBFS, frames[index - 2].euclid_dist, label.min_dBFS - 4):
+                         if not frames[index - 2].positive and is_detected_secondary(detection_state.strategy, frames[index - 2].power, frames[index - 2].dBFS, frames[index - 1].filtered_dBFS, frames[index - 2].euclid_dist, label.min_dBFS - 4, detection_state.expected_snr):
                              label.ms_detected += detection_state.ms_per_frame
                              frames[index - 2].label = current_label.label
                              frames[index - 2].positive = True
@@ -322,16 +324,25 @@ def determine_detection_state(detection_frames: List[DetectionFrame], detection_
 
     minimum_dBFS = np.min(dBFS_frames)
     
+    #minimum_raw_dBFS = np.min([x.dBFS for x in detection_frames if x.dBFS > -70 and x.dBFS != 0])
+    
     # For noisy signals and for clean signals we need different noise floor and threshold estimation
     # Because noisy thresholds have a lower standard deviation across the signal
     # Whereas clean signals have a very clear floor and do not need as high of a threshold
-    noisy_threshold = False
+    noisy_threshold = True
     detection_state.expected_snr = math.floor(std_dbFS * 2)
-    if detection_state.expected_snr < 25:
-        noisy_threshold = True
-        detection_state.expected_noise_floor = minimum_dBFS + std_dbFS
-    else:
-        detection_state.expected_noise_floor = minimum_dBFS
+    
+    # Give more weight to the filtered dBFS if the expected SNR is worse
+    if detection_state.expected_snr < snr_cutoff:
+        noisy_threshold = True    
+        original_signal_ratio = detection_state.expected_snr / snr_cutoff
+        hpf_signal_ratio = 1 - original_signal_ratio
+        dBFS_frames = [(x.dBFS * original_signal_ratio) + (x.filtered_dBFS * hpf_signal_ratio) for x in detection_frames if x.dBFS > -70 and x.dBFS != 0]
+        std_dbFS = ( std_dbFS * original_signal_ratio ) + ( np.std(dBFS_frames) * hpf_signal_ratio )
+        minimum_dBFS = np.min(dBFS_frames)
+        detection_state.expected_snr = math.floor( std_dbFS * (2 + hpf_signal_ratio) )
+    
+    detection_state.expected_noise_floor = minimum_dBFS + std_dbFS
 
     for label in detection_state.labels:
         # Recalculate the duration type every 15 seconds
@@ -391,9 +402,16 @@ def auto_decibel_detection(power, dBFS, distance, dBFS_threshold):
 def auto_secondary_decibel_detection(power, dBFS, distance, dBFS_threshold):
     return dBFS > dBFS_threshold - 7
 
-def is_detected(strategy, power, dBFS, distance, estimated_threshold):
+def is_detected(strategy, power, dBFS, filtered_dBFS, distance, estimated_threshold, expected_snr):
     if "auto_dBFS" in strategy:
        return auto_decibel_detection(power, dBFS, distance, estimated_threshold)
+    elif "auto_avg_dBFS" in strategy:
+       return auto_decibel_detection(power, (dBFS + filtered_dBFS) / 2, distance, estimated_threshold)
+    elif "auto_weighted_dBFS" in strategy:
+       signal_weight = expected_snr / snr_cutoff if expected_snr < snr_cutoff else 1
+       filtered_weight = 1 - signal_weight
+       return auto_decibel_detection(power, (dBFS * signal_weight + filtered_dBFS * filtered_weight), distance, estimated_threshold)
+
 
 def is_rejected( strategy, occurrence, ms_per_frame, continuous = False ):
     if "reject" not in strategy:
@@ -409,11 +427,17 @@ def is_rejected( strategy, occurrence, ms_per_frame, continuous = False ):
     elif "reject_cont_45ms" in strategy:
         return len(occurrence) * ms_per_frame < ( 45 if continuous else 0 )
 
-def is_detected_secondary( strategy, power, dBFS, distance, estimated_threshold ):
+def is_detected_secondary( strategy, power, dBFS, filtered_dBFS, distance, estimated_threshold, expected_snr ):
     if "secondary" not in strategy:
         return False
     elif "secondary_dBFS" in strategy:
         return auto_secondary_decibel_detection(power, dBFS, distance, estimated_threshold)
+    elif "secondary_avg_dBFS" in strategy:
+        return auto_secondary_decibel_detection(power, ( dBFS + filtered_dBFS ) / 2, distance, estimated_threshold)
+    elif "secondary_weighted_dBFS" in strategy:
+       signal_weight = expected_snr / snr_cutoff if expected_snr < snr_cutoff else 1
+       filtered_weight = 1 - signal_weight
+       return auto_secondary_decibel_detection(power, ( dBFS * signal_weight + filtered_dBFS * filtered_weight ), distance, estimated_threshold)
 
 def is_mended( strategy, occurrence, detection_state, current_label ):
     if "mend" not in strategy:
