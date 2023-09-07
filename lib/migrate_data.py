@@ -60,7 +60,7 @@ def migrate_data():
             for index, wav_file in enumerate(wav_files):
                 wav_file_location = os.path.join(source_dir, wav_file)
                 srt_file_location = os.path.join(segments_dir, wav_file.replace(".wav", ".v" + str(CURRENT_VERSION) + ".srt"))
-                output_file_location = os.path.join(segments_dir, wav_file.replace(".wav", "_detection.wav"))
+                output_file_location = os.path.join(segments_dir, wav_file.replace(".wav", "_comparison.wav"))
                 override_file_location = os.path.join(segments_dir, wav_file.replace(".wav", "_overrides.txt"))
                 file_data = ""                
                 should_resegment_file = not os.path.exists(srt_file_location)                

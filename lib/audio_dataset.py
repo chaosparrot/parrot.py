@@ -10,7 +10,6 @@ class AudioDataset(Dataset):
 
     def __init__(self, pytorch_data):
         self.paths = list( pytorch_data["data"].keys() )
-        print( self.paths )
         self.samples = []
         self.augmented_samples = []
         self.length = 0
@@ -20,7 +19,7 @@ class AudioDataset(Dataset):
         self.random_tensor = torch.tensor(1.0, requires_grad=False, device=self.device)
         
         for index, label in enumerate( pytorch_data["data"] ):
-            print( "Loading " + label + str(index) )
+            print( "Indexing " + label + "..." )
             for sample in pytorch_data["data"][label]:
                 self.samples.append([sample[0], index, sample[1]])
             for augmented_sample in pytorch_data["augmented"][label]:

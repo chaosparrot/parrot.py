@@ -192,10 +192,11 @@ def post_processing(frames: List[DetectionFrame], detection_state: DetectionStat
         for label in detection_state.labels:
             label.ms_detected = 0
             label.duration_type = determine_duration_type(label, frames)
-            for override_label in detection_state.override_labels:
-                if label.label == override_label.label:
-                    label.min_dBFS = label.min_dBFS if override_label.min_dBFS <= -150 else override_label.min_dBFS
-                    label.duration_type = label.duration_type if not override_label.duration_type else override_label.duration_type
+            if detection_state.override_labels is not None:
+                for override_label in detection_state.override_labels:
+                    if label.label == override_label.label:
+                        label.min_dBFS = label.min_dBFS if override_label.min_dBFS <= -150 else override_label.min_dBFS
+                        label.duration_type = label.duration_type if not override_label.duration_type else override_label.duration_type
 
         for index, frame in enumerate(frames):
             detected = False
