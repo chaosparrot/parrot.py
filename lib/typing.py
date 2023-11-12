@@ -28,6 +28,7 @@ class DetectionEvent:
     end_index: int
     start_ms: int
     end_ms: int
+    average_dBFS: float
     frames: List[DetectionFrame]
 
 @dataclass
@@ -39,6 +40,7 @@ class DetectionLabel:
     
     min_ms: float
     min_dBFS: float
+    min_secondary_dBFS: float
     min_distance: float
     max_distance: float
 

@@ -114,7 +114,7 @@ def determine_euclidean_dist(mfscData: np.array) -> float:
 
 # High pass filter that filters out most frequencies below voice level
 # In order to improve signal to noise ratio
-hp_filter = hp_filter = signal.butter(5, 100, 'highpass', fs=RATE, output='sos')
+hp_filter = signal.butter(5, 150, 'highpass', fs=RATE, output='sos')
 def high_pass_filter(int16_data: np.array) -> np.array:
     global hp_filter
     if hp_filter is not None:
