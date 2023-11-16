@@ -89,7 +89,10 @@ def load_wav_data_from_srt(srt_file: str, source_file: str, feature_engineering_
     halfframe_offset = round( frames_to_read * number_channels * 0.5 )
     start_offsets = [0, -halfframe_offset] if with_offset else [0]
     
-    transition_events = parse_srt_file(srt_file, ms_per_frame)    
+    transition_events = parse_srt_file(srt_file, ms_per_frame)
+    if len(transition_events) < 2:
+        print( "Empty .SRT file for " + source_file + " - Consider deleting " + srt_file + " to resegment the audio file" )
+        
     for index, transition_event in enumerate(transition_events):
         next_event_index = total_frames / frames_to_read if index + 1 >= len(transition_events) else transition_events[index + 1].start_index
         audioFrames = []
@@ -103,7 +106,11 @@ def load_wav_data_from_srt(srt_file: str, source_file: str, feature_engineering_
             
                 keep_collecting = True
                 while keep_collecting:
-                    raw_wav = wf.readframes(frames_to_read * number_channels)
+                    try:
+                        raw_wav = wf.readframes(frames_to_read * number_channels)
+                    except RuntimeError:
+                        print( "Error loading in all of the .SRT file for " + source_file + " - Consider deleting " + srt_file + " to resegment the audio file" )
+                        keep_collecting = False
 
                     # Reached the end of wav - do not keep collecting
                     if (len(raw_wav) != SLIDING_WINDOW_AMOUNT * frames_to_read * number_channels ):
