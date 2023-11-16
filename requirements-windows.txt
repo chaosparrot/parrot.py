@@ -9,5 +9,5 @@ pydirectinput
 dragonfly2
 pywin32
 joblib
-torch == 1.11.0
+torch == 1.13.1
 audiomentations == 0.24.0
