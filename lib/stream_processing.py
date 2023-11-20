@@ -27,7 +27,7 @@ def process_wav_file(input_file, srt_file, output_file, labels, progress_callbac
     override_labels = []
     for label in labels:
         detection_labels.append(DetectionLabel(label, 0, 0, "", 0, 0, 0, 0, 0))
-    detection_state = DetectionState(detection_strategy, "recording", ms_per_frame, 0, True, 0, 0, 0, detection_labels)
+    detection_state = DetectionState(detection_strategy, "recording", ms_per_frame, 0, True, 0, 0, 0, 0, detection_labels)
     
     # Add manual overrides if the override file exists
     if override_file is not None and os.path.exists(override_file):
@@ -93,7 +93,7 @@ def process_wav_file(input_file, srt_file, output_file, labels, progress_callbac
         progress_callback(progress, detection_state)
 
 def process_audio_frame(index, audioFrames, detection_state, detection_frames, current_occurrence, false_occurrence):
-    detection_frames.append(determine_detection_frame(index, detection_state, audioFrames))
+    detection_frames.append(determine_detection_frame(index, detection_state, audioFrames, detection_frames))
     detected = detection_frames[-1].positive
     detected_label = detection_frames[-1].label
     if detected:
@@ -104,7 +104,7 @@ def process_audio_frame(index, audioFrames, detection_state, detection_frames, c
     # Recalculate the noise floor / signal strength every 10 frames
     # For performance reason and because the statistical likelyhood of things changing every 150ms is pretty low
     if len(detection_frames) % 10 == 0:
-        detection_state = determine_detection_state(detection_frames, detection_state)            
+        detection_state = determine_detection_state(detection_frames, detection_state)
 
     # On-line rejection - This may be undone in post-processing later
     # Only add occurrences longer than 75 ms as no sound a human produces is shorter
@@ -152,7 +152,7 @@ def generate_override_dict(override_file):
                 override_dict[key] = value
     return override_dict
 
-def determine_detection_frame(index, detection_state, audioFrames) -> DetectionFrame:
+def determine_detection_frame(index, detection_state, audioFrames, detection_frames) -> DetectionFrame:
     detected = False
     if( len( audioFrames ) >= SLIDING_WINDOW_AMOUNT ):
         audioFrames = audioFrames[-SLIDING_WINDOW_AMOUNT:]
@@ -161,6 +161,9 @@ def determine_detection_frame(index, detection_state, audioFrames) -> DetectionF
         wave_data = np.frombuffer( byteString, dtype=np.int16 )
         power = determine_power( wave_data )
         dBFS = determine_dBFS( wave_data )
+        previous_dBFS = dBFS if len(detection_frames) == 0 else detection_frames[-1].dBFS
+        dBFS_change = abs(dBFS - previous_dBFS) * ( 1 if previous_dBFS < dBFS else -1 )
+
         filtered_dBFS = determine_dBFS( high_pass_filter( wave_data ) )
         mfsc_data = determine_mfsc( wave_data, RATE )
         distance = determine_euclidean_dist( mfsc_data )
@@ -168,15 +171,15 @@ def determine_detection_frame(index, detection_state, audioFrames) -> DetectionF
         # Attempt to detect a label
         detected_label = BACKGROUND_LABEL
         for label in detection_state.labels:
-            if is_detected(detection_state.strategy, power, dBFS, filtered_dBFS, distance, label.min_dBFS, detection_state.expected_snr):
+            if is_detected(detection_state.strategy, power, dBFS, filtered_dBFS, dBFS_change, distance, label.min_dBFS, detection_state.expected_snr):
                 detected = True
                 label.ms_detected += detection_state.ms_per_frame
                 detected_label = label.label
                 break
 
-        return DetectionFrame(index, detection_state.ms_per_frame, detected, power, dBFS, filtered_dBFS, distance, mfsc_data, detected_label)
+        return DetectionFrame(index, detection_state.ms_per_frame, detected, power, dBFS, filtered_dBFS, dBFS_change, distance, mfsc_data, detected_label)
     else:
-        return DetectionFrame(index, detection_state.ms_per_frame, detected, 0, 0, 0, 0, [], BACKGROUND_LABEL)
+        return DetectionFrame(index, detection_state.ms_per_frame, detected, 0, 0, 0, 0, 0, [], BACKGROUND_LABEL)
 
 def post_processing(frames: List[DetectionFrame], detection_state: DetectionState, output_filename: str, progress_callback = None, output_wave_file: wave.Wave_write = None, comparison_srt_file: str = None, print_statistics = False) -> List[DetectionFrame]:
     detection_state.state = "processing"
@@ -202,7 +205,7 @@ def post_processing(frames: List[DetectionFrame], detection_state: DetectionStat
         for index, frame in enumerate(frames):
             detected = False
             for label in detection_state.labels:
-                if is_detected(detection_state.strategy, frame.power, frame.dBFS, frame.filtered_dBFS, frame.euclid_dist, label.min_dBFS, detection_state.expected_snr):
+                if is_detected(detection_state.strategy, frame.power, frame.dBFS, frame.filtered_dBFS, frame.dBFS_change, frame.euclid_dist, label.min_dBFS, detection_state.expected_snr):
                     detected = True
                     label.ms_detected += detection_state.ms_per_frame
                     current_label = label
@@ -356,7 +359,7 @@ def determine_detection_state(detection_frames: List[DetectionFrame], detection_
         # Recalculate the duration type every 15 seconds
         if label.duration_type == "" or len(detection_frames) % round(15 / RECORD_SECONDS):
             label.duration_type = determine_duration_type(label, detection_frames)
-        label.min_dBFS = -31#dBFS_threshold # -28 is expected # TODO CALCULATE THRESHOLD PER LABEL
+        label.min_dBFS = dBFS_threshold # -28 is expected # TODO CALCULATE THRESHOLD PER LABEL
         label.min_secondary_dBFS = label.min_dBFS - secondary_threshold
     detection_state.latest_dBFS = std_filtered_dBFS#detection_frames[-1].dBFS
 
@@ -420,15 +423,38 @@ def auto_decibel_detection(power, dBFS, distance, dBFS_threshold):
 def auto_secondary_decibel_detection(power, dBFS, distance, dBFS_threshold):
     return dBFS > dBFS_threshold
 
-def is_detected(strategy, power, dBFS, filtered_dBFS, distance, estimated_threshold, expected_snr):
+detected_dBFS = 0
+
+def is_detected(strategy, power, dBFS, filtered_dBFS, dBFS_change, distance, estimated_threshold, expected_snr):
+    global detected_dBFS
+    if dBFS_change > 3:
+        detected_dBFS = dBFS - ( dBFS_change / 2 )
+        print( "    YES RATE CHANGE +" + str(dBFS_change) + " to " + str(dBFS) )
+        return True
+    if dBFS_change < -3:
+        detected_dBFS = 0
+        print( "    NO! RATE CHANGE +" + str(dBFS_change) + " to " + str(dBFS) )
+        return False
     if "auto_dBFS" in strategy:
-       return auto_decibel_detection(power, dBFS, distance, estimated_threshold)
+        detected = auto_decibel_detection(power, dBFS, distance, min(detected_dBFS, estimated_threshold))
+        if not detected and dBFS > detected_dBFS:
+           detected = True
+           print( "WAS NO BUT SHOULD BE YES! " )
+        if not detected and dBFS < detected_dBFS:
+            detected_dBFS = 0
+            print( "NO! " + str(dBFS_change) + " " + str(dBFS) )
+        else:
+            if detected_dBFS == 0:
+                detected_dBFS = dBFS
+            print( "    YES " + str(dBFS) + " over " + str(detected_dBFS) )
+            
+        return detected
     elif "auto_avg_dBFS" in strategy:
-       return auto_decibel_detection(power, (dBFS + filtered_dBFS) / 2, distance, estimated_threshold)
+        return auto_decibel_detection(power, (dBFS + filtered_dBFS) / 2, distance, estimated_threshold)
     elif "auto_weighted_dBFS" in strategy:
-       signal_weight = expected_snr / snr_cutoff if expected_snr < snr_cutoff else 1
-       filtered_weight = 1 - signal_weight
-       return auto_decibel_detection(power, (dBFS * signal_weight + filtered_dBFS * filtered_weight), distance, estimated_threshold)
+        signal_weight = expected_snr / snr_cutoff if expected_snr < snr_cutoff else 1
+        filtered_weight = 1 - signal_weight
+        return auto_decibel_detection(power, (dBFS * signal_weight + filtered_dBFS * filtered_weight), distance, estimated_threshold)
 
 
 def is_rejected( strategy, occurrence, ms_per_frame, continuous = False ):

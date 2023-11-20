@@ -15,6 +15,7 @@ class DetectionFrame:
     power: float
     dBFS: float
     filtered_dBFS: float
+    dBFS_change: float
     euclid_dist: float
     mel_data: List[List[float]]
     label: str
@@ -53,6 +54,7 @@ class DetectionState:
     advanced_logging: bool
 
     latest_dBFS: float
+    latest_delta: float    
     expected_snr: float
     expected_noise_floor: float
     labels: List[DetectionLabel]
