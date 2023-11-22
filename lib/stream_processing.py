@@ -4,7 +4,7 @@ from typing import List
 import wave
 import math
 import numpy as np
-from .signal_processing import determine_power, determine_dBFS, determine_mfsc, determine_euclidean_dist, high_pass_filter
+from .signal_processing import determine_power, determine_dBFS, determine_mfsc, determine_euclidean_dist, high_pass_filter, determine_zero_crossing_count
 from .wav import resample_audio
 from .srt import persist_srt_file, print_detection_performance_compared_to_srt
 import os
@@ -95,11 +95,24 @@ def process_wav_file(input_file, srt_file, output_file, labels, progress_callbac
 def process_audio_frame(index, audioFrames, detection_state, detection_frames, current_occurrence, false_occurrence):
     detection_frames.append(determine_detection_frame(index, detection_state, audioFrames, detection_frames))
     detected = detection_frames[-1].positive
+    previously_detected = len(detection_frames) > 1 and detection_frames[-2].positive
+    
+    # Keep a base threshold of the current sound
+    if detected and not previously_detected:
+        dBFS = detection_frames[-1].dBFS
+        previous_dBFS = dBFS if detection_frames[-1].previous_frame is None else detection_frames[-1].previous_frame.dBFS
+        dBFS_delta = abs(dBFS - previous_dBFS)
+        
+        detection_state.current_dBFS_threshold = dBFS - (dBFS_delta / 2)
+        detection_state.current_zero_crossing_threshold = detection_frames[-1].zero_crossing
+    
     detected_label = detection_frames[-1].label
     if detected:
         current_occurrence.append(detection_frames[-1])
     else:
         false_occurrence.append(detection_frames[-1])
+        detection_state.current_dBFS_threshold = 0
+        detection_state.current_zero_crossing_threshold = 0        
     
     # Recalculate the noise floor / signal strength every 10 frames
     # For performance reason and because the statistical likelyhood of things changing every 150ms is pretty low
@@ -161,23 +174,33 @@ def determine_detection_frame(index, detection_state, audioFrames, detection_fra
         wave_data = np.frombuffer( byteString, dtype=np.int16 )
         power = determine_power( wave_data )
         dBFS = determine_dBFS( wave_data )
-        previous_dBFS = dBFS if len(detection_frames) == 0 else detection_frames[-1].dBFS
-        dBFS_change = abs(dBFS - previous_dBFS) * ( 1 if previous_dBFS < dBFS else -1 )
+        zc = determine_zero_crossing_count( wave_data )
 
         filtered_dBFS = determine_dBFS( high_pass_filter( wave_data ) )
         mfsc_data = determine_mfsc( wave_data, RATE )
         distance = determine_euclidean_dist( mfsc_data )
+        
+        previous_frame = None if len(detection_frames) == 0 else detection_frames[-1]
+        zc_delta = 0
+        if previous_frame:
+            zc_delta = abs(zc - previous_frame.zero_crossing) * (-1 if previous_frame.zero_crossing > zc else 1)
 
         # Attempt to detect a label
         detected_label = BACKGROUND_LABEL
+        frame = DetectionFrame(index, detection_state.ms_per_frame, False, power, dBFS, filtered_dBFS, zc, distance, mfsc_data, BACKGROUND_LABEL)
+        frame.previous_frame = previous_frame
+
         for label in detection_state.labels:
-            if is_detected(detection_state.strategy, power, dBFS, filtered_dBFS, dBFS_change, distance, label.min_dBFS, detection_state.expected_snr):
+            if is_detected(detection_state, frame, label):
                 detected = True
                 label.ms_detected += detection_state.ms_per_frame
-                detected_label = label.label
+                frame.positive = detected
+                frame.detected_label = label.label
                 break
 
-        return DetectionFrame(index, detection_state.ms_per_frame, detected, power, dBFS, filtered_dBFS, dBFS_change, distance, mfsc_data, detected_label)
+        #print( "Index: " + str(index * 15 ) + " ZCC " + str(zc_delta) + " " + (" - X " if frame.positive else "" )  )
+
+        return frame
     else:
         return DetectionFrame(index, detection_state.ms_per_frame, detected, 0, 0, 0, 0, 0, [], BACKGROUND_LABEL)
 
@@ -205,7 +228,7 @@ def post_processing(frames: List[DetectionFrame], detection_state: DetectionStat
         for index, frame in enumerate(frames):
             detected = False
             for label in detection_state.labels:
-                if is_detected(detection_state.strategy, frame.power, frame.dBFS, frame.filtered_dBFS, frame.dBFS_change, frame.euclid_dist, label.min_dBFS, detection_state.expected_snr):
+                if is_detected(detection_state, frame, label):
                     detected = True
                     label.ms_detected += detection_state.ms_per_frame
                     current_label = label
@@ -216,7 +239,7 @@ def post_processing(frames: List[DetectionFrame], detection_state: DetectionStat
             mending_offset = 0
             if detected and not frames[index - 1].positive:
                  for label in detection_state.labels:
-                     if current_label.label == label.label and is_detected_secondary(detection_state.strategy, frames[index - 1].power, frames[index - 1].dBFS, frames[index - 1].dBFS, frames[index - 1].euclid_dist, label.min_dBFS - 4, detection_state.expected_snr, label.min_secondary_dBFS):
+                     if current_label.label == label.label and is_detected_secondary(detection_state, frame, label):
                          label.ms_detected += detection_state.ms_per_frame
                          frames[index - 1].label = current_label.label
                          frames[index - 1].positive = True
@@ -225,7 +248,7 @@ def post_processing(frames: List[DetectionFrame], detection_state: DetectionStat
                              false_occurrence.pop()
                          
                          # Only do two frames of late start fixing as longer late starts statistically do not seem to occur
-                         if not frames[index - 2].positive and is_detected_secondary(detection_state.strategy, frames[index - 2].power, frames[index - 2].dBFS, frames[index - 1].filtered_dBFS, frames[index - 2].euclid_dist, label.min_dBFS - 4, detection_state.expected_snr, label.min_secondary_dBFS):
+                         if not frames[index - 2].positive and is_detected_secondary(detection_state, frame, label):
                              label.ms_detected += detection_state.ms_per_frame
                              frames[index - 2].label = current_label.label
                              frames[index - 2].positive = True
@@ -262,7 +285,7 @@ def post_processing(frames: List[DetectionFrame], detection_state: DetectionStat
                         if label == current_occurrence[0].label:
                             is_continuous = label.duration_type == "continuous"
                             break
-                                    
+
                     if is_rejected(detection_state.strategy, current_occurrence, detection_state.ms_per_frame, is_continuous):
                         total_rejected_frames = len(current_occurrence)
                         current_label.ms_detected -= total_rejected_frames * detection_state.ms_per_frame
@@ -425,28 +448,43 @@ def auto_secondary_decibel_detection(power, dBFS, distance, dBFS_threshold):
 
 detected_dBFS = 0
 
-def is_detected(strategy, power, dBFS, filtered_dBFS, dBFS_change, distance, estimated_threshold, expected_snr):
+def is_detected(detection_state, frame, label):
+    strategy = detection_state.strategy
+    power = frame.power
+    dBFS = frame.dBFS
+    previous_dBFS = dBFS if frame.previous_frame is None else frame.previous_frame.dBFS
+    dBFS_delta = abs(dBFS - previous_dBFS) * ( 1 if previous_dBFS < dBFS else -1 )
+
+    zero_crossing_count = frame.zero_crossing
+    previous_zcc = zero_crossing_count if frame.previous_frame is None else frame.previous_frame.zero_crossing
+    zc_delta = abs(zero_crossing_count - previous_zcc) * ( 1 if previous_zcc < zero_crossing_count else -1 )
+
+    filtered_dBFS = frame.filtered_dBFS
+    distance = frame.euclid_dist
+    estimated_threshold = label.min_dBFS
+    expected_snr = detection_state.expected_snr
+    
     global detected_dBFS
-    if dBFS_change > 3:
-        detected_dBFS = dBFS - ( dBFS_change / 2 )
-        print( "    YES RATE CHANGE +" + str(dBFS_change) + " to " + str(dBFS) )
+    if dBFS_delta > 3:
+        detected_dBFS = dBFS - ( dBFS_delta / 2 )
+        #print( "    YES RATE CHANGE +" + str(dBFS_delta) + " to " + str(dBFS) )
         return True
-    if dBFS_change < -3:
+    if dBFS_delta < -3:
         detected_dBFS = 0
-        print( "    NO! RATE CHANGE +" + str(dBFS_change) + " to " + str(dBFS) )
+        #print( "    NO! RATE CHANGE +" + str(dBFS_delta) + " to " + str(dBFS) )
         return False
     if "auto_dBFS" in strategy:
         detected = auto_decibel_detection(power, dBFS, distance, min(detected_dBFS, estimated_threshold))
         if not detected and dBFS > detected_dBFS:
            detected = True
-           print( "WAS NO BUT SHOULD BE YES! " )
+           #print( "WAS NO BUT SHOULD BE YES! " )
         if not detected and dBFS < detected_dBFS:
             detected_dBFS = 0
-            print( "NO! " + str(dBFS_change) + " " + str(dBFS) )
+            #print( "NO! " + str(dBFS_delta) + " " + str(dBFS) )
         else:
             if detected_dBFS == 0:
                 detected_dBFS = dBFS
-            print( "    YES " + str(dBFS) + " over " + str(detected_dBFS) )
+            #print( "    YES " + str(dBFS) + " over " + str(detected_dBFS) )
             
         return detected
     elif "auto_avg_dBFS" in strategy:
@@ -471,7 +509,23 @@ def is_rejected( strategy, occurrence, ms_per_frame, continuous = False ):
     elif "reject_cont_45ms" in strategy:
         return len(occurrence) * ms_per_frame < ( 45 if continuous else 0 )
 
-def is_detected_secondary( strategy, power, dBFS, filtered_dBFS, distance, estimated_threshold, expected_snr, secondary_threshold ):
+def is_detected_secondary(detection_state, frame, label):
+    strategy = detection_state.strategy
+    power = frame.power
+    dBFS = frame.dBFS
+    previous_dBFS = dBFS if frame.previous_frame is None else frame.previous_frame.dBFS
+    dBFS_delta = abs(dBFS - previous_dBFS) * ( 1 if previous_dBFS < dBFS else -1 )
+
+    zero_crossing_count = frame.zero_crossing
+    previous_zcc = zero_crossing_count if frame.previous_frame is None else frame.previous_frame.zero_crossing
+    zc_delta = abs(zero_crossing_count - previous_zcc) * ( 1 if previous_zcc < zero_crossing_count else -1 )
+
+    filtered_dBFS = frame.filtered_dBFS
+    distance = frame.euclid_dist
+    estimated_threshold = label.min_dBFS
+    expected_snr = detection_state.expected_snr
+    secondary_threshold = label.min_secondary_dBFS
+    
     if "secondary" not in strategy:
         return False
     elif "secondary_dBFS" in strategy:

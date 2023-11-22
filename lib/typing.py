@@ -15,10 +15,11 @@ class DetectionFrame:
     power: float
     dBFS: float
     filtered_dBFS: float
-    dBFS_change: float
+    zero_crossing: int
     euclid_dist: float
     mel_data: List[List[float]]
     label: str
+    previous_frame = None
 
 @dataclass
 class DetectionEvent:
@@ -55,7 +56,10 @@ class DetectionState:
 
     latest_dBFS: float
     latest_delta: float    
+    
     expected_snr: float
     expected_noise_floor: float
     labels: List[DetectionLabel]
     override_labels: List[DetectionLabel] = None
+    current_dBFS_threshold: float = None
+    current_zero_crossing_threshold = None

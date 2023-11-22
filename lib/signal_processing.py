@@ -112,6 +112,19 @@ def determine_euclidean_dist(mfscData: np.array) -> float:
             distance += np.linalg.norm(mfscData[i-1] - mfscData[i])
     return distance
 
+# Get a really quick representation of frequency shifts
+def determine_zero_crossing_count(waveData: np.array) -> int:
+    zc = 0
+    zc_sign = 0
+    for i in waveData:
+        if zc_sign <= 0 and i > 0:
+            zc += 1
+            zc_sign = 1
+        elif zc_sign >= 0 and i < 0:
+            zc_sign = -1
+            zc += 1
+    return zc
+
 # High pass filter that filters out most frequencies below voice level
 # In order to improve signal to noise ratio
 hp_filter = signal.butter(5, 150, 'highpass', fs=RATE, output='sos')
