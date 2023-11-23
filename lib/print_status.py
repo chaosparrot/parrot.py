@@ -48,7 +48,7 @@ def get_current_status(detection_state: DetectionState, extra_states: List[Detec
     ]
     
     if detection_state.state == "recording":
-        if detection_state.latest_dBFS <= -150:
+        if detection_state.latest_dBFS <= -100:
             lines.append("| " + "WEAK SIGNAL - Please unmute microphone".ljust(LINE_LENGTH - 5) + " |")        
         else:
             lines.append("| " + "Sound Quality: " + quality.rjust(LINE_LENGTH - 20) + " |")

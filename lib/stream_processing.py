@@ -414,7 +414,9 @@ def determine_detection_state(detection_frames: List[DetectionFrame], detection_
             label.duration_type = determine_duration_type(label, detection_frames)
         label.min_dBFS = dBFS_threshold # -28 is expected # TODO CALCULATE THRESHOLD PER LABEL
         label.min_secondary_dBFS = label.min_dBFS - secondary_threshold
-    detection_state.latest_dBFS = std_filtered_dBFS#detection_frames[-1].dBFS
+    detection_state.latest_dBFS = detection_frames[-1].dBFS
+    previous_dBFS = detection_state.latest_dBFS if len(detection_frames) == 1 else detection_frames[-2].dBFS
+    detection_state.latest_delta = abs(detection_frames[-1].dBFS - previous_dBFS) * ( 1 if previous_dBFS < detection_frames[-1].dBFS else -1 )
 
     # Override the detection by manual overrides
     if detection_state.override_labels is not None:
@@ -492,12 +494,10 @@ def get_average_mel_data(mel_data_frames: List[List[float]]) -> List[List[float]
                         else:
                             totaled_mel_window.append(total_mel_data[index][item_index] + item)
                     total_mel_data[index] = totaled_mel_window
-    data = np.multiply(1 / len(mel_data_frames), total_mel_data)
+    data = np.multiply(1 / max(1, len(mel_data_frames)), total_mel_data)
     for window_index, window in enumerate(data):
         for item_index, item in enumerate(window):
-            if item < 0:
-                item = 0
-            data[window_index][item_index] = item
+            data[window_index][item_index] = item if item > 0 else 0
     
     return data
 
