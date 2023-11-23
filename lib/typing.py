@@ -31,6 +31,7 @@ class DetectionEvent:
     start_ms: int
     end_ms: int
     average_dBFS: float
+    average_mel_data: List[List[float]]    
     frames: List[DetectionFrame]
 
 @dataclass

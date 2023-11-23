@@ -187,7 +187,7 @@ def determine_detection_frame(index, detection_state, audioFrames, detection_fra
 
         # Attempt to detect a label
         detected_label = BACKGROUND_LABEL
-        frame = DetectionFrame(index, detection_state.ms_per_frame, False, power, dBFS, filtered_dBFS, zc, distance, mfsc_data, BACKGROUND_LABEL)
+        frame = DetectionFrame(index - 1, detection_state.ms_per_frame, False, power, dBFS, filtered_dBFS, zc, distance, mfsc_data, BACKGROUND_LABEL)
         frame.previous_frame = previous_frame
 
         for label in detection_state.labels:
@@ -202,7 +202,7 @@ def determine_detection_frame(index, detection_state, audioFrames, detection_fra
 
         return frame
     else:
-        return DetectionFrame(index, detection_state.ms_per_frame, detected, 0, 0, 0, 0, 0, [], BACKGROUND_LABEL)
+        return DetectionFrame(index - 1, detection_state.ms_per_frame, detected, 0, 0, 0, 0, 0, [], BACKGROUND_LABEL)
 
 def post_processing(frames: List[DetectionFrame], detection_state: DetectionState, output_filename: str, progress_callback = None, output_wave_file: wave.Wave_write = None, comparison_srt_file: str = None, print_statistics = False) -> List[DetectionFrame]:
     detection_state.state = "processing"
@@ -220,10 +220,11 @@ def post_processing(frames: List[DetectionFrame], detection_state: DetectionStat
         for label in detection_state.labels:
             label.ms_detected = 0
             label.duration_type = determine_duration_type(label, frames)
-            for override_label in detection_state.override_labels:
-                if label.label == override_label.label:
-                    label.min_dBFS = label.min_dBFS if override_label.min_dBFS <= -150 else override_label.min_dBFS
-                    label.duration_type = label.duration_type if not override_label.duration_type else override_label.duration_type
+            if detection_state.override_labels is not None:
+                for override_label in detection_state.override_labels:
+                    if label.label == override_label.label:
+                        label.min_dBFS = label.min_dBFS if override_label.min_dBFS <= -150 else override_label.min_dBFS
+                        label.duration_type = label.duration_type if not override_label.duration_type else override_label.duration_type
 
         for index, frame in enumerate(frames):
             detected = False
@@ -240,22 +241,21 @@ def post_processing(frames: List[DetectionFrame], detection_state: DetectionStat
             if detected and not frames[index - 1].positive:
                  for label in detection_state.labels:
                      if current_label.label == label.label and is_detected_secondary(detection_state, frame, label):
-                         label.ms_detected += detection_state.ms_per_frame
-                         frames[index - 1].label = current_label.label
-                         frames[index - 1].positive = True
-                         mending_offset = -1
-                         if len(false_occurrence) > 0:
-                             false_occurrence.pop()
+                        label.ms_detected += detection_state.ms_per_frame
+                        frames[index - 1].label = current_label.label
+                        frames[index - 1].positive = True
+                        mending_offset = -1
+                        if len(false_occurrence) > 0:
+                            false_occurrence.pop()
                          
-                         # Only do two frames of late start fixing as longer late starts statistically do not seem to occur
-                         if not frames[index - 2].positive and is_detected_secondary(detection_state, frame, label):
-                             label.ms_detected += detection_state.ms_per_frame
-                             frames[index - 2].label = current_label.label
-                             frames[index - 2].positive = True
-                             mending_offset = -2
-                             if len(false_occurrence) > 0:
-                                 false_occurrence.pop()
-                         break
+                         # Only do three frames of late start fixing as longer late starts statistically do not seem to occur
+                        if not frames[index - 2].positive and is_detected_secondary(detection_state, frames[index - 1], label):
+                            label.ms_detected += detection_state.ms_per_frame
+                            frames[index - 2].label = current_label.label
+                            frames[index - 2].positive = True
+                            mending_offset = -2
+                            if len(false_occurrence) > 0:
+                                false_occurrence.pop()
         
             if detected:
                 current_occurrence.append(frame)
@@ -263,7 +263,7 @@ def post_processing(frames: List[DetectionFrame], detection_state: DetectionStat
                 frame.positive = True
                 frames[index] = frame
                 
-                if len(false_occurrence) > 0:                
+                if len(false_occurrence) > 0:
                     if is_mended(detection_state.strategy, false_occurrence, detection_state, current_label.label):
                         total_mended_frames = len(false_occurrence)
                         current_label.ms_detected += total_mended_frames * detection_state.ms_per_frame                        
@@ -305,7 +305,35 @@ def post_processing(frames: List[DetectionFrame], detection_state: DetectionStat
 
     # Persist the SRT file
     events = detection_frames_to_events(frames)
-    persist_srt_file( output_filename, events )
+    total_average_mel_data = get_average_mel_data([event.average_mel_data for event in events if len(event.average_mel_data) > 0])
+    distance_array = []
+    
+    valid_event_dict = {}
+    for event_index, event in enumerate(events):
+        if len(event.average_mel_data) > 0:
+            distance = np.linalg.norm(np.array(event.average_mel_data) - np.array(total_average_mel_data))
+            distance_array.append(distance)
+            valid_event_dict[event_index] = distance
+    
+    # FILTER OUT FINAL DISCREPANCIES
+    std_distance = np.std(distance_array)
+    average_distance = np.mean(distance_array)
+    distance_without_outliers = [dist for dist in distance_array if dist <= average_distance + std_distance / 2]
+
+    std_distance = max(1.5, np.std(distance_without_outliers))
+    average_distance = np.mean(distance_without_outliers)
+    filtered_events = []    
+    
+    for event_index, event in enumerate(events):
+        if event_index in valid_event_dict.keys() and valid_event_dict[event_index] < average_distance + std_distance * 2:
+            filtered_events.append(event)
+       # Change the frames to be silence instead
+        else:
+            for event_frame in event.frames:
+                frames[event_frame.index].label = BACKGROUND_LABEL
+                frames[event_frame.index].positive = False
+
+    persist_srt_file( output_filename, filtered_events )
     
     comparisonOutputWaveFile = None
     if print_statistics:
@@ -419,27 +447,58 @@ def determine_duration_type(label: DetectionLabel, detection_frames: List[Detect
 
 def detection_frames_to_events(detection_frames: List[DetectionFrame]) -> List[DetectionEvent]:
     events = []
-    current_label = ""
+    current_label = BACKGROUND_LABEL
     current_frames = []
     for frame in detection_frames:
-        if frame.label != current_label:
-            average_dBFS = np.mean([frame.dBFS for frame in current_frames])        
-            if len(current_frames) > 0:
-                events.append( DetectionEvent(current_label, current_frames[0].index, current_frames[-1].index, \
-                    (current_frames[0].index - 1) * current_frames[0].duration_ms, (current_frames[-1].index) * current_frames[-1].duration_ms, average_dBFS, current_frames) )
-                current_frames = []
-            current_label = frame.label
-
-        if current_label != BACKGROUND_LABEL:
+        label_changing = current_label != frame.label
+        current_label = frame.label
+        if frame.label != BACKGROUND_LABEL:
             current_frames.append( frame )
+        
+        if label_changing and frame.label == BACKGROUND_LABEL:
+            if len(current_frames) > 0:
+                event = same_frames_to_detection_frames(current_label, current_frames)
+                events.append( event )
+                current_frames = []
             
     if len(current_frames) > 0:
-        average_dBFS = np.mean([frame.dBFS for frame in current_frames])
-        events.append( DetectionEvent(current_label, current_frames[0].index, current_frames[-1].index, \
-            (current_frames[0].index - 1) * current_frames[0].duration_ms, (current_frames[-1].index) * current_frames[-1].duration_ms, average_dBFS, current_frames) )
+        event = same_frames_to_detection_frames(current_label, current_frames)
+        events.append( event )
         current_frames = []
+        
     return events
     
+def same_frames_to_detection_frames(current_label: str, current_frames: List[DetectionFrame]) -> DetectionEvent:    
+    average_mel_data = get_average_mel_data([frame.mel_data for frame in current_frames])
+    average_dBFS = np.mean([frame.dBFS for frame in current_frames])
+    return DetectionEvent(current_label, current_frames[0].index, current_frames[-1].index, \
+        (current_frames[0].index) * current_frames[0].duration_ms, (current_frames[-1].index + 1) * current_frames[-1].duration_ms, average_dBFS, average_mel_data, current_frames)
+
+# Calculate the average event sound so we can use it to pick out outliers
+def get_average_mel_data(mel_data_frames: List[List[float]]) -> List[List[float]]:
+    total_mel_data = []
+    for mel_data in mel_data_frames:
+        if len(mel_data) > 0:
+            if len(total_mel_data) == 0:
+                total_mel_data = mel_data
+            else:
+                for index, mel_window in enumerate(mel_data):
+                    totaled_mel_window = []
+                    for item_index, item in enumerate(mel_window):
+                        if item_index < 4:
+                            totaled_mel_window.append(0)
+                        else:
+                            totaled_mel_window.append(total_mel_data[index][item_index] + item)
+                    total_mel_data[index] = totaled_mel_window
+    data = np.multiply(1 / len(mel_data_frames), total_mel_data)
+    for window_index, window in enumerate(data):
+        for item_index, item in enumerate(window):
+            if item > -1 and item < 1:
+                item = 0
+            data[window_index][item_index] = item
+    
+    return data
+
 def auto_decibel_detection(power, dBFS, distance, dBFS_threshold):
     return dBFS > dBFS_threshold
     
@@ -452,6 +511,7 @@ def is_detected(detection_state, frame, label):
     strategy = detection_state.strategy
     power = frame.power
     dBFS = frame.dBFS
+    filtered_dBFS = frame.filtered_dBFS
     previous_dBFS = dBFS if frame.previous_frame is None else frame.previous_frame.dBFS
     dBFS_delta = abs(dBFS - previous_dBFS) * ( 1 if previous_dBFS < dBFS else -1 )
 
@@ -459,20 +519,19 @@ def is_detected(detection_state, frame, label):
     previous_zcc = zero_crossing_count if frame.previous_frame is None else frame.previous_frame.zero_crossing
     zc_delta = abs(zero_crossing_count - previous_zcc) * ( 1 if previous_zcc < zero_crossing_count else -1 )
 
-    filtered_dBFS = frame.filtered_dBFS
     distance = frame.euclid_dist
     estimated_threshold = label.min_dBFS
     expected_snr = detection_state.expected_snr
     
     global detected_dBFS
-    if dBFS_delta > 3:
-        detected_dBFS = dBFS - ( dBFS_delta / 2 )
+    #if dBFS_delta > 12:
+    #    detected_dBFS = dBFS - ( dBFS_delta / 2 )
         #print( "    YES RATE CHANGE +" + str(dBFS_delta) + " to " + str(dBFS) )
-        return True
-    if dBFS_delta < -3:
-        detected_dBFS = 0
+    #    return True
+    #if dBFS_delta < -2:
+    #    detected_dBFS = 0
         #print( "    NO! RATE CHANGE +" + str(dBFS_delta) + " to " + str(dBFS) )
-        return False
+    #    return False
     if "auto_dBFS" in strategy:
         detected = auto_decibel_detection(power, dBFS, distance, min(detected_dBFS, estimated_threshold))
         if not detected and dBFS > detected_dBFS:
@@ -510,6 +569,7 @@ def is_rejected( strategy, occurrence, ms_per_frame, continuous = False ):
         return len(occurrence) * ms_per_frame < ( 45 if continuous else 0 )
 
 def is_detected_secondary(detection_state, frame, label):
+    global detected_dBFS
     strategy = detection_state.strategy
     power = frame.power
     dBFS = frame.dBFS
@@ -552,7 +612,7 @@ def is_mended( strategy, occurrence, detection_state, current_label ):
             if label.label == current_label:
                 label_dBFS_threshold = label.min_dBFS
         
-        total_missed_length_ms = 0        
+        total_missed_length_ms = 0
         for frame in occurrence:
             if not auto_secondary_decibel_detection(frame.power, frame.dBFS, frame.euclid_dist, label_dBFS_threshold):
                 if not "mend_dBFS_30ms" in strategy:

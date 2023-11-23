@@ -284,7 +284,7 @@ def print_detection_performance_compared_to_srt(actual_frames: List[DetectionFra
                         # Misrecognition in between a full event
                         if false_index_end < event_end:
                             ms_event = ( false_index_end - false_index_start ) * ms_per_frame
-                            false_event_type = "full_false_positive" if event.label == BACKGROUND_LABEL else "stutter"
+                            false_event_type = "full_false_positive" if event.label == BACKGROUND_LABEL else "stutter"                            
                         # Misrecognition of the end of an event
                         else:
                             ms_event = (event_end - false_index_start) * ms_per_frame
@@ -319,6 +319,7 @@ def print_detection_performance_compared_to_srt(actual_frames: List[DetectionFra
         false_types[false_type] = {
             "data": false_types[false_type],
         }
+
         amount = len(false_types[false_type]["data"])
         
         false_types[false_type]["times"] = amount            
