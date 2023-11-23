@@ -318,14 +318,16 @@ def post_processing(frames: List[DetectionFrame], detection_state: DetectionStat
     # FILTER OUT FINAL DISCREPANCIES
     std_distance = np.std(distance_array)
     average_distance = np.mean(distance_array)
-    distance_without_outliers = [dist for dist in distance_array if dist <= average_distance + std_distance / 2]
+    distance_without_outliers = [dist for dist in distance_array if dist <= average_distance + std_distance]
 
     std_distance = max(1.5, np.std(distance_without_outliers))
     average_distance = np.mean(distance_without_outliers)
-    filtered_events = []    
+    filtered_events = []
     
+    std_ratio = round(( detection_state.expected_snr - 5 ) * 0.2) * 0.5
+    print( std_ratio, detection_state.expected_snr )
     for event_index, event in enumerate(events):
-        if event_index in valid_event_dict.keys() and valid_event_dict[event_index] < average_distance + std_distance * 2:
+        if event_index in valid_event_dict.keys() and valid_event_dict[event_index] < average_distance + std_distance * std_ratio:
             filtered_events.append(event)
        # Change the frames to be silence instead
         else:
@@ -493,7 +495,7 @@ def get_average_mel_data(mel_data_frames: List[List[float]]) -> List[List[float]
     data = np.multiply(1 / len(mel_data_frames), total_mel_data)
     for window_index, window in enumerate(data):
         for item_index, item in enumerate(window):
-            if item > -1 and item < 1:
+            if item < 0:
                 item = 0
             data[window_index][item_index] = item
     
@@ -524,14 +526,14 @@ def is_detected(detection_state, frame, label):
     expected_snr = detection_state.expected_snr
     
     global detected_dBFS
-    #if dBFS_delta > 12:
-    #    detected_dBFS = dBFS - ( dBFS_delta / 2 )
+    if dBFS_delta > 10.6:
+        detected_dBFS = dBFS - ( dBFS_delta / 2 )
         #print( "    YES RATE CHANGE +" + str(dBFS_delta) + " to " + str(dBFS) )
-    #    return True
-    #if dBFS_delta < -2:
-    #    detected_dBFS = 0
+        return True
+    if dBFS_delta < -5.3:
+        detected_dBFS = 0
         #print( "    NO! RATE CHANGE +" + str(dBFS_delta) + " to " + str(dBFS) )
-    #    return False
+        return False
     if "auto_dBFS" in strategy:
         detected = auto_decibel_detection(power, dBFS, distance, min(detected_dBFS, estimated_threshold))
         if not detected and dBFS > detected_dBFS:
