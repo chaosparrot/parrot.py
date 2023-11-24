@@ -195,7 +195,7 @@ def determine_detection_frame(index, detection_state, audioFrames, detection_fra
                 detected = True
                 label.ms_detected += detection_state.ms_per_frame
                 frame.positive = detected
-                frame.detected_label = label.label
+                frame.label = label.label
                 break
 
         #print( "Index: " + str(index * 15 ) + " ZCC " + str(zc_delta) + " " + (" - X " if frame.positive else "" )  )
