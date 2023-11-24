@@ -176,7 +176,7 @@ def determine_detection_frame(index, detection_state, audioFrames, detection_fra
         dBFS = determine_dBFS( wave_data )
         zc = determine_zero_crossing_count( wave_data )
 
-        filtered_dBFS = determine_dBFS( high_pass_filter( wave_data ) )
+        filtered_dBFS = dBFS#determine_dBFS( high_pass_filter( wave_data ) )
         mfsc_data = determine_mfsc( wave_data, RATE )
         distance = determine_euclidean_dist( mfsc_data )
         
@@ -374,7 +374,7 @@ def determine_detection_state(detection_frames: List[DetectionFrame], detection_
     # And we do not want to skew the mean for that as it would create more false positives
     # ( -70 dbFS was selected as a cut off after a bit of testing with a HyperX Quadcast microphone )            
     dBFS_frames = [x.dBFS for x in detection_frames if x.dBFS > -70 and x.dBFS != 0]
-    filtered_dBFS_frames = [x.filtered_dBFS for x in detection_frames if x.dBFS > -70 and x.filtered_dBFS != 0]
+    filtered_dBFS_frames = dBFS_frames#[x.filtered_dBFS for x in detection_frames if x.dBFS > -70 and x.filtered_dBFS != 0]
     if len(dBFS_frames) == 0:
         dBFS_frames = [0]
     if len(filtered_dBFS_frames) == 0:
@@ -409,9 +409,10 @@ def determine_detection_state(detection_frames: List[DetectionFrame], detection_
     secondary_threshold = std_dBFS - ( std_filtered_dBFS - std_dBFS ) / 2
 
     for label in detection_state.labels:
-        # Recalculate the duration type every 15 seconds
-        if label.duration_type == "" or len(detection_frames) % round(15 / RECORD_SECONDS):
+        # Recalculate the duration type every 15 seconds for the first minute
+        if len(detection_frames) % round(15 / RECORD_SECONDS) == 0 and len(detection_frames) <= 60 / RECORD_SECONDS:
             label.duration_type = determine_duration_type(label, detection_frames)
+
         label.min_dBFS = dBFS_threshold # -28 is expected # TODO CALCULATE THRESHOLD PER LABEL
         label.min_secondary_dBFS = label.min_dBFS - secondary_threshold
     detection_state.latest_dBFS = detection_frames[-1].dBFS
@@ -461,21 +462,21 @@ def detection_frames_to_events(detection_frames: List[DetectionFrame]) -> List[D
         
         if label_changing and frame.label == BACKGROUND_LABEL:
             if len(current_frames) > 0:
-                event = same_frames_to_detection_frames(current_label, current_frames)
+                event = same_frames_to_detection_frames(current_frames)
                 events.append( event )
                 current_frames = []
             
     if len(current_frames) > 0:
-        event = same_frames_to_detection_frames(current_label, current_frames)
+        event = same_frames_to_detection_frames(current_frames)
         events.append( event )
         current_frames = []
-        
+
     return events
     
-def same_frames_to_detection_frames(current_label: str, current_frames: List[DetectionFrame]) -> DetectionEvent:    
+def same_frames_to_detection_frames(current_frames: List[DetectionFrame]) -> DetectionEvent:    
     average_mel_data = get_average_mel_data([frame.mel_data for frame in current_frames])
     average_dBFS = np.mean([frame.dBFS for frame in current_frames])
-    return DetectionEvent(current_label, current_frames[0].index, current_frames[-1].index, \
+    return DetectionEvent(current_frames[-1].label, current_frames[0].index, current_frames[-1].index, \
         (current_frames[0].index) * current_frames[0].duration_ms, (current_frames[-1].index + 1) * current_frames[-1].duration_ms, average_dBFS, average_mel_data, current_frames)
 
 # Calculate the average event sound so we can use it to pick out outliers
@@ -526,14 +527,14 @@ def is_detected(detection_state, frame, label):
     expected_snr = detection_state.expected_snr
     
     global detected_dBFS
-    if dBFS_delta > 10.6:
-        detected_dBFS = dBFS - ( dBFS_delta / 2 )
+    #if dBFS_delta > 10.6:
+    #    detected_dBFS = dBFS - ( dBFS_delta / 2 )
         #print( "    YES RATE CHANGE +" + str(dBFS_delta) + " to " + str(dBFS) )
-        return True
-    if dBFS_delta < -5.3:
-        detected_dBFS = 0
+    #    return True
+    #if dBFS_delta < -5.3:
+    #    detected_dBFS = 0
         #print( "    NO! RATE CHANGE +" + str(dBFS_delta) + " to " + str(dBFS) )
-        return False
+    #    return False
     if "auto_dBFS" in strategy:
         detected = auto_decibel_detection(power, dBFS, distance, min(detected_dBFS, estimated_threshold))
         if not detected and dBFS > detected_dBFS:
