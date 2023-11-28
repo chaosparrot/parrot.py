@@ -102,14 +102,24 @@ def determine_mfsc(waveData: np.array, sampleRate:int = 16000) -> List[float]:
         _mfscs[sampleRate] = Mfsc(sr=sampleRate, n_mel=40, preem_coeff=0.5, frame_stride_ms=5, frame_size_ms=15)
     _mfsc = _mfscs[sampleRate]
     return _mfsc.apply( waveData )
+    
+def determine_mfsc_shape(waveData: np.array, sampleRate:int = 16000) -> List[float]:
+    global _mfscs
+    if ( sampleRate not in _mfscs ):
+        _mfscs[sampleRate] = Mfsc(sr=sampleRate, n_mel=40, preem_coeff=0.5, frame_stride_ms=5, frame_size_ms=15)
+    _mfsc = _mfscs[sampleRate]
+    return _mfsc.apply_shape( waveData )
 
-# Get a feeling of how much the signal changes based on the total distance between mel frames
-def determine_euclidean_dist(mfscData: np.array) -> float:
+# Get a feeling of how much the signal changes based on the total distance between the first and the last mel cepstrum
+def determine_euclidean_dist(mfscData: np.array, positive_only: bool = False) -> float:
     mel_frame_amount = len(mfscData)
-    distance = 0
-    for i in range(0, mel_frame_amount):
-        if i > 0:
-            distance += np.linalg.norm(mfscData[i-1] - mfscData[i])
+    if positive_only:
+        distance = 0
+        for index, bin in enumerate(mfscData[-1]):
+            if bin > mfscData[0][index]:
+                distance += abs(bin - mfscData[0][index])
+    else:
+        distance = np.linalg.norm(mfscData[-1] - mfscData[0])
     return distance
 
 # Get a really quick representation of frequency shifts
