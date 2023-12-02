@@ -40,8 +40,6 @@ class Mfsc:
         self.window = np.hamming(self.frame_size).astype(np.float32)
         self.trifilter = trifilter(sr, n_mel, n_fft).astype(np.float32)
         self.filterlen = (n_fft >> 1) + 1
-        self.n = 0
-        self.previous = None
 
     def apply(self, samples: AnyArray) -> np.array:
         samples = np.asarray(samples, dtype=np.float32)
@@ -52,15 +50,13 @@ class Mfsc:
         N = self.standardize(T)
         return N
     
-    # Maintains the shape of the signal in order to make comparing them easier
-    def apply_shape(self, samples: AnyArray) -> np.array:
+    # Get the raw log-mels for comparing against
+    def get_log_mels(self, samples: AnyArray) -> np.array:
         samples = np.asarray(samples, dtype=np.float32)
         frames = self.frame_signal(samples)
         frames = frames * 32768.0 # HTK scaling to int range
         P = self.power_spectrum(frames)
-        T = np.log(np.maximum(P @ self.trifilter, self.mel_floor))
-        N = self.normalize(T)
-        return N
+        return np.log(np.maximum(P @ self.trifilter, self.mel_floor))
 
     def frame_signal(self, samples: np.array) -> np.array:
         samples = np.asarray(samples, dtype=np.float32)
@@ -86,8 +82,3 @@ class Mfsc:
             return (frames - mean) / std
         else:
             return frames - mean
-            
-    def normalize(self, frames: np.array) -> np.array:
-        min = np.min(frames)
-        max = np.max(frames)
-        return (frames - min) / (max - min)

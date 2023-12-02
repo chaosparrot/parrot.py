@@ -12,14 +12,12 @@ class DetectionFrame:
     index: int
     duration_ms: int
     positive: bool
+    onset: bool
     power: float
     dBFS: float
-    filtered_dBFS: float
-    zero_crossing: int
-    euclid_dist: float
-    mel_data: List[List[float]]
+    log_mels: List[List[float]]
+    spectral_flux: float
     label: str
-    previous_frame = None
 
 @dataclass
 class DetectionEvent:
@@ -31,7 +29,7 @@ class DetectionEvent:
     start_ms: int
     end_ms: int
     average_dBFS: float
-    average_mel_data: List[List[float]]    
+    average_log_mels: List[List[float]]    
     frames: List[DetectionFrame]
 
 @dataclass
@@ -63,4 +61,4 @@ class DetectionState:
     labels: List[DetectionLabel]
     override_labels: List[DetectionLabel] = None
     current_dBFS_threshold: float = None
-    current_zero_crossing_threshold = None
+    peak_spectral_profile: List[float] = None
