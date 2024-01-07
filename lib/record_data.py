@@ -145,7 +145,7 @@ def record_controls( key_poller, recordQueue=None ):
                                 if index == 0:
                                     main_state = recorders[mic_index].get_detection_state()
                                 else:
-                                    secondary_states[index - 1] = secondary_states[index - 1].get_detection_state()
+                                    secondary_states[index - 1] = recorders[mic_index].get_detection_state()
                                 index += 1
                                 print_status(main_state, secondary_states)
                             main_state.state = "paused"
