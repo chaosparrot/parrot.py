@@ -123,7 +123,7 @@ def process_audio_frame(index, audioFrames, detection_state, detection_frames, c
     
     detected_dBFS_values = []
 
-    # Once we have achieved a peak, the sound must be undetected after it has fallen below 10% of its peak
+    # Once we have achieved a peak, the sound must be undetected after it has fallen below 30% of its peak
     if detected or previously_detected:
         starting_range = len(detection_frames) - 1 if detected else len(detection_frames) - 2
         for detected_index in range(starting_range, 0, -1):
@@ -134,7 +134,7 @@ def process_audio_frame(index, audioFrames, detection_state, detection_frames, c
 
         used_dBFS_threshold = detection_state.current_dBFS_threshold
         dynamic_range_sound = abs(np.percentile(detected_dBFS_values, 90) - used_dBFS_threshold)
-        if detected and abs(current_detection_frame.dBFS - used_dBFS_threshold) < dynamic_range_sound * 0.1 \
+        if detected and abs(current_detection_frame.dBFS - used_dBFS_threshold) < dynamic_range_sound * 0.2 \
             and current_detection_frame.spectral_flux < detection_state.spectral_onset_threshold:
             detected = False
 
@@ -172,7 +172,7 @@ def process_audio_frame(index, audioFrames, detection_state, detection_frames, c
 
         # Add a known dBFS exit valley from the current detection streak
         if not detected and previously_detected:
-            new_dBFS_valley = np.percentile(detected_dBFS_values, 10)
+            new_dBFS_valley = np.percentile(detected_dBFS_values, 20)
             detection_state.dBFS_valleys.append(new_dBFS_valley)
 
             # Reset the current dBFS threshold to mark the end of a sound
@@ -438,18 +438,17 @@ def post_processing(frames: List[DetectionFrame], detection_state: DetectionStat
     distance_without_outliers = [dist for dist in distance_array if dist <= average_distance + std_distance]
 
     std_distance = max(1.5, np.std(distance_without_outliers))
-    average_distance = np.mean(distance_without_outliers)
+    average_distance = np.median(distance_without_outliers)
     filtered_events = []
     
-    #std_ratio = round(( detection_state.expected_snr - 5 ) * 0.2) * 0.5
-    #for event_index, event in enumerate(events):
-    #    if event_index in valid_event_dict.keys() and valid_event_dict[event_index] < average_distance + std_distance * std_ratio:
-    #        filtered_events.append(event)
-       # Change the frames to be silence instead
-    #    else:
-    #        for event_frame in event.frames:
-    #            frames[event_frame.index].label = BACKGROUND_LABEL
-    #            frames[event_frame.index].positive = False
+    for event_index, event in enumerate(events):
+        if event_index in valid_event_dict.keys() and valid_event_dict[event_index] < average_distance + std_distance:
+            filtered_events.append(event)
+        # Change the frames to be silence instead
+        else:
+            for event_frame in event.frames:
+                frames[event_frame.index].label = BACKGROUND_LABEL
+                frames[event_frame.index].positive = False
 
     print( str( len(events) - len(filtered_events) ) + " EVENTS FILTERED!")
     persist_srt_file( output_filename, filtered_events )
@@ -489,60 +488,60 @@ def post_processing(frames: List[DetectionFrame], detection_state: DetectionStat
             highest_amp = 65536 / 10
 
             # Detect the peak of N frames if it is above 25% of the maximum value
-            #onset_detected = False
-            #spectral_flux = frame.spectral_flux
-            #if spectral_flux >= spectral_onset_threshold:
-            #    if index > 2 and index < len(frames) - 3:
-            #        onset_detected = spectral_flux == max([frame.spectral_flux for frame in frames[index - 3: index + 3]])
+            onset_detected = False
+            spectral_flux = frame.spectral_flux
+            if spectral_flux >= spectral_onset_threshold:
+                if index > 2 and index < len(frames) - 3:
+                    onset_detected = spectral_flux == max([frame.spectral_flux for frame in frames[index - 3: index + 3]])
                     #print( "ONSET :D", onset_detected, index, [frame.spectral_flux for frame in frames[index - 3: index + 3]], max([frame.spectral_flux for frame in frames[index - 3: index + 3]]) )
-            #    else:
-            #        onset_detected = True
-            #if onset_detected and index > 1 and frame.dBFS < frames[index - 1].dBFS:
-            #    onset_detected = False
+                else:
+                    onset_detected = True
+            if onset_detected and index > 1 and frame.dBFS < frames[index - 1].dBFS:
+                onset_detected = False
             #    print( "NO ONSET >:(")
 
             # TODO!!!!
-            #if previous_onset_detected and not onset_detected and not previous_detected:
-            #    previous_dB_threshold = frames[index - 1].dBFS
+            if previous_onset_detected and not onset_detected and not previous_detected:
+                previous_dB_threshold = frames[index - 1].dBFS
             #    if previous_dB_threshold < -35.1425543499734:
             #        previous_dB_threshold = -35.1425543499734
             #    
             #    # TODO POST PROCESSING WITH FOUDN PREVIOUS DB THRESHOLD BASED ON KNOWN VALLEYS!!!
-            #    if average_dB_threshold != 0 and previous_dB_threshold < average_dB_threshold - std_dB_threshold:
-            #        previous_dB_threshold = average_dB_threshold - std_dB_threshold
+                if average_dB_threshold != 0 and previous_dB_threshold < average_dB_threshold - std_dB_threshold:
+                    previous_dB_threshold = average_dB_threshold - std_dB_threshold
 
-            #previous_onset_detected = onset_detected
-            #detected = frame.dBFS >= previous_dB_threshold
+            previous_onset_detected = onset_detected
+            detected = frame.dBFS >= previous_dB_threshold
 
             # Short burst detection at the start
-            #if len(current_detection) == 1 and not detected:
-            #    previous_dB_threshold -= dBFS_safety_margin
-            #    detected = frame.dBFS >= previous_dB_threshold
-            #    #print( "SAVED BECAUSE OF SAFETY MARGIN", dBFS_safety_margin, detected)
+            if len(current_detection) == 1 and not detected:
+                previous_dB_threshold -= dBFS_safety_margin
+                detected = frame.dBFS >= previous_dB_threshold
+                #print( "SAVED BECAUSE OF SAFETY MARGIN", dBFS_safety_margin, detected)
 
             # Once we have achieved a peak, the sound must be undetected after it has fallen below 10% of its peak
-            #if detected and previous_detected:
-            #    dynamic_range_sound = abs(np.percentile(current_detection, 90) - previous_dB_threshold)
-            #    if abs(frame.dBFS - previous_dB_threshold) < dynamic_range_sound * 0.1 and spectral_flux < spectral_onset_threshold:
-            #        detected = False
+            if detected and previous_detected:
+                dynamic_range_sound = abs(np.percentile(current_detection, 90) - previous_dB_threshold)
+                if abs(frame.dBFS - previous_dB_threshold) < dynamic_range_sound * 0.1 and spectral_flux < spectral_onset_threshold:
+                    detected = False
             #        #print( "BECAUSE " + ("RANGE" if abs(frame.dBFS - previous_dB_threshold) < dynamic_range_sound * 0.2 else "SPECTRAL FLUX"))
 
-            #if not detected:
-            #    if len(current_detection) > 0:
-            #        known_valleys.append(np.percentile(current_detection, 10))
-            #        #print( str( 15 + len(current_detection) * 15) + "ms recorded" )
-            #        current_detection = []
-            #    average_dB_threshold = 0 if len(known_valleys) < 10 else np.median(known_valleys)#( np.max(known_valleys) - np.min(known_valleys) ) / 2
-            #    std_dB_threshold = 0 if len(known_valleys) < 10 else np.std(known_valleys)
-            #    previous_dB_threshold = 0 if len(known_valleys) < 10 else average_dB_threshold - std_dB_threshold / 2
+            if not detected:
+                if len(current_detection) > 0:
+                    known_valleys.append(np.percentile(current_detection, 10))
+                    #print( str( 15 + len(current_detection) * 15) + "ms recorded" )
+                    current_detection = []
+                average_dB_threshold = 0 if len(known_valleys) < 10 else np.median(known_valleys)#( np.max(known_valleys) - np.min(known_valleys) ) / 2
+                std_dB_threshold = 0 if len(known_valleys) < 10 else np.std(known_valleys)
+                previous_dB_threshold = 0 if len(known_valleys) < 10 else average_dB_threshold - std_dB_threshold / 2
             #    #if previous_detected:
             #        #print( "ESCAPE!", max([frame.spectral_flux for frame in frames[index - 3: index + 3]]) if index > 2 else 0, frame.spectral_flux, "CURRENT DBFS", frame.dBFS, "Threshold", previous_dB_threshold, "Avg", average_dB_threshold - std_dB_threshold / 2)                    
-            #else:
-            #    #print( "DBFS CHANGE", index * 15, abs(frame.dBFS - frames[index - 1].dBFS) * (1 if frame.dBFS > frames[index - 1].dBFS else -1), abs(frame.dBFS - previous_dB_threshold), previous_dB_threshold )
-            #    #print( "FLUX!", max([frame.spectral_flux for frame in frames[index - 3: index + 3]]) if index > 2 else 0, frame.spectral_flux, "CURRENT DBFS", frame.dBFS, "Threshold", previous_dB_threshold, "Avg", average_dB_threshold, std_dB_threshold )
-            #    current_detection.append(frame.dBFS)
+            else:
+                #print( "DBFS CHANGE", index * 15, abs(frame.dBFS - frames[index - 1].dBFS) * (1 if frame.dBFS > frames[index - 1].dBFS else -1), abs(frame.dBFS - previous_dB_threshold), previous_dB_threshold )
+                #print( "FLUX!", max([frame.spectral_flux for frame in frames[index - 3: index + 3]]) if index > 2 else 0, frame.spectral_flux, "CURRENT DBFS", frame.dBFS, "Threshold", previous_dB_threshold, "Avg", average_dB_threshold, std_dB_threshold )
+                current_detection.append(frame.dBFS)
             
-            if frame.positive:
+            if detected:
                 detected_ms += 15
 
             #if index > 1:
@@ -665,6 +664,7 @@ def get_average_log_mels(log_mels: List[List[float]]) -> List[List[float]]:
     total_mel_data = []
     for mel_data in log_mels:
         if len(mel_data) > 0:
+            mel_data = standardize(mel_data)
             if len(total_mel_data) == 0:
                 total_mel_data = mel_data
             else:
@@ -734,8 +734,14 @@ def is_detected_secondary(detection_state: DetectionState, frame: DetectionFrame
         threshold = label.min_secondary_dBFS
     elif detection_state.current_dBFS_threshold is not None:
         threshold = detection_state.current_dBFS_threshold
+        if "secondary_margin_dBFS" in strategy:
+            threshold -= detection_state.dBFS_error_margin
     else:
         threshold = label.min_secondary_dBFS
+        if "secondary_margin_dBFS" in strategy:
+            threshold -= detection_state.dBFS_error_margin
+
+    # Remove the error margin to make small dips not cause invalid issues
 
     if "secondary" not in strategy:
         return False
