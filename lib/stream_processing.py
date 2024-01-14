@@ -123,7 +123,7 @@ def process_audio_frame(index, audioFrames, detection_state, detection_frames, c
     
     detected_dBFS_values = []
 
-    # Once we have achieved a peak, the sound must be undetected after it has fallen below 30% of its peak
+    # Once we have achieved a peak, the sound must be undetected after it has fallen below 20% of its peak
     if detected or previously_detected:
         starting_range = len(detection_frames) - 1 if detected else len(detection_frames) - 2
         for detected_index in range(starting_range, 0, -1):
@@ -207,14 +207,13 @@ def process_audio_frame(index, audioFrames, detection_state, detection_frames, c
         current_occurrence = []
     # On-line mending - This may be undone in post-processing later
     # Only keep false detections longer than a certain amount ( because a human can't make them shorter )
-    elif detected and len(false_occurrence) > 0:            
+    elif detected and len(false_occurrence) > 0:
         if is_mended(detection_state.strategy, false_occurrence, detection_state, detected_label):
             total_mended_frames = len(false_occurrence)
             for frame_index in range(-total_mended_frames - 1, 0, 1):
                 mended_frame_index = frame_index
                 detection_frames[mended_frame_index].label = detected_label
                 detection_frames[mended_frame_index].positive = True
-                print( "MENDED BECAUSE TOO SHORT!", total_mended_frames)
         false_occurrence = []
     
     return audioFrames, detection_state, detection_frames, current_occurrence, false_occurrence
@@ -434,23 +433,32 @@ def post_processing(frames: List[DetectionFrame], detection_state: DetectionStat
     
     # FILTER OUT FINAL DISCREPANCIES
     std_distance = np.std(distance_array)
-    average_distance = np.mean(distance_array)
-    distance_without_outliers = [dist for dist in distance_array if dist <= average_distance + std_distance]
+    average_distance = np.median(distance_array)
+    cutoff_distance = np.percentile(distance_array, 99) # 99th comes from experimentation
+    distance_without_outliers = [dist for dist in distance_array if dist <= cutoff_distance]
 
-    std_distance = max(1.5, np.std(distance_without_outliers))
-    average_distance = np.median(distance_without_outliers)
+    # For low SNR continuous signals - Do another filtering based on STD
+    # Because we expect the noise to be more present in this signal
+    for label in detection_state.labels:
+        print( label )
+    print( detection_state.expected_snr )
+    is_continuous = len([label for label in detection_state.labels if label.duration_type == "continuous"]) > 0
+    if detection_state.expected_snr < 15 and is_continuous:
+        std_distance = np.std(distance_without_outliers)
+        average_distance = np.mean(distance_without_outliers)
+        # 1.15 was found by pure guess work on one noisy file, still need to make proper assumptions here
+        cutoff_distance = average_distance + std_distance * 1.15
     filtered_events = []
     
     for event_index, event in enumerate(events):
-        if event_index in valid_event_dict.keys() and valid_event_dict[event_index] < average_distance + std_distance:
+        if event_index in valid_event_dict.keys() and valid_event_dict[event_index] < cutoff_distance:
             filtered_events.append(event)
         # Change the frames to be silence instead
         else:
             for event_frame in event.frames:
                 frames[event_frame.index].label = BACKGROUND_LABEL
-                frames[event_frame.index].positive = False
+                frames[event_frame.index].positive = -1
 
-    print( str( len(events) - len(filtered_events) ) + " EVENTS FILTERED!")
     persist_srt_file( output_filename, filtered_events )
     
     comparisonOutputWaveFile = None
@@ -548,8 +556,13 @@ def post_processing(frames: List[DetectionFrame], detection_state: DetectionStat
             #    spectral_flux += frames[index - 2].spectral_flux
             #print( index * 15, spectral_flux )
             #print( frame.index * 15, frame.positive )
+            signal_strength = 0
+            if frame.positive == True:
+                signal_strength = highest_amp
+            elif frame.positive == -1:
+                signal_strength = -highest_amp
 
-            signal_strength = highest_amp if frame.positive else 0# * (frame.spectral_flux / spectral_flux_max)
+            #signal_strength = highest_amp if frame.positive else 0# * (frame.spectral_flux / spectral_flux_max)
 
             detection_signal = np.full(int(frames_to_write / sample_width), int(signal_strength))
             detection_signal[::2] = 0
@@ -584,11 +597,18 @@ def determine_detection_state(detection_frames: List[DetectionFrame], detection_
     dBFS_min = np.percentile([frame.dBFS for frame in detection_frames], 5)
     detection_state.dBFS_error_margin = abs(dBFS_min - dBFS_max) / 25
 
-    # Determine a lower bound of dBFS threshold based on the known valleys determined by the onset detection
+    # Determine a upper bound of dBFS threshold based on the known valleys determined by the onset detection
     if len(detection_state.dBFS_valleys) >= 10:
-        median_dB_threshold = np.median(detection_state.dBFS_valleys)
-        std_dB_threshold = np.std(detection_state.dBFS_valleys)        
-        detection_state.upper_bound_dBFS_threshold = median_dB_threshold - std_dB_threshold
+        mean_dB_threshold = np.mean(detection_state.dBFS_valleys)
+        std_dB_threshold = np.std(detection_state.dBFS_valleys)
+        
+        is_continuous = len([label for label in detection_state.labels if label.duration_type != "discrete"]) > 0
+        if is_continuous:
+            # For continuous sounds we have a much more uniform dB development
+            detection_state.upper_bound_dBFS_threshold = mean_dB_threshold - std_dB_threshold / 2
+        else:
+            # For discrete sounds we have more spikey dB development, so we should go lower        
+            detection_state.upper_bound_dBFS_threshold = mean_dB_threshold - std_dB_threshold 
     else:
         detection_state.upper_bound_dBFS_threshold = 0
 
@@ -622,13 +642,14 @@ def determine_duration_type(label: DetectionLabel, detection_frames: List[Detect
     label_events = [x for x in detection_frames_to_events(detection_frames) if x.label == label.label]
     if len(label_events) < 4:
         return ""
-    else:        
+    else:
         # Assumption - The envelope of discrete sounds vs continous sounds is very distinct
         # Discrete sounds spike up rapidly and move down quickly as well, whereas continuous noises are more gradual
         # We use an STD of the mean of the event dBFS' to determine whether or not we should determine discrete or continuous
-        # In an experiment with 6 noises ( 3 discrete, 3 continous ) the threshold of 1.5 was found to be a good distinction
+        # In an experiment with 6 noises ( 3 discrete, 3 continous ) the threshold of 3 was found to be a good distinction
         std_of_average_dBFS = np.std([x.average_dBFS for x in label_events])
-        return "discrete" if std_of_average_dBFS > 2 else "continuous"
+        #print( "AVERAGE DBFS", std_of_average_dBFS )
+        return "discrete" if std_of_average_dBFS > 3 else "continuous"
 
 def detection_frames_to_events(detection_frames: List[DetectionFrame]) -> List[DetectionEvent]:
     events = []
