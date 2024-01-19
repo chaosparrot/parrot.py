@@ -106,10 +106,17 @@ def process_audio_frame(index, audioFrames, detection_state, detection_frames, c
         detection_state.current_dBFS_threshold = detection_frames[index - 2].dBFS
         print( index * 15, "SETTING CURRENT THRESHOLD TO", detection_state.current_dBFS_threshold )
 
+        signal_can_be_thresholded = True#detection_state.expected_snr < 15
+        for label in detection_state.labels:
+            if label.duration_type == "continuous":
+                signal_can_be_thresholded = True
+                break
+
         # Ensure that we make use of an upper bound - So that we do not have issues with very soft spikes being detected
+        # But only for continuous sounds or noisy signals, as discrete sounds can vary in their volume a lot more
         if detection_state.upper_bound_dBFS_threshold != 0 and detection_state.current_dBFS_threshold < detection_state.upper_bound_dBFS_threshold:
             detection_state.current_dBFS_threshold = detection_state.upper_bound_dBFS_threshold
-            print( "RESETTING CURRENT THRESHOLD TO UPPER BOUND!", detection_state.upper_bound_dBFS_threshold )
+        #    print( "RESETTING CURRENT THRESHOLD TO UPPER BOUND!", detection_state.upper_bound_dBFS_threshold )
 
         # Attempt to detect again using the new threshold
         if not detected:
@@ -330,10 +337,13 @@ def post_processing(frames: List[DetectionFrame], detection_state: DetectionStat
         current_label = None
         detected_label = None
         
+        dominant_label_type = "continuous"
         # Recalculate the MS detection and duration type
         for label in detection_state.labels:
             label.ms_detected = 0
             label.duration_type = determine_duration_type(label, frames)
+            if label.duration_type == "discrete":
+                dominant_label_type = "discrete"
             if detection_state.override_labels is not None:
                 for override_label in detection_state.override_labels:
                     if label.label == override_label.label:
@@ -342,6 +352,11 @@ def post_processing(frames: List[DetectionFrame], detection_state: DetectionStat
 
         # Set the current sound threshold
         detection_state.current_dBFS_threshold = detection_state.upper_bound_dBFS_threshold
+
+        # Decrease the threshold by about 20% of the sound range
+        if dominant_label_type == "discrete":
+            detection_state.current_dBFS_threshold -= detection_state.dBFS_error_margin * 3
+
         for index, frame in enumerate(frames):
             detected = frame.positive
             for label in detection_state.labels:
@@ -601,7 +616,7 @@ def determine_detection_state(detection_frames: List[DetectionFrame], detection_
     if len(detection_state.dBFS_valleys) >= 10:
         mean_dB_threshold = np.mean(detection_state.dBFS_valleys)
         std_dB_threshold = np.std(detection_state.dBFS_valleys)
-        
+
         is_continuous = len([label for label in detection_state.labels if label.duration_type != "discrete"]) > 0
         if is_continuous:
             # For continuous sounds we have a much more uniform dB development
