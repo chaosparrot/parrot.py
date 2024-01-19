@@ -206,7 +206,6 @@ def print_detection_performance_compared_to_srt(actual_frames: List[DetectionFra
     index = 0
     t_index = 0
 
-    spectral_flux_max = max([frame.spectral_flux for frame in actual_frames])
     for frame in actual_frames:
         index += 1
         total_ms += ms_per_frame
@@ -234,10 +233,9 @@ def print_detection_performance_compared_to_srt(actual_frames: List[DetectionFra
         # Add a WAVE signal for each false and true positive detections
         if output_wave_file is not None:
             highest_amp = 65536 / 10
-            signal_strength = highest_amp * (frame.spectral_flux / spectral_flux_max)
-            #signal_strength = highest_amp if actual != BACKGROUND_LABEL else 0
-            #if expected != actual and actual != BACKGROUND_LABEL:
-            #    signal_strength = -highest_amp
+            signal_strength = highest_amp if actual != BACKGROUND_LABEL else 0
+            if expected != actual and actual != BACKGROUND_LABEL:
+                signal_strength = -highest_amp
 
             detection_signal = np.full(int(frames_to_read / 4), int(signal_strength))
             detection_signal[::2] = 0
