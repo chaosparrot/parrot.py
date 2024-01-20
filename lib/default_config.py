@@ -1,4 +1,4 @@
-import importlib
+from importlib.util import find_spec
 import sys
 
 import pyaudio
@@ -59,11 +59,11 @@ SAVE_FILES_DURING_PLAY = False
 EYETRACKING_TOGGLE = "f4"
 OVERLAY_ENABLED = False
 
-pytorch_spec = importlib.util.find_spec("torch")
+pytorch_spec = find_spec("torch")
 PYTORCH_AVAILABLE = pytorch_spec is not None
 IS_WINDOWS = sys.platform == 'win32'
 
-dragonfly_spec = importlib.util.find_spec("dragonfly")
+dragonfly_spec = find_spec("dragonfly")
 if( SPEECHREC_ENABLED == True ):
     SPEECHREC_ENABLED = dragonfly_spec is not None
 
@@ -74,5 +74,5 @@ SHOULD_FIT_INSIDE_RAM = True # Ensure the dataset fits inside RAM for faster tra
 MAX_RAM = 7000000000 # 7GB of usable RAM is assumed to be the maximum size to be loaded in for data
 
 # Detection strategies
-CURRENT_VERSION = 1
-CURRENT_DETECTION_STRATEGY = "auto_dBFS_mend_dBFS_30ms_secondary_dBFS_reject_cont_45ms_repair"
+CURRENT_VERSION = 3
+CURRENT_DETECTION_STRATEGY = "auto_dBFS_secondary_dBFS_reject_cont_45ms_repair"

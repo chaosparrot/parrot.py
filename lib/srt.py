@@ -205,6 +205,7 @@ def print_detection_performance_compared_to_srt(actual_frames: List[DetectionFra
     # Loop over the results and compare them against the expected transition events
     index = 0
     t_index = 0
+
     for frame in actual_frames:
         index += 1
         total_ms += ms_per_frame
@@ -284,7 +285,7 @@ def print_detection_performance_compared_to_srt(actual_frames: List[DetectionFra
                         # Misrecognition in between a full event
                         if false_index_end < event_end:
                             ms_event = ( false_index_end - false_index_start ) * ms_per_frame
-                            false_event_type = "full_false_positive" if event.label == BACKGROUND_LABEL else "stutter"
+                            false_event_type = "full_false_positive" if event.label == BACKGROUND_LABEL else "stutter"                            
                         # Misrecognition of the end of an event
                         else:
                             ms_event = (event_end - false_index_start) * ms_per_frame
@@ -296,6 +297,7 @@ def print_detection_performance_compared_to_srt(actual_frames: List[DetectionFra
                     # Reset the index to the start of the next event if the event can be followed by another false event
                     if false_event_type in ["false_start", "cutoff", "full_miss", "full_false_positive"]:
                         false_index_start = event_end
+
                 false_detections = 0
 
             if expected != BACKGROUND_LABEL:
@@ -319,6 +321,7 @@ def print_detection_performance_compared_to_srt(actual_frames: List[DetectionFra
         false_types[false_type] = {
             "data": false_types[false_type],
         }
+
         amount = len(false_types[false_type]["data"])
         
         false_types[false_type]["times"] = amount            
@@ -375,4 +378,4 @@ def print_detection_performance_compared_to_srt(actual_frames: List[DetectionFra
     print("--------------------------------------")
     
     print("Excel row")
-    print( "	".join(export_row) )
+    print( ",".join(export_row) )

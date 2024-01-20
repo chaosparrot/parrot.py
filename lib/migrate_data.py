@@ -18,18 +18,26 @@ def check_migration():
                 source_files = [x for x in os.listdir(os.path.join(RECORDINGS_FOLDER, file, "source")) if x.endswith(".wav")]
                 for source_file in source_files:
                     srt_file = source_file.replace(".wav", ".v" + str(CURRENT_VERSION) + ".srt")
-                    override_file_location = os.path.join(segments_folder, source_file.replace(".wav", "_overrides.txt"))
+                    thresholds_file_location = os.path.join(segments_folder, source_file.replace(".wav", "_thresholds.txt"))
                     
                     manual_srt_file = source_file.replace(".wav", ".MANUAL.srt")
                     if not os.path.exists(os.path.join(segments_folder, srt_file)) and not os.path.exists(os.path.join(segments_folder, manual_srt_file)):
                         version_detected = 0
                         break
-                    
+
                     # If an override file exists and the time of modification is later than the manual SRT file generated, we need to resegment
-                    elif os.path.exists(override_file_location):
-                        srt_file_location = os.path.join(segments_folder, manual_srt_file)
-                        if not os.path.exists(srt_file_location) or os.path.getmtime(override_file_location) > os.path.getmtime(srt_file_location):
-                            version_detected = 0
+                    elif os.path.exists(thresholds_file_location):
+                        srt_file_location = os.path.join(segments_folder, srt_file)
+                        manual_srt_file_location = os.path.join(segments_folder, manual_srt_file)
+                        if os.path.exists(manual_srt_file_location):
+                            if os.path.getmtime(thresholds_file_location) > os.path.getmtime(manual_srt_file_location):
+                                version_detected = 0
+
+                        elif os.path.exists(srt_file_location):
+                            # Thresholds file has been changed manually - We need to resegment
+                            if os.path.getmtime(srt_file_location) + 5 < os.path.getmtime(thresholds_file_location):
+                                version_detected = 0
+
                 
                 if version_detected == 0:
                     break
@@ -61,18 +69,35 @@ def migrate_data():
                 wav_file_location = os.path.join(source_dir, wav_file)
                 srt_file_location = os.path.join(segments_dir, wav_file.replace(".wav", ".v" + str(CURRENT_VERSION) + ".srt"))
                 output_file_location = os.path.join(segments_dir, wav_file.replace(".wav", "_comparison.wav"))
+<<<<<<< HEAD
                 override_file_location = os.path.join(segments_dir, wav_file.replace(".wav", "_overrides.txt"))
                 file_data = ""                
+=======
+                thresholds_file_location = os.path.join(segments_dir, wav_file.replace(".wav", "_thresholds.txt"))
+                override_file_location = None
+>>>>>>> improved_auto_detection
                 should_resegment_file = not os.path.exists(srt_file_location)                
                 
-                # Make sure that manual overrides get a different SRT file postfix
-                if os.path.exists(override_file_location):
-                    srt_file_location = os.path.join(segments_dir, wav_file.replace(".wav", ".MANUAL.srt"))
-                    should_resegment_file = not os.path.exists(srt_file_location) or os.path.getmtime(override_file_location) > os.path.getmtime(srt_file_location)
+                # Make sure that thresholds overrides get a different SRT file postfix
+                if os.path.exists(thresholds_file_location):
+                    thresholds_file_modification_time = os.path.getmtime(thresholds_file_location)
+                    is_manual_threshold = False
+
+                    # If the thresholds file has been changed after the SRT file has been created, we need to resegment the file as a manual change
+                    if not os.path.exists(srt_file_location) or os.path.getmtime(srt_file_location) + 5 < thresholds_file_modification_time:
+                        srt_file_location = os.path.join(segments_dir, wav_file.replace(".wav", ".MANUAL.srt"))
+                        is_manual_threshold = True
+
+                    should_resegment_file = not os.path.exists(srt_file_location) or os.path.getmtime(thresholds_file_location) > os.path.getmtime(srt_file_location)
+
+                    # Make sure we do not override the thresholds file if it has been changed manually                    
+                    if is_manual_threshold:
+                        override_file_location = thresholds_file_location
+                        thresholds_file_location = None
                 
                 # Only resegment if the new version does not exist already
                 if should_resegment_file:
-                    process_wav_file(wav_file_location, srt_file_location, output_file_location, [label], \
+                    process_wav_file(wav_file_location, srt_file_location, output_file_location, thresholds_file_location, [label], \
                         lambda internal_progress, state: print_migration_progress(progress + (internal_progress * progress_chunk), state), None, override_file_location )
                 else:
                     skipped_amount += 1

@@ -354,7 +354,7 @@ def non_blocking_record(labels, FULL_WAVE_OUTPUT_FILENAME, SRT_FILE, MICROPHONE_
     ms_per_frame = math.floor(RECORD_SECONDS / SLIDING_WINDOW_AMOUNT * 1000)
     detection_labels = []
     for label in list(labels.keys()):
-        detection_labels.append(DetectionLabel(label, 0, labels[label], "", 0, 0, 0, 0))
+        detection_labels.append(DetectionLabel(label, 0, labels[label], "", 0, 0, 0, 0, 0))
     
     audio = pyaudio.PyAudio()
 
@@ -367,7 +367,7 @@ def non_blocking_record(labels, FULL_WAVE_OUTPUT_FILENAME, SRT_FILE, MICROPHONE_
             stream_callback=micindexed_lambda),
         FULL_WAVE_OUTPUT_FILENAME,
         SRT_FILE,
-        DetectionState(detection_strategy, "recording", ms_per_frame, 0, True, 0, 0, 0, detection_labels)
+        DetectionState(detection_strategy, "recording", ms_per_frame, 0, True, 0, 0, 0, 0, detection_labels, None, [])
     )
 
     consumer = threading.Thread(name='consumer', target=record_consumer, args=(labels, FULL_WAVE_OUTPUT_FILENAME, SRT_FILE, MICROPHONE_INPUT_INDEX, print_logs))

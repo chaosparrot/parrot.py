@@ -42,6 +42,7 @@ def determine_legacy_frequency(waveData: np.array) -> float:
     if( loudestPeak > 500 ):
         frequencies.append( highestFreq )
 
+    recordLength = 0.03
     if( recordLength < 1 ):
         # Considering our sound sample is, for example, 100 ms, our lowest frequency we can find is 10Hz ( I think )
         # So add that as a base to our found frequency to get Hz - This is probably wrong
@@ -102,19 +103,41 @@ def determine_mfsc(waveData: np.array, sampleRate:int = 16000) -> List[float]:
         _mfscs[sampleRate] = Mfsc(sr=sampleRate, n_mel=40, preem_coeff=0.5, frame_stride_ms=5, frame_size_ms=15)
     _mfsc = _mfscs[sampleRate]
     return _mfsc.apply( waveData )
+    
+def determine_log_mels(waveData: np.array, sampleRate:int = 16000) -> List[float]:
+    global _mfscs
+    if ( sampleRate not in _mfscs ):
+        _mfscs[sampleRate] = Mfsc(sr=sampleRate, n_mel=40, preem_coeff=0.5, frame_stride_ms=5, frame_size_ms=15)
+    _mfsc = _mfscs[sampleRate]
+    return _mfsc.get_log_mels( waveData )
 
-# Get a feeling of how much the signal changes based on the total distance between mel frames
-def determine_euclidean_dist(mfscData: np.array) -> float:
-    mel_frame_amount = len(mfscData)
-    distance = 0
-    for i in range(0, mel_frame_amount):
-        if i > 0:
-            distance += np.linalg.norm(mfscData[i-1] - mfscData[i])
+# Get a feeling of how much the signal changes based on the total distance between the first and the last mel cepstrum
+def determine_euclidean_dist(mfscData: np.array, half_wave_rectification: bool = False) -> float:
+    if half_wave_rectification:
+        distance = 0
+        for index, bin in enumerate(mfscData[-1]):
+            if bin > mfscData[0][index]:
+                distance += abs(bin - mfscData[0][index])
+    else:
+        distance = np.linalg.norm(mfscData[-1] - mfscData[0])
     return distance
+
+# Get a really quick representation of frequency shifts
+def determine_zero_crossing_count(waveData: np.array) -> int:
+    zc = 0
+    zc_sign = 0
+    for i in waveData:
+        if zc_sign <= 0 and i > 0:
+            zc += 1
+            zc_sign = 1
+        elif zc_sign >= 0 and i < 0:
+            zc_sign = -1
+            zc += 1
+    return zc
 
 # High pass filter that filters out most frequencies below voice level
 # In order to improve signal to noise ratio
-hp_filter = hp_filter = signal.butter(5, 100, 'highpass', fs=RATE, output='sos')
+hp_filter = signal.butter(5, 150, 'highpass', fs=RATE, output='sos')
 def high_pass_filter(int16_data: np.array) -> np.array:
     global hp_filter
     if hp_filter is not None:
