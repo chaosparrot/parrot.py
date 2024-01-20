@@ -327,8 +327,10 @@ def post_processing(frames: List[DetectionFrame], detection_state: DetectionStat
         for label in detection_state.labels:
             label.ms_detected = 0
             label.duration_type = determine_duration_type(label, frames)
+
             if label.duration_type == "discrete":
                 dominant_label_type = "discrete"
+
             if detection_state.override_labels is not None:
                 for override_label in detection_state.override_labels:
                     if label.label == override_label.label:

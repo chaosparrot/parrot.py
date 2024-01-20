@@ -72,7 +72,7 @@ def augment_wav_data(wavData, sample_rate):
     augmenter = Compose([
         AddGaussianNoise(min_amplitude=0.001, max_amplitude=0.015, p=0.5),
         TimeStretch(min_rate=0.8, max_rate=1.25, p=0.5),
-        Shift(min_fraction=-0.5, max_fraction=0.5, p=0.5),
+        Shift(p=0.5),
     ])
     return augmenter(samples=np.array(wavData, dtype="float32"), sample_rate=sample_rate)
 
@@ -104,7 +104,10 @@ def load_wav_data_from_srt(srt_file: str, source_file: str, feature_engineering_
             
                 keep_collecting = True
                 while keep_collecting:
-                    raw_wav = wf.readframes(frames_to_read * number_channels)
+                    try:
+                        raw_wav = wf.readframes(frames_to_read * number_channels)
+                    except RuntimeError:
+                    	raw_wav = ""
 
                     # Reached the end of wav - do not keep collecting
                     if (len(raw_wav) != SLIDING_WINDOW_AMOUNT * frames_to_read * number_channels ):
