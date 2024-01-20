@@ -69,13 +69,8 @@ def migrate_data():
                 wav_file_location = os.path.join(source_dir, wav_file)
                 srt_file_location = os.path.join(segments_dir, wav_file.replace(".wav", ".v" + str(CURRENT_VERSION) + ".srt"))
                 output_file_location = os.path.join(segments_dir, wav_file.replace(".wav", "_comparison.wav"))
-<<<<<<< HEAD
-                override_file_location = os.path.join(segments_dir, wav_file.replace(".wav", "_overrides.txt"))
-                file_data = ""                
-=======
                 thresholds_file_location = os.path.join(segments_dir, wav_file.replace(".wav", "_thresholds.txt"))
                 override_file_location = None
->>>>>>> improved_auto_detection
                 should_resegment_file = not os.path.exists(srt_file_location)                
                 
                 # Make sure that thresholds overrides get a different SRT file postfix
