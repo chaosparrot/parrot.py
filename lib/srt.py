@@ -294,9 +294,6 @@ def print_detection_performance_compared_to_srt(actual_frames: List[DetectionFra
                     if false_event_type in false_types and ms_event > 0:
                         false_types[false_event_type].append( ms_event )
 
-                    #if false_event_type == "full_miss":
-                    #    print( "FULL MISS AT " + str(false_index_start * 15) )
-
                     # Reset the index to the start of the next event if the event can be followed by another false event
                     if false_event_type in ["false_start", "cutoff", "full_miss", "full_false_positive"]:
                         false_index_start = event_end
