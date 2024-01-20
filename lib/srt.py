@@ -205,6 +205,7 @@ def print_detection_performance_compared_to_srt(actual_frames: List[DetectionFra
     # Loop over the results and compare them against the expected transition events
     index = 0
     t_index = 0
+
     for frame in actual_frames:
         index += 1
         total_ms += ms_per_frame
@@ -296,6 +297,7 @@ def print_detection_performance_compared_to_srt(actual_frames: List[DetectionFra
                     # Reset the index to the start of the next event if the event can be followed by another false event
                     if false_event_type in ["false_start", "cutoff", "full_miss", "full_false_positive"]:
                         false_index_start = event_end
+
                 false_detections = 0
 
             if expected != BACKGROUND_LABEL:

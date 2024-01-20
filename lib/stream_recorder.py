@@ -13,6 +13,7 @@ import io
 class StreamRecorder:
     total_wav_filename: str
     srt_filename: str
+    thresholds_filename: str
     comparison_wav_filename: str
     
     audio: pyaudio.PyAudio
@@ -31,6 +32,7 @@ class StreamRecorder:
         self.total_wav_filename = total_wav_filename
         self.srt_filename = srt_filename
         self.comparison_wav_filename = srt_filename.replace(".v" + str(CURRENT_VERSION) + ".srt", "_comparison.wav")
+        self.thresholds_filename = srt_filename.replace(".v" + str(CURRENT_VERSION) + ".srt", "_thresholds.txt")
         
         self.audio = audio
         self.stream = stream
@@ -184,7 +186,7 @@ class StreamRecorder:
         comparison_wav_file.setnchannels(1)
         comparison_wav_file.setsampwidth(2)
         comparison_wav_file.setframerate(RATE)
-        post_processing(self.detection_frames, self.detection_state, self.srt_filename, callback, comparison_wav_file)        
+        post_processing(self.detection_frames, self.detection_state, self.srt_filename, self.thresholds_filename, callback, comparison_wav_file)
         self.stream.close()
         self.audio.terminate()
         self.detection_frames = []
@@ -192,4 +194,4 @@ class StreamRecorder:
     # Do all post processing related tasks that cannot be done during runtime
     def post_processing(self, callback = None, comparison_wav_file: wave.Wave_write = None):
         self.persist_total_wav_file()
-        post_processing(self.detection_frames, self.detection_state, self.srt_filename, callback, comparison_wav_file)
+        post_processing(self.detection_frames, self.detection_state, self.srt_filename, self.thresholds_filename, callback, comparison_wav_file)

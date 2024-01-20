@@ -12,14 +12,12 @@ class DetectionFrame:
     index: int
     duration_ms: int
     positive: bool
+    onset: bool
     power: float
     dBFS: float
-    filtered_dBFS: float
-    zero_crossing: int
-    euclid_dist: float
-    mel_data: List[List[float]]
+    log_mels: List[List[float]]
+    spectral_flux: float
     label: str
-    previous_frame = None
 
 @dataclass
 class DetectionEvent:
@@ -31,7 +29,7 @@ class DetectionEvent:
     start_ms: int
     end_ms: int
     average_dBFS: float
-    average_mel_data: List[List[float]]    
+    average_log_mels: List[List[float]]    
     frames: List[DetectionFrame]
 
 @dataclass
@@ -46,6 +44,7 @@ class DetectionLabel:
     min_secondary_dBFS: float
     min_distance: float
     max_distance: float
+    overridden: bool = False
 
 @dataclass
 class DetectionState:
@@ -62,5 +61,9 @@ class DetectionState:
     expected_noise_floor: float
     labels: List[DetectionLabel]
     override_labels: List[DetectionLabel] = None
-    current_dBFS_threshold: float = None
-    current_zero_crossing_threshold = None
+    
+    dBFS_valleys: List[float] = None # All known exit valleys from finished sounds
+    current_dBFS_threshold: float = None # Threshold of the current sound
+    spectral_onset_threshold: float = None # Threshold for detecting onsets
+    upper_bound_dBFS_threshold: float = None # Determined upper bound for dynamic dBFS threshold
+    dBFS_error_margin: float = 0

@@ -4,14 +4,14 @@ from typing import List
 import wave
 import math
 import numpy as np
-from .signal_processing import determine_power, determine_dBFS, determine_mfsc, determine_euclidean_dist, high_pass_filter, determine_zero_crossing_count
+from .signal_processing import determine_power, determine_dBFS, determine_log_mels, determine_euclidean_dist
 from .wav import resample_audio
 from .srt import persist_srt_file, print_detection_performance_compared_to_srt
 import os
 
 snr_cutoff = 30
 
-def process_wav_file(input_file, srt_file, output_file, labels, progress_callback = None, comparison_srt_file = None, override_file = None, print_statistics = False):
+def process_wav_file(input_file, srt_file, output_file, thresholds_file, labels, progress_callback = None, comparison_srt_file = None, override_file = None, print_statistics = False):
     audioFrames = []
     wf = wave.open(input_file, 'rb')
     number_channels = wf.getnchannels()
@@ -27,7 +27,7 @@ def process_wav_file(input_file, srt_file, output_file, labels, progress_callbac
     override_labels = []
     for label in labels:
         detection_labels.append(DetectionLabel(label, 0, 0, "", 0, 0, 0, 0, 0))
-    detection_state = DetectionState(detection_strategy, "recording", ms_per_frame, 0, True, 0, 0, 0, 0, detection_labels)
+    detection_state = DetectionState(detection_strategy, "recording", ms_per_frame, 0, True, 0, 0, 0, 0, detection_labels, None, [])
     
     # Add manual overrides if the override file exists
     if override_file is not None and os.path.exists(override_file):
@@ -35,16 +35,16 @@ def process_wav_file(input_file, srt_file, output_file, labels, progress_callbac
     
         for override_label in labels:
             duration_type = ""
-            duration_type_key = (label + "_duration_type").lower()
+            duration_type_key = (override_label + "_duration_type").lower()
             if duration_type_key in override_dict and override_dict[duration_type_key].lower() in ["discrete", "continuous"]:
                 duration_type = override_dict[duration_type_key].lower()
                 
-            min_dBFS = -150
-            min_dBFS_key = (label + "_min_dbfs").lower()
+            min_dBFS = -96
+            min_dBFS_key = (override_label + "_min_dbfs").lower()
             if min_dBFS_key in override_dict and override_dict[min_dBFS_key] < 0:
                 min_dBFS = override_dict[min_dBFS_key]
             
-            override_labels.append(DetectionLabel(label, 0, 0, duration_type, 0, min_dBFS, 0, 0, 0))    
+            override_labels.append(DetectionLabel(override_label, 0, 0, duration_type, 0, min_dBFS, 0, 0, 0))    
     detection_state.override_labels = override_labels
 
     false_occurrence = []
@@ -87,36 +87,98 @@ def process_wav_file(input_file, srt_file, output_file, labels, progress_callbac
     output_wave_file.setsampwidth(sample_width)
     output_wave_file.setframerate(RATE)
     
-    post_processing(detection_frames, detection_state, srt_file, progress_callback, output_wave_file, comparison_srt_file, print_statistics )
+    post_processing(detection_frames, detection_state, srt_file, thresholds_file, progress_callback, output_wave_file, comparison_srt_file, print_statistics )
     progress = 1
     if progress_callback is not None:
         progress_callback(progress, detection_state)
 
 def process_audio_frame(index, audioFrames, detection_state, detection_frames, current_occurrence, false_occurrence):
-    detection_frames.append(determine_detection_frame(index, detection_state, audioFrames, detection_frames))
+    current_detection_frame = determine_detection_frame(index, detection_state, audioFrames, detection_frames)    
+    detection_frames.append(current_detection_frame)
     detected = detection_frames[-1].positive
     previously_detected = len(detection_frames) > 1 and detection_frames[-2].positive
+
+    onset_detected = current_detection_frame.onset
+    previous_onset_detected = False if len(detection_frames) == 1 else detection_frames[-2].onset
+
+    # Determine threshold of the current sound based on onset detection
+    if previous_onset_detected and not onset_detected and not previously_detected:
+        detection_state.current_dBFS_threshold = detection_frames[index - 2].dBFS
+
+        # Ensure that we make use of an upper bound - So that we do not have issues with very soft spikes being detected
+        # But only for continuous sounds or noisy signals, as discrete sounds can vary in their volume a lot more
+        if detection_state.upper_bound_dBFS_threshold != 0 and detection_state.current_dBFS_threshold < detection_state.upper_bound_dBFS_threshold:
+            detection_state.current_dBFS_threshold = detection_state.upper_bound_dBFS_threshold
+
+        # Attempt to detect again using the new threshold
+        if not detected:
+            for label in detection_state.labels:
+                if is_detected(detection_state, current_detection_frame, label):
+                    detected = True
+                    detection_frames[-1].positive = detected
+                    detection_frames[-1].label = label.label
+                    label.ms_detected += detection_state.ms_per_frame
+                    break
     
-    # Keep a base threshold of the current sound
-    if detected and not previously_detected:
-        dBFS = detection_frames[-1].dBFS
-        previous_dBFS = dBFS if detection_frames[-1].previous_frame is None else detection_frames[-1].previous_frame.dBFS
-        dBFS_delta = abs(dBFS - previous_dBFS)
+    detected_dBFS_values = []
+
+    # Once we have achieved a peak, the sound must be undetected after it has fallen below 20% of its peak
+    if detected or previously_detected:
+        starting_range = len(detection_frames) - 1 if detected else len(detection_frames) - 2
+        for detected_index in range(starting_range, 0, -1):
+            if detection_frames[detected_index].positive:
+                detected_dBFS_values.append(detection_frames[detected_index].dBFS)
+            else:
+                break
+
+        used_dBFS_threshold = 0 if detection_state.current_dBFS_threshold is None else detection_state.current_dBFS_threshold
+        dynamic_range_sound = abs(np.percentile(detected_dBFS_values, 90) - used_dBFS_threshold)
+        if detected and abs(current_detection_frame.dBFS - used_dBFS_threshold) < dynamic_range_sound * 0.2 \
+            and current_detection_frame.spectral_flux < detection_state.spectral_onset_threshold:
+            detected = False
+
+        # Short burst detection at the start
+        # If we exit too early just make sure that descent wasn't bigger than our error margin
+        if len(detected_dBFS_values) == 1 and not detected:
+            detection_state.current_dBFS_threshold -= detection_state.dBFS_error_margin
+            detected = False
+            for label in detection_state.labels:
+                if is_detected(detection_state, current_detection_frame, label):
+                    detected = True
+                    label.ms_detected += detection_state.ms_per_frame
+                    break
         
-        detection_state.current_dBFS_threshold = dBFS - (dBFS_delta / 2)
-        detection_state.current_zero_crossing_threshold = detection_frames[-1].zero_crossing
-    
+        # Properly clean up state from detected to not-detected
+        # Remove the detected milliseconds from the recorded values
+        if not detected and current_detection_frame.positive:
+            for label in detection_state.labels:
+                if label.label == current_detection_frame.label:
+                    label.ms_detected -= detection_state.ms_per_frame
+                    break
+            detection_frames[-1].positive = detected
+            detection_frames[-1].label = BACKGROUND_LABEL
+        
+        # If we have repairs, ensure they are properly set
+        elif detected and not current_detection_frame.positive:
+            detection_frames[-1].positive = detected
+
+        # Add a known dBFS exit valley from the current detection streak
+        if not detected and previously_detected:
+            new_dBFS_valley = np.percentile(detected_dBFS_values, 20)
+            detection_state.dBFS_valleys.append(new_dBFS_valley)
+
+            # Reset the current dBFS threshold to mark the end of a sound
+            detection_state.current_dBFS_threshold = 0
+        
     detected_label = detection_frames[-1].label
     if detected:
         current_occurrence.append(detection_frames[-1])
     else:
         false_occurrence.append(detection_frames[-1])
-        detection_state.current_dBFS_threshold = 0
-        detection_state.current_zero_crossing_threshold = 0        
     
-    # Recalculate the noise floor / signal strength every 10 frames
+    # Recalculate the noise floor / signal strength every 15 frames
     # For performance reason and because the statistical likelyhood of things changing every 150ms is pretty low
-    if len(detection_frames) % 10 == 0:
+    if len(detection_frames) % 15 == 0:
         detection_state = determine_detection_state(detection_frames, detection_state)
 
     # On-line rejection - This may be undone in post-processing later
@@ -137,13 +199,13 @@ def process_audio_frame(index, audioFrames, detection_state, detection_frames, c
         current_occurrence = []
     # On-line mending - This may be undone in post-processing later
     # Only keep false detections longer than a certain amount ( because a human can't make them shorter )
-    elif detected and len(false_occurrence) > 0:            
+    elif detected and len(false_occurrence) > 0:
         if is_mended(detection_state.strategy, false_occurrence, detection_state, detected_label):
             total_mended_frames = len(false_occurrence)
             for frame_index in range(-total_mended_frames - 1, 0, 1):
                 mended_frame_index = frame_index
                 detection_frames[mended_frame_index].label = detected_label
-                detection_frames[mended_frame_index].positive = True                
+                detection_frames[mended_frame_index].positive = True
         false_occurrence = []
     
     return audioFrames, detection_state, detection_frames, current_occurrence, false_occurrence
@@ -161,11 +223,44 @@ def generate_override_dict(override_file):
                 value = items[1].strip().lower()
                 key = items[0].strip()
                 if key.endswith("dbfs"):
-                    value = int(value)
+                    value = float(value)
                 override_dict[key] = value
     return override_dict
 
+def standardize(frames: np.array) -> np.array:
+    mean = np.mean(frames)
+    std = np.std(frames)
+    if std > 0:
+        return (frames - mean) / std
+    else:
+        return frames - mean
+
+detection_count = 0
+dBFS_thresholds = []
+
+def detect_onset(index, dBFS, spectral_flux, detection_state, detection_frames) -> bool:
+    # Onset detection by finding the peak in the last N frames
+    onset_detected = False
+    if detection_state.spectral_onset_threshold is not None and spectral_flux >= detection_state.spectral_onset_threshold:
+        # On-line
+        spectral_flux_to_check_peak = [spectral_flux]
+
+        # Find a peak within the last three frames
+        if index > len(detection_frames) and index > 2:
+            spectral_flux_to_check_peak.extend([frame.spectral_flux for frame in detection_frames[index - 3:]])            
+
+        # Post-processing - Find a peak within the last 7 frames ( three frames back and three frames forward )
+        elif index > 3 and index < len(detection_frames) - 3:
+            spectral_flux_to_check_peak.extend([frame.spectral_flux for frame in detection_frames[index - 3: index + 3]])
+
+        onset_detected = spectral_flux == max(spectral_flux_to_check_peak)
+        if onset_detected and index > 2 and dBFS < detection_frames[index - 2].dBFS:
+            onset_detected = False
+    return onset_detected
+
 def determine_detection_frame(index, detection_state, audioFrames, detection_frames) -> DetectionFrame:
+    global dBFS_thresholds
+    global detection_count
     detected = False
     if( len( audioFrames ) >= SLIDING_WINDOW_AMOUNT ):
         audioFrames = audioFrames[-SLIDING_WINDOW_AMOUNT:]
@@ -174,22 +269,25 @@ def determine_detection_frame(index, detection_state, audioFrames, detection_fra
         wave_data = np.frombuffer( byteString, dtype=np.int16 )
         power = determine_power( wave_data )
         dBFS = determine_dBFS( wave_data )
-        zc = determine_zero_crossing_count( wave_data )
 
-        filtered_dBFS = dBFS#determine_dBFS( high_pass_filter( wave_data ) )
-        mfsc_data = determine_mfsc( wave_data, RATE )
-        distance = determine_euclidean_dist( mfsc_data )
+        log_mels = determine_log_mels( wave_data, RATE )
+        spectral_flux = determine_euclidean_dist( log_mels, True )
+        onset_detected = detect_onset( index, dBFS, spectral_flux, detection_state, detection_frames )
         
-        previous_frame = None if len(detection_frames) == 0 else detection_frames[-1]
-        zc_delta = 0
-        if previous_frame:
-            zc_delta = abs(zc - previous_frame.zero_crossing) * (-1 if previous_frame.zero_crossing > zc else 1)
-
         # Attempt to detect a label
         detected_label = BACKGROUND_LABEL
-        frame = DetectionFrame(index - 1, detection_state.ms_per_frame, False, power, dBFS, filtered_dBFS, zc, distance, mfsc_data, BACKGROUND_LABEL)
-        frame.previous_frame = previous_frame
-
+        frame = DetectionFrame(
+            index - 1,
+            detection_state.ms_per_frame, 
+            False,
+            onset_detected,
+            power,
+            dBFS,
+            log_mels,
+            spectral_flux,
+            detected_label
+        )
+        
         for label in detection_state.labels:
             if is_detected(detection_state, frame, label):
                 detected = True
@@ -197,37 +295,55 @@ def determine_detection_frame(index, detection_state, audioFrames, detection_fra
                 frame.positive = detected
                 frame.label = label.label
                 break
-
-        #print( "Index: " + str(index * 15 ) + " ZCC " + str(zc_delta) + " " + (" - X " if frame.positive else "" )  )
-
+        
         return frame
     else:
-        return DetectionFrame(index - 1, detection_state.ms_per_frame, detected, 0, 0, 0, 0, 0, [], BACKGROUND_LABEL)
+        return DetectionFrame(
+            index - 1,
+            detection_state.ms_per_frame,
+            detected,
+            False,
+            0,
+            0,
+            [],
+            0,
+            BACKGROUND_LABEL
+        )
 
-def post_processing(frames: List[DetectionFrame], detection_state: DetectionState, output_filename: str, progress_callback = None, output_wave_file: wave.Wave_write = None, comparison_srt_file: str = None, print_statistics = False) -> List[DetectionFrame]:
+def post_processing(frames: List[DetectionFrame], detection_state: DetectionState, output_filename: str, thresholds_filename: str, progress_callback = None, output_wave_file: wave.Wave_write = None, comparison_srt_file: str = None, print_statistics = False) -> List[DetectionFrame]:
     detection_state.state = "processing"
     if progress_callback is not None:
         progress_callback(0, detection_state)
     
     # Do a full pass on all the frames again to fix labels we might have missed
-    if "repair" in detection_state.strategy:    
+    if "repair" in detection_state.strategy:
         current_occurrence = []
         false_occurrence = []
         current_label = None
         detected_label = None
         
+        dominant_label_type = "continuous"
         # Recalculate the MS detection and duration type
         for label in detection_state.labels:
             label.ms_detected = 0
             label.duration_type = determine_duration_type(label, frames)
+            if label.duration_type == "discrete":
+                dominant_label_type = "discrete"
             if detection_state.override_labels is not None:
                 for override_label in detection_state.override_labels:
                     if label.label == override_label.label:
-                        label.min_dBFS = label.min_dBFS if override_label.min_dBFS <= -150 else override_label.min_dBFS
+                        label.min_dBFS = label.min_dBFS if override_label.min_dBFS <= -96 else override_label.min_dBFS
                         label.duration_type = label.duration_type if not override_label.duration_type else override_label.duration_type
 
+        # Set the current sound threshold
+        detection_state.current_dBFS_threshold = detection_state.upper_bound_dBFS_threshold
+
+        # Decrease the threshold by about 20% of the sound range
+        if dominant_label_type == "discrete":
+            detection_state.current_dBFS_threshold -= detection_state.dBFS_error_margin * 3
+
         for index, frame in enumerate(frames):
-            detected = False
+            detected = frame.positive
             for label in detection_state.labels:
                 if is_detected(detection_state, frame, label):
                     detected = True
@@ -305,38 +421,51 @@ def post_processing(frames: List[DetectionFrame], detection_state: DetectionStat
 
     # Persist the SRT file
     events = detection_frames_to_events(frames)
-    total_average_mel_data = get_average_mel_data([event.average_mel_data for event in events if len(event.average_mel_data) > 0])
+    total_average_mel_data = get_average_log_mels([event.average_log_mels for event in events if len(event.average_log_mels) > 0])
     distance_array = []
     
     valid_event_dict = {}
     for event_index, event in enumerate(events):
-        if len(event.average_mel_data) > 0:
-            distance = np.linalg.norm(np.array(event.average_mel_data) - np.array(total_average_mel_data))
+        if len(event.average_log_mels) > 0:
+            distance = np.linalg.norm(np.array(event.average_log_mels) - np.array(total_average_mel_data))
             distance_array.append(distance)
             valid_event_dict[event_index] = distance
     
     # FILTER OUT FINAL DISCREPANCIES
     std_distance = np.std(distance_array)
-    average_distance = np.mean(distance_array)
-    distance_without_outliers = [dist for dist in distance_array if dist <= average_distance + std_distance]
+    average_distance = np.median(distance_array)
+    cutoff_distance = np.percentile(distance_array, 99) # 99th comes from experimentation
+    distance_without_outliers = [dist for dist in distance_array if dist <= cutoff_distance]
 
-    std_distance = max(1.5, np.std(distance_without_outliers))
-    average_distance = np.mean(distance_without_outliers)
+    # For low SNR continuous signals - Do another filtering based on STD
+    # Because we expect the noise to be more present in this signal
+    is_continuous = len([label for label in detection_state.labels if label.duration_type == "continuous"]) > 0
+    if detection_state.expected_snr < 15 and is_continuous:
+        std_distance = np.std(distance_without_outliers)
+        average_distance = np.mean(distance_without_outliers)
+        # 1.15 was found by pure guess work on one noisy file, still need to make proper assumptions here
+        cutoff_distance = average_distance + std_distance * 1.15
     filtered_events = []
     
-    std_ratio = round(( detection_state.expected_snr - 5 ) * 0.2) * 0.5
-    print( std_ratio, detection_state.expected_snr )
     for event_index, event in enumerate(events):
-        if event_index in valid_event_dict.keys() and valid_event_dict[event_index] < average_distance + std_distance * std_ratio:
+        if event_index in valid_event_dict.keys() and valid_event_dict[event_index] < cutoff_distance:
             filtered_events.append(event)
-       # Change the frames to be silence instead
+        # Change the frames to be silence instead
         else:
             for event_frame in event.frames:
                 frames[event_frame.index].label = BACKGROUND_LABEL
-                frames[event_frame.index].positive = False
+                frames[event_frame.index].positive = -1
 
     persist_srt_file( output_filename, filtered_events )
+
+    # Persist thresholds as a file
+    if (thresholds_filename is not None):
+        with open(thresholds_filename, 'w') as thresholds_file:
+            for label in detection_state.labels:
+                thresholds_file.write(label.label.lower() + "_duration_type=" + label.duration_type + "\n")
+                thresholds_file.write(label.label.lower() + "_min_dbfs=" + str(round(label.min_dBFS * 100) / 100) + "\n")
     
+    # Persist the comparison wave file
     comparisonOutputWaveFile = None
     if print_statistics:
         if output_wave_file is not None:
@@ -352,9 +481,14 @@ def post_processing(frames: List[DetectionFrame], detection_state: DetectionStat
         frames_to_write = round( RATE * RECORD_SECONDS / SLIDING_WINDOW_AMOUNT )
         sample_width = 2# 16 bit = 2 bytes
         detection_audio_frames = []
-        for frame in frames:
+
+        for index, frame in enumerate(frames):
             highest_amp = 65536 / 10
-            signal_strength = highest_amp if frame.positive else 0
+            signal_strength = 0
+            if frame.positive == True:
+                signal_strength = highest_amp
+            elif frame.positive == -1:
+                signal_strength = -highest_amp
 
             detection_signal = np.full(int(frames_to_write / sample_width), int(signal_strength))
             detection_signal[::2] = 0
@@ -362,7 +496,7 @@ def post_processing(frames: List[DetectionFrame], detection_state: DetectionStat
             detection_signal[::5] = 0
             detection_signal[::7] = 0
             detection_signal[::9] = 0
-            detection_audio_frames.append( detection_signal )    
+            detection_audio_frames.append( detection_signal )
         output_wave_file.writeframes(b''.join(detection_audio_frames))
         output_wave_file.close()
 
@@ -370,51 +504,45 @@ def post_processing(frames: List[DetectionFrame], detection_state: DetectionStat
     return frames
 
 def determine_detection_state(detection_frames: List[DetectionFrame], detection_state: DetectionState) -> DetectionState:
-    # Filter out very low power dbFS values as we can assume the hardware microphone is off
-    # And we do not want to skew the mean for that as it would create more false positives
-    # ( -70 dbFS was selected as a cut off after a bit of testing with a HyperX Quadcast microphone )            
-    dBFS_frames = [x.dBFS for x in detection_frames if x.dBFS > -70 and x.dBFS != 0]
-    filtered_dBFS_frames = dBFS_frames#[x.filtered_dBFS for x in detection_frames if x.dBFS > -70 and x.filtered_dBFS != 0]
-    if len(dBFS_frames) == 0:
-        dBFS_frames = [0]
-    if len(filtered_dBFS_frames) == 0:
-        filtered_dBFS_frames = [0]
+    dBFS_frames = [x.dBFS for x in detection_frames]
+    
+    # Calculate the onset thresholds using spectral flux
+    spectral_flux_max = np.percentile([frame.spectral_flux for frame in detection_frames], 95)
+    spectral_flux_min = np.percentile([frame.spectral_flux for frame in detection_frames], 5)
+    detection_state.spectral_onset_threshold = (spectral_flux_max - spectral_flux_min) * 0.5
 
+    # Calculate the signal variance
     std_dBFS = np.std(dBFS_frames)
+    detection_state.expected_snr = std_dBFS * 2
+    detection_state.expected_noise_floor = np.percentile(dBFS_frames, 10)
+    
+    # Determine an error margin of about 4% of the rough dBFS range
+    dBFS_max = np.percentile([frame.dBFS for frame in detection_frames], 95)
+    dBFS_min = np.percentile([frame.dBFS for frame in detection_frames], 5)
+    detection_state.dBFS_error_margin = abs(dBFS_min - dBFS_max) / 25
 
-    minimum_dBFS = np.min(dBFS_frames)
-    minimum_filtered_dBFS = np.min(filtered_dBFS_frames)
-    std_filtered_dBFS = np.std(filtered_dBFS_frames)
-    
-    max_dBFS = np.max(dBFS_frames)
-    max_filtered_dBFS = np.max(filtered_dBFS_frames)    
-    
-    # Calculate the dBFS threshold for the signal using some averaging techniques
-    # I found this specific threshold calculation based on some files without and with added large amount of noise
-    # To emulate poorer microphones
-    dBFS_threshold = (abs(max_dBFS) - abs(minimum_filtered_dBFS)) / 2 - ( std_filtered_dBFS - std_dBFS ) / 2 # Strategy 1
-        
-    # To account for signals that have a low average and high std value
-    # We calculate a ratio in which the std will be removed using Strategy 8 to ensure
-    # We do not put our threshold for these signals too high
-    std_ratio = abs(round((abs(np.mean(dBFS_frames)) - std_dBFS * 2 ) / 10 ) )
-    dBFS_threshold -= (abs(np.mean(filtered_dBFS_frames)) - std_dBFS * std_ratio ) # Strategy 8
-    dBFS_threshold = dBFS_threshold / 2 - ( max_filtered_dBFS - max_dBFS ) * 2 # Strategy 14
-    
-    difference = abs(minimum_dBFS - minimum_filtered_dBFS)
-    detection_state.expected_snr = math.floor(((std_dBFS + std_filtered_dBFS) / 2) * 2)
-    detection_state.expected_noise_floor = minimum_dBFS + std_dBFS / 2
-    
-    # Determine the secondary threshold based on the difference in the signal noise
-    secondary_threshold = std_dBFS - ( std_filtered_dBFS - std_dBFS ) / 2
+    # Determine a upper bound of dBFS threshold based on the known valleys determined by the onset detection
+    if len(detection_state.dBFS_valleys) >= 10:
+        mean_dB_threshold = np.mean(detection_state.dBFS_valleys)
+        std_dB_threshold = np.std(detection_state.dBFS_valleys)
+
+        is_continuous = len([label for label in detection_state.labels if label.duration_type != "discrete"]) > 0
+        if is_continuous:
+            # For continuous sounds we have a much more uniform dB development
+            detection_state.upper_bound_dBFS_threshold = mean_dB_threshold - std_dB_threshold / 2
+        else:
+            # For discrete sounds we have more spikey dB development, so we should go lower        
+            detection_state.upper_bound_dBFS_threshold = mean_dB_threshold - std_dB_threshold 
+    else:
+        detection_state.upper_bound_dBFS_threshold = 0
 
     for label in detection_state.labels:
         # Recalculate the duration type every 15 seconds for the first minute
         if len(detection_frames) % round(15 / RECORD_SECONDS) == 0 and len(detection_frames) <= 60 / RECORD_SECONDS:
             label.duration_type = determine_duration_type(label, detection_frames)
 
-        label.min_dBFS = dBFS_threshold # -28 is expected # TODO CALCULATE THRESHOLD PER LABEL
-        label.min_secondary_dBFS = label.min_dBFS - secondary_threshold
+        label.min_dBFS = detection_state.upper_bound_dBFS_threshold
+        label.min_secondary_dBFS = label.min_dBFS
     detection_state.latest_dBFS = detection_frames[-1].dBFS
     previous_dBFS = detection_state.latest_dBFS if len(detection_frames) == 1 else detection_frames[-2].dBFS
     detection_state.latest_delta = abs(detection_frames[-1].dBFS - previous_dBFS) * ( 1 if previous_dBFS < detection_frames[-1].dBFS else -1 )
@@ -424,9 +552,10 @@ def determine_detection_state(detection_frames: List[DetectionFrame], detection_
         for label in detection_state.labels:
             for override_label in detection_state.override_labels:
                 if label.label == override_label.label:
-                    label.min_dBFS = label.min_dBFS if override_label.min_dBFS <= -150 else override_label.min_dBFS
-                    label.min_secondary_dBFS = label.min_dBFS - secondary_threshold
+                    label.min_dBFS = label.min_dBFS if override_label.min_dBFS <= -96 else override_label.min_dBFS
+                    label.min_secondary_dBFS = label.min_dBFS
                     label.duration_type = label.duration_type if not override_label.duration_type else override_label.duration_type
+                    label.overridden = True
     
     return detection_state
 
@@ -438,17 +567,12 @@ def determine_duration_type(label: DetectionLabel, detection_frames: List[Detect
     if len(label_events) < 4:
         return ""
     else:
-        # #1 - The assumption here is that discrete sounds cannot vary in length much as you cannot elongate the sound of a click for example
-        # So if the length doesn't vary much, we assume discrete over continuous
-        lengths = [x.end_ms - x.start_ms for x in label_events]
-        
-        # Assumption #2 - The envelope of discrete sounds vs continous sounds is very distinct
+        # Assumption - The envelope of discrete sounds vs continous sounds is very distinct
         # Discrete sounds spike up rapidly and move down quickly as well, whereas continuous noises are more gradual
         # We use an STD of the mean of the event dBFS' to determine whether or not we should determine discrete or continuous
-        # In an experiment with 6 noises ( 3 discrete, 3 continous ) the threshold of 1.5 was found to be a good distinction        
-
+        # In an experiment with 6 noises ( 3 discrete, 3 continous ) the threshold of 3 was found to be a good distinction
         std_of_average_dBFS = np.std([x.average_dBFS for x in label_events])
-        return "discrete" if std_of_average_dBFS > 2 else "continuous"
+        return "discrete" if std_of_average_dBFS > 3 else "continuous"
 
 def detection_frames_to_events(detection_frames: List[DetectionFrame]) -> List[DetectionEvent]:
     events = []
@@ -474,16 +598,17 @@ def detection_frames_to_events(detection_frames: List[DetectionFrame]) -> List[D
     return events
     
 def same_frames_to_detection_frames(current_frames: List[DetectionFrame]) -> DetectionEvent:    
-    average_mel_data = get_average_mel_data([frame.mel_data for frame in current_frames])
+    average_mel_data = get_average_log_mels([frame.log_mels for frame in current_frames])
     average_dBFS = np.mean([frame.dBFS for frame in current_frames])
     return DetectionEvent(current_frames[-1].label, current_frames[0].index, current_frames[-1].index, \
         (current_frames[0].index) * current_frames[0].duration_ms, (current_frames[-1].index + 1) * current_frames[-1].duration_ms, average_dBFS, average_mel_data, current_frames)
 
 # Calculate the average event sound so we can use it to pick out outliers
-def get_average_mel_data(mel_data_frames: List[List[float]]) -> List[List[float]]:
+def get_average_log_mels(log_mels: List[List[float]]) -> List[List[float]]:
     total_mel_data = []
-    for mel_data in mel_data_frames:
+    for mel_data in log_mels:
         if len(mel_data) > 0:
+            mel_data = standardize(mel_data)
             if len(total_mel_data) == 0:
                 total_mel_data = mel_data
             else:
@@ -495,7 +620,7 @@ def get_average_mel_data(mel_data_frames: List[List[float]]) -> List[List[float]
                         else:
                             totaled_mel_window.append(total_mel_data[index][item_index] + item)
                     total_mel_data[index] = totaled_mel_window
-    data = np.multiply(1 / max(1, len(mel_data_frames)), total_mel_data)
+    data = np.multiply(1 / max(1, len(log_mels)), total_mel_data)
     for window_index, window in enumerate(data):
         for item_index, item in enumerate(window):
             data[window_index][item_index] = item if item > 0 else 0
@@ -503,59 +628,30 @@ def get_average_mel_data(mel_data_frames: List[List[float]]) -> List[List[float]
     return data
 
 def auto_decibel_detection(power, dBFS, distance, dBFS_threshold):
-    return dBFS > dBFS_threshold
+    return dBFS >= dBFS_threshold
     
 def auto_secondary_decibel_detection(power, dBFS, distance, dBFS_threshold):
-    return dBFS > dBFS_threshold
+    return dBFS >= dBFS_threshold
 
 detected_dBFS = 0
 
-def is_detected(detection_state, frame, label):
+def is_detected(detection_state: DetectionState, frame: DetectionFrame, label):
     strategy = detection_state.strategy
     power = frame.power
     dBFS = frame.dBFS
-    filtered_dBFS = frame.filtered_dBFS
-    previous_dBFS = dBFS if frame.previous_frame is None else frame.previous_frame.dBFS
-    dBFS_delta = abs(dBFS - previous_dBFS) * ( 1 if previous_dBFS < dBFS else -1 )
 
-    zero_crossing_count = frame.zero_crossing
-    previous_zcc = zero_crossing_count if frame.previous_frame is None else frame.previous_frame.zero_crossing
-    zc_delta = abs(zero_crossing_count - previous_zcc) * ( 1 if previous_zcc < zero_crossing_count else -1 )
+    distance = frame.spectral_flux
+    if label.overridden:
+        threshold = label.min_dBFS
+    elif detection_state.current_dBFS_threshold is not None:
+        threshold = detection_state.current_dBFS_threshold
+    else:
+        threshold = label.min_dBFS
 
-    distance = frame.euclid_dist
-    estimated_threshold = label.min_dBFS
-    expected_snr = detection_state.expected_snr
-    
     global detected_dBFS
-    #if dBFS_delta > 10.6:
-    #    detected_dBFS = dBFS - ( dBFS_delta / 2 )
-        #print( "    YES RATE CHANGE +" + str(dBFS_delta) + " to " + str(dBFS) )
-    #    return True
-    #if dBFS_delta < -5.3:
-    #    detected_dBFS = 0
-        #print( "    NO! RATE CHANGE +" + str(dBFS_delta) + " to " + str(dBFS) )
-    #    return False
     if "auto_dBFS" in strategy:
-        detected = auto_decibel_detection(power, dBFS, distance, min(detected_dBFS, estimated_threshold))
-        if not detected and dBFS > detected_dBFS:
-           detected = True
-           #print( "WAS NO BUT SHOULD BE YES! " )
-        if not detected and dBFS < detected_dBFS:
-            detected_dBFS = 0
-            #print( "NO! " + str(dBFS_delta) + " " + str(dBFS) )
-        else:
-            if detected_dBFS == 0:
-                detected_dBFS = dBFS
-            #print( "    YES " + str(dBFS) + " over " + str(detected_dBFS) )
-            
+        detected = auto_decibel_detection(power, dBFS, distance, threshold)
         return detected
-    elif "auto_avg_dBFS" in strategy:
-        return auto_decibel_detection(power, (dBFS + filtered_dBFS) / 2, distance, estimated_threshold)
-    elif "auto_weighted_dBFS" in strategy:
-        signal_weight = expected_snr / snr_cutoff if expected_snr < snr_cutoff else 1
-        filtered_weight = 1 - signal_weight
-        return auto_decibel_detection(power, (dBFS * signal_weight + filtered_dBFS * filtered_weight), distance, estimated_threshold)
-
 
 def is_rejected( strategy, occurrence, ms_per_frame, continuous = False ):
     if "reject" not in strategy:
@@ -571,36 +667,30 @@ def is_rejected( strategy, occurrence, ms_per_frame, continuous = False ):
     elif "reject_cont_45ms" in strategy:
         return len(occurrence) * ms_per_frame < ( 45 if continuous else 0 )
 
-def is_detected_secondary(detection_state, frame, label):
+def is_detected_secondary(detection_state: DetectionState, frame: DetectionFrame, label):
     global detected_dBFS
     strategy = detection_state.strategy
     power = frame.power
     dBFS = frame.dBFS
-    previous_dBFS = dBFS if frame.previous_frame is None else frame.previous_frame.dBFS
-    dBFS_delta = abs(dBFS - previous_dBFS) * ( 1 if previous_dBFS < dBFS else -1 )
 
-    zero_crossing_count = frame.zero_crossing
-    previous_zcc = zero_crossing_count if frame.previous_frame is None else frame.previous_frame.zero_crossing
-    zc_delta = abs(zero_crossing_count - previous_zcc) * ( 1 if previous_zcc < zero_crossing_count else -1 )
+    distance = frame.spectral_flux
+    if label.overridden:
+        threshold = label.min_secondary_dBFS
+    elif detection_state.current_dBFS_threshold is not None:
+        threshold = detection_state.current_dBFS_threshold
+        if "secondary_margin_dBFS" in strategy:
+            threshold -= detection_state.dBFS_error_margin
+    else:
+        threshold = label.min_secondary_dBFS
+        if "secondary_margin_dBFS" in strategy:
+            threshold -= detection_state.dBFS_error_margin
 
-    filtered_dBFS = frame.filtered_dBFS
-    distance = frame.euclid_dist
-    estimated_threshold = label.min_dBFS
-    expected_snr = detection_state.expected_snr
-    secondary_threshold = label.min_secondary_dBFS
-    
+    # Remove the error margin to make small dips not cause invalid issues
+
     if "secondary" not in strategy:
         return False
     elif "secondary_dBFS" in strategy:
-        return auto_secondary_decibel_detection(power, dBFS, distance, estimated_threshold - 7)
-    elif "secondary_avg_dBFS" in strategy:
-        return auto_secondary_decibel_detection(power, ( dBFS + filtered_dBFS ) / 2, distance, estimated_threshold)
-    elif "secondary_weighted_dBFS" in strategy:
-       signal_weight = expected_snr / snr_cutoff if expected_snr < snr_cutoff else 1
-       filtered_weight = 1 - signal_weight
-       return auto_secondary_decibel_detection(power, ( dBFS * signal_weight + filtered_dBFS * filtered_weight ), distance, estimated_threshold)
-    elif "secondary_std_dBFS" in strategy:
-        return auto_secondary_decibel_detection(power, dBFS , distance, secondary_threshold)
+        return auto_secondary_decibel_detection(power, dBFS, distance, threshold)
 
 def is_mended( strategy, occurrence, detection_state, current_label ):
     if "mend" not in strategy:
@@ -617,7 +707,7 @@ def is_mended( strategy, occurrence, detection_state, current_label ):
         
         total_missed_length_ms = 0
         for frame in occurrence:
-            if not auto_secondary_decibel_detection(frame.power, frame.dBFS, frame.euclid_dist, label_dBFS_threshold):
+            if not auto_secondary_decibel_detection(frame.power, frame.dBFS, frame.spectral_flux, label_dBFS_threshold):
                 if not "mend_dBFS_30ms" in strategy:
                     return False
                 else:
