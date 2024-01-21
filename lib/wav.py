@@ -110,7 +110,7 @@ def load_wav_data_from_srt(srt_file: str, source_file: str, feature_engineering_
                     try:
                         raw_wav = wf.readframes(frames_to_read * number_channels)
                     except RuntimeError:
-                    	raw_wav = ""
+                        raw_wav = ""
                         print( "Error loading in all of the .SRT file for " + source_file + " - Consider deleting " + srt_file + " to resegment the audio file" )
                         keep_collecting = False
 
