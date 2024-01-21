@@ -108,7 +108,10 @@ class StreamRecorder:
     
     def pause(self):
         self.stream.stop_stream()
+        
         self.index -= len(self.total_audio_frames)
+        if self.index != 0 and len(self.total_audio_frames) > 0:
+            self.detection_frames = self.detection_frames[:-len(self.total_audio_frames)]
         self.total_audio_frames = []
         self.audio_frames = []
     
@@ -126,14 +129,14 @@ class StreamRecorder:
         self.current_occurrence = []
         self.false_occurrence = []
         
-        self.detection_frames = self.detection_frames[:-frames_to_remove]        
+        self.detection_frames = self.detection_frames[:-frames_to_remove]
         self.detection_state.ms_recorded = len(self.detection_frames) * ms_per_frame
         for label in self.detection_state.labels:
             label.ms_detected = 0
             for frame in self.detection_frames:
                 if frame.label == label.label:
                     label.ms_detected += ms_per_frame
-
+        
         # Just completely overwrite the file if we go back to the start for simplicities sake
         if clear_file:
             totalWaveFile = wave.open(self.total_wav_filename, 'wb')
