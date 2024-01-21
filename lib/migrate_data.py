@@ -62,9 +62,13 @@ def migrate_data():
             if len(wav_files) == 0:
                 continue
             print( "Resegmenting " + label + "..." )
+            previous_progress = 0
             progress = 0
             progress_chunk = 1 / len( wav_files )
+            file_progress = 0
+            next_file_progress = progress_chunk
             skipped_amount = 0
+            files_to_resegment = []
             for index, wav_file in enumerate(wav_files):
                 wav_file_location = os.path.join(source_dir, wav_file)
                 srt_file_location = os.path.join(segments_dir, wav_file.replace(".wav", ".v" + str(CURRENT_VERSION) + ".srt"))
@@ -77,29 +81,45 @@ def migrate_data():
                 if os.path.exists(thresholds_file_location):
                     thresholds_file_modification_time = os.path.getmtime(thresholds_file_location)
                     is_manual_threshold = False
+                    manual_srt_file_location = os.path.join(segments_dir, wav_file.replace(".wav", ".MANUAL.srt"))
 
                     # If the thresholds file has been changed after the SRT file has been created, we need to resegment the file as a manual change
-                    if not os.path.exists(srt_file_location) or os.path.getmtime(srt_file_location) + 5 < thresholds_file_modification_time:
-                        srt_file_location = os.path.join(segments_dir, wav_file.replace(".wav", ".MANUAL.srt"))
+                    if ( os.path.exists(manual_srt_file_location) ) or ( os.path.exists(srt_file_location) and os.path.getmtime(srt_file_location) + 5 < thresholds_file_modification_time ):
+                        srt_file_location = manual_srt_file_location
                         is_manual_threshold = True
 
-                    should_resegment_file = not os.path.exists(srt_file_location) or os.path.getmtime(thresholds_file_location) > os.path.getmtime(srt_file_location)
+                    should_resegment_file = not os.path.exists(srt_file_location) or os.path.getmtime(srt_file_location) + 5 < thresholds_file_modification_time
 
                     # Make sure we do not override the thresholds file if it has been changed manually                    
                     if is_manual_threshold:
                         override_file_location = thresholds_file_location
                         thresholds_file_location = None
-                
+
                 # Only resegment if the new version does not exist already
                 if should_resegment_file:
-                    process_wav_file(wav_file_location, srt_file_location, output_file_location, thresholds_file_location, [label], \
-                        lambda internal_progress, state: print_migration_progress(progress + (internal_progress * progress_chunk), state), None, override_file_location )
+                    files_to_resegment.append([wav_file_location, srt_file_location, output_file_location, thresholds_file_location, override_file_location])
                 else:
                     skipped_amount += 1
-                progress = index / len( wav_files ) + progress_chunk
+
+            # Calculate the progress of the files we need to resegment
+            progress_chunk = 1 / len(wav_files)
+            base_progress = skipped_amount * progress_chunk
+            file_progress = base_progress
+            progress = file_progress
+            next_file_progress = file_progress + progress_chunk
+            for index, data in enumerate(files_to_resegment):
+                wav_file_location = data[0]
+                srt_file_location = data[1]
+                output_file_location = data[2]
+                thresholds_file_location = data[3]
+                override_file_location = data[4]
+
+                process_wav_file(wav_file_location, srt_file_location, output_file_location, thresholds_file_location, [label], \
+                    lambda internal_progress, state: print_migration_progress(progress + (internal_progress * progress_chunk), state, file_progress, next_file_progress), None, override_file_location )
                 
-            if progress == 1 and skipped_amount < len(wav_files):
-                clear_previous_lines(1)
+                file_progress += progress_chunk
+                next_file_progress += progress_chunk
+                progress = file_progress
 
             clear_previous_lines(1)
             print( label + " resegmented!" if skipped_amount < len(wav_files) else label + " already properly segmented!" )
@@ -108,11 +128,21 @@ def migrate_data():
     print("Finished migrating data!")
     print("----------------------------")
 
-def print_migration_progress(progress, state: DetectionState):
+def print_migration_progress(progress, state: DetectionState, base_progress, next_base_progress):
     status_lines = get_current_status(state)
-    line_count = 1 + len(status_lines) if progress > 0 or state.state == "processing" else 0
-    reset_previous_lines(line_count) if progress < 1 else clear_previous_lines(line_count)
-    print( create_progress_bar(progress) )
-    if progress != 1:
+    status_lines.insert(0, create_progress_bar(progress))
+    line_count = len(status_lines) if progress - base_progress > 0 or state.state == "processing" else 0
+    finished_loading_file = next_base_progress - progress == 0
+
+    # Only do a full clear when the progress has finished
+    # Or when it is transitioning to post processing
+    if finished_loading_file or ( state.state == "processing" and progress - base_progress == 0 ):
+        clear_previous_lines(line_count)
+
+    # Only start rewriting lines when we have printed the first element
+    elif progress - base_progress > 0:
+        reset_previous_lines(line_count)
+
+    if not finished_loading_file:
         for line in status_lines:
             print( line )
