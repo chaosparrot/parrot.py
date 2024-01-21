@@ -48,7 +48,10 @@ def get_current_status(detection_state: DetectionState, extra_states: List[Detec
     ]
     
     if detection_state.state == "recording":
-        lines.append("| " + "Sound Quality: " + quality.rjust(LINE_LENGTH - 20) + " |")
+        if detection_state.latest_dBFS <= -100:
+            lines.append("| " + "WEAK SIGNAL - Please unmute microphone".ljust(LINE_LENGTH - 5) + " |")        
+        else:
+            lines.append("| " + "Sound Quality: " + quality.rjust(LINE_LENGTH - 20) + " |")
     elif detection_state.state == "processing":
         lines.append("| " + "PROCESSING...".ljust(LINE_LENGTH - 5) + " |")
     elif detection_state.state == "paused":
@@ -57,6 +60,7 @@ def get_current_status(detection_state: DetectionState, extra_states: List[Detec
         lines.append("| " + detection_state.state.upper().ljust(LINE_LENGTH - 5) + " |")
     
     lines.append("| " + ("dBFS:" + str(round(detection_state.latest_dBFS)).rjust(LINE_LENGTH - 10)) + " |")
+    lines.append("| " + ("Δ:" + str(round(detection_state.latest_delta)).rjust(LINE_LENGTH - 7)) + " |")
     if detection_state.advanced_logging:
        lines.extend([
            "|".ljust(LINE_LENGTH - 2,"-") + "|",
@@ -64,7 +68,7 @@ def get_current_status(detection_state: DetectionState, extra_states: List[Detec
            "|".ljust(LINE_LENGTH - 2,"-") + "|",
            "| " + ("Noise floor (dBFS):" + str(round(detection_state.expected_noise_floor)).rjust(LINE_LENGTH - 24)) + " |",
            "| " + ("SNR:" + str(round(detection_state.expected_snr)).rjust(LINE_LENGTH - 9)) + " |",
-       ])    
+       ])
 
     for label in detection_state.labels:
         # Quantity rating is based on 5000 30ms windows being good enough to train a label from the example model

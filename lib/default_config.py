@@ -66,9 +66,13 @@ IS_WINDOWS = sys.platform == 'win32'
 dragonfly_spec = find_spec("dragonfly")
 if( SPEECHREC_ENABLED == True ):
     SPEECHREC_ENABLED = dragonfly_spec is not None
-    
+
 BACKGROUND_LABEL = "silence"
+AUTOMATIC_DATASET_BALANCING = True
+SHOULD_FIT_INSIDE_RAM = True # Ensure the dataset fits inside RAM for faster training
+# Turning this to FALSE might crash the dataloading
+MAX_RAM = 7000000000 # 7GB of usable RAM is assumed to be the maximum size to be loaded in for data
 
 # Detection strategies
-CURRENT_VERSION = 1
-CURRENT_DETECTION_STRATEGY = "auto_dBFS_mend_dBFS_30ms_secondary_dBFS_reject_cont_45ms_repair"
+CURRENT_VERSION = 3
+CURRENT_DETECTION_STRATEGY = "auto_dBFS_secondary_dBFS_reject_cont_45ms_repair"

@@ -76,7 +76,7 @@ def augment_wav_data(wavData, sample_rate):
     ])
     return augmenter(samples=np.array(wavData, dtype="float32"), sample_rate=sample_rate)
 
-def load_wav_data_from_srt(srt_file: str, source_file: str, feature_engineering_type = TYPE_FEATURE_ENGINEERING_NORM_MFSC, with_offset = True, should_augment=False) -> List[List[float]]:
+def load_wav_data_from_srt(srt_file: str, source_file: str, feature_engineering_type = TYPE_FEATURE_ENGINEERING_NORM_MFSC, with_offset = True, should_augment=False, background=False) -> List[List[float]]:
     wav_file_data = []
     wf = wave.open(source_file, 'rb')
     frame_rate = wf.getframerate()
@@ -97,7 +97,8 @@ def load_wav_data_from_srt(srt_file: str, source_file: str, feature_engineering_
         next_event_index = total_frames / frames_to_read if index + 1 >= len(transition_events) else transition_events[index + 1].start_index
         audioFrames = []
         
-        if transition_event.label != BACKGROUND_LABEL:
+        if (transition_event.label == BACKGROUND_LABEL) == background:
+            
             for offset in start_offsets:
                 # Skip of the offset makes the position before the start of the file
                 if offset + (frames_to_read * transition_event.start_index) < 0:
@@ -109,6 +110,7 @@ def load_wav_data_from_srt(srt_file: str, source_file: str, feature_engineering_
                     try:
                         raw_wav = wf.readframes(frames_to_read * number_channels)
                     except RuntimeError:
+                        raw_wav = ""
                         print( "Error loading in all of the .SRT file for " + source_file + " - Consider deleting " + srt_file + " to resegment the audio file" )
                         keep_collecting = False
 

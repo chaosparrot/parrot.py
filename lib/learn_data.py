@@ -1,28 +1,15 @@
 from config.config import *
-import scipy
-import scipy.io.wavfile
 import os
 from sklearn import metrics
 from sklearn.metrics import confusion_matrix
 from sklearn.ensemble import RandomForestClassifier, ExtraTreesClassifier
 from sklearn.model_selection import cross_val_score, train_test_split
 import joblib
-import time
-import warnings
-import itertools
-import matplotlib as mpl
-import matplotlib.pyplot as plt
-import numpy as np
-import pandas
-from scipy.fftpack import fft, rfft, fft2, dct
-from python_speech_features import mfcc
-from sklearn.manifold import TSNE
-from sklearn import preprocessing
 from lib.machinelearning import *
 from sklearn.neural_network import *
 from lib.combine_models import define_settings, get_current_default_settings
 from lib.audio_model import AudioModel
-from lib.wav import load_wav_files_with_srts
+from lib.load_data import load_sklearn_data, load_pytorch_data
 
 def learn_data():
     dir_path = os.path.join( os.path.dirname( os.path.dirname( os.path.realpath(__file__)) ), DATASET_FOLDER)    
@@ -89,39 +76,26 @@ def learn_data():
         from lib.audio_net import AudioNetTrainer
         from lib.audio_dataset import AudioDataset
         
-        print( "--------------------------" )        
+        print( "--------------------------" )
         dataset_labels = determine_labels( dir_path )
         print( "--------------------------" )
-        grouped_data_directories =  get_grouped_data_directories( dataset_labels )
-        dataset = AudioDataset( grouped_data_directories, settings )
+        data = load_pytorch_data(dataset_labels, settings["FEATURE_ENGINEERING_TYPE"])        
+        dataset = AudioDataset( data )
         trainer = AudioNetTrainer(dataset, net_count, settings)
         
         print( "Learning the data..." )
         trainer.train( clf_filename )
 
-def fit_sklearn_classifier( classifier,  dir_path, clf_filename, settings ):
-    max_files_per_category = input("How many files should we analyze per category? ( empty is all )" )
-    if( max_files_per_category == "" ):
-        max_files_per_category = 1000000
-    else:
-        max_files_per_category = int( max_files_per_category )
-    
+def fit_sklearn_classifier( classifier,  dir_path, clf_filename, settings ):    
     print( "--------------------------" )
-    dataX, dataY, directory_names, total_feature_engineering_time = load_data( dir_path, max_files_per_category, settings['FEATURE_ENGINEERING_TYPE'] )
+    filtered_data_directory_names = determine_labels( dir_path )
+    dataX, dataY, directory_names = load_sklearn_data( filtered_data_directory_names, settings['FEATURE_ENGINEERING_TYPE'] )
     print( "--------------------------" )
 
     print( "Learning the data..." )
     classifier.fit( dataX, dataY )
     print( "Data analyzed!               " )
-    
-    print( "Testing algorithm speed... ", end="\r" )
-    feature_engineering_speed_ms = int(total_feature_engineering_time) / len( dataX )
-    prediction_speed_ms = average_prediction_speed( classifier, dataX )
-    print( "Worst case reaction speed: +- %0.4f milliseconds " % ( feature_engineering_speed_ms + prediction_speed_ms + ( RECORD_SECONDS * 1000 ) ) )
-    print( "- Preparing data speed %0.4f ms " % feature_engineering_speed_ms )
-    print( "- Predicting label speed %0.4f ms" % prediction_speed_ms )
-    print( "- Recording length %0.4f ms" % ( RECORD_SECONDS * 1000 ) )
-    
+
     persisted_classifier = AudioModel( settings, classifier )
     
     print( "Saving the model to " + CLASSIFIER_FOLDER + "/" + clf_filename )
@@ -138,30 +112,6 @@ def fit_sklearn_classifier( classifier,  dir_path, clf_filename, settings ):
         create_confusion_matrix( classifier, dataX, dataY, directory_names )
         print( "--------------------------" )
     
-    
-def load_wav_files( directories, label, int_label, start, end, input_type ):
-    category_dataset_x = []
-    category_dataset_labels = []
-    totalFeatureEngineeringTime = 0
-    category_file_index = 0
-
-    for directory in directories:
-        for fileindex, file in enumerate(os.listdir(directory)):
-            if ( file.endswith(".wav") and fileindex >= start and len(category_dataset_x) < end ):
-                full_filename = os.path.join(directory, file)
-                print( "Loading " + str(category_file_index) + " files for " + label + "... ", end="\r" )
-                category_file_index += 1
-
-                # Load the WAV file and turn it into a onedimensional array of numbers
-                feature_engineering_start = time.time() * 1000
-                data_row, frequency = feature_engineering( full_filename, RECORD_SECONDS, input_type )
-                category_dataset_x.append( data_row )
-                category_dataset_labels.append( label )
-                totalFeatureEngineeringTime += time.time() * 1000 - feature_engineering_start
-
-    print( "Loaded " + str( len( category_dataset_labels ) ) + " .wav files for category " + label + " (id: " + str(int_label) + ")" )
-    return category_dataset_x, category_dataset_labels, totalFeatureEngineeringTime
-
 def determine_labels( dir_path ):
     data_directory_names =  [directory for directory in os.listdir( dir_path ) if not directory.startswith(".")]
     
@@ -177,39 +127,3 @@ def determine_labels( dir_path ):
             print( "Disabled " + directory_name )
 
     return filtered_data_directory_names
-
-def get_grouped_data_directories( labels ):
-    # If the microphone separator setting is set use that to split directory names into categories/labels.
-    # This enable us to have multiple directories with different names and as long as they have the same prefix they will be combined into a single category/label.
-    grouped_data_directories = {}
-    for directory_name in labels:
-        if MICROPHONE_SEPARATOR:
-            category_name = directory_name.split( MICROPHONE_SEPARATOR )[0] 
-        else:
-            category_name = directory_name
-        if category_name not in grouped_data_directories:
-            grouped_data_directories[ category_name ] = []
-        data_directory = f"{ DATASET_FOLDER }/{ directory_name.lower() }"
-        grouped_data_directories[ category_name ].append( data_directory )
-    return grouped_data_directories
-
-def load_data( dir_path, max_files, input_type ):
-    filtered_data_directory_names = determine_labels( dir_path )
-    grouped_data_directories =  get_grouped_data_directories( filtered_data_directory_names )
-
-    # Generate the training set and labels with them
-    dataset = []
-    dataset_x = []
-    dataset_labels = []
-
-    totalFeatureEngineeringTime = 0
-    for str_label, directories in grouped_data_directories.items():
-        # Add a label used for classifying the sounds
-        id_label = get_label_for_directory( "".join( directories ) )
-        cat_dataset_x, cat_dataset_labels, featureEngineeringTime = load_wav_files_with_srts( directories, str_label, id_label, 0, max_files, input_type )
-        totalFeatureEngineeringTime += featureEngineeringTime
-        dataset_x.extend( cat_dataset_x )
-        dataset_labels.extend( cat_dataset_labels )
-
-    return dataset_x, dataset_labels, grouped_data_directories.keys(), totalFeatureEngineeringTime
-

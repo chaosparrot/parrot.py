@@ -47,8 +47,16 @@ class Mfsc:
         frames = frames * 32768.0 # HTK scaling to int range
         P = self.power_spectrum(frames)
         T = np.log(np.maximum(P @ self.trifilter, self.mel_floor))
-        N = self.normalize(T)
+        N = self.standardize(T)
         return N
+    
+    # Get the raw log-mels for comparing against
+    def get_log_mels(self, samples: AnyArray) -> np.array:
+        samples = np.asarray(samples, dtype=np.float32)
+        frames = self.frame_signal(samples)
+        frames = frames * 32768.0 # HTK scaling to int range
+        P = self.power_spectrum(frames)
+        return np.log(np.maximum(P @ self.trifilter, self.mel_floor))
 
     def frame_signal(self, samples: np.array) -> np.array:
         samples = np.asarray(samples, dtype=np.float32)
@@ -67,7 +75,7 @@ class Mfsc:
         out = np.fft.rfft(frames * self.window, self.n_fft)
         return np.abs(out)
 
-    def normalize(self, frames: np.array) -> np.array:
+    def standardize(self, frames: np.array) -> np.array:
         mean = np.mean(frames)
         std = np.std(frames)
         if std > 0:

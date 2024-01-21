@@ -4,6 +4,10 @@ from .typing import TransitionEvent, DetectionEvent, DetectionFrame
 from typing import List
 import math
 import os
+import numpy as np
+
+current_v_ending = ".v" + str(CURRENT_VERSION) + ".srt"
+manual_ending = ".MANUAL.srt"
 
 def ms_to_srt_timestring( ms: int, include_hours=True):
     if ms <= 0:
@@ -26,8 +30,8 @@ def srt_timestring_to_ms( srt_timestring: str):
       return ms
 
 def persist_srt_file(srt_filename: str, events: List[DetectionEvent]):
-    if not srt_filename.endswith(".v1.srt"):
-        srt_filename += ".v1.srt"
+    if not srt_filename.endswith(current_v_ending) and not srt_filename.endswith(manual_ending):
+        srt_filename += current_v_ending
 
     # Sort events chronologically first
     events.sort(key = lambda event: event.start_index)    
@@ -95,13 +99,46 @@ def parse_srt_file(srt_filename: str, rounding_ms: int, show_errors: bool = True
     
     return transition_events
 
+def count_total_frames(label: str, base_folder: str, rounding_ms: int) -> int:
+    frames = 0
+    segments_dir = os.path.join(base_folder, "segments")
+    if os.path.isdir(segments_dir):
+        srt_files = [x for x in os.listdir(segments_dir) if os.path.isfile(os.path.join(segments_dir, x)) and (x.endswith(current_v_ending) or x.endswith(manual_ending))]
+        for srt_file in srt_files:
+        
+            # Skip the file if a manual override file of it exists
+            if srt_file.endswith(current_v_ending) and srt_file.replace(current_v_ending, manual_ending) in srt_files:
+                continue
+            else:
+                frames += count_frames_in_srt(label, os.path.join(segments_dir, srt_file), rounding_ms)
+    return frames
+    
+def count_total_silence_frames(base_folder: str, rounding_ms: int) -> int:
+    frames = 0
+    segments_dir = os.path.join(base_folder, "segments")
+    if os.path.isdir(segments_dir):
+        srt_files = [x for x in os.listdir(segments_dir) if os.path.isfile(os.path.join(segments_dir, x)) and (x.endswith(current_v_ending) or x.endswith(manual_ending))]
+        for srt_file in srt_files:
+
+            # Skip the file if a manual override file of it exists
+            if srt_file.endswith(current_v_ending) and srt_file.replace(current_v_ending, manual_ending) in srt_files:
+                continue
+            else:
+                frames += count_frames_in_srt(BACKGROUND_LABEL, os.path.join(segments_dir, srt_file), rounding_ms)
+    return frames
+
 def count_total_label_ms(label: str, base_folder: str, rounding_ms: int) -> int:
     total_ms = 0
     segments_dir = os.path.join(base_folder, "segments")
     if os.path.isdir(segments_dir):
-        srt_files = [x for x in os.listdir(segments_dir) if os.path.isfile(os.path.join(segments_dir, x)) and x.endswith(".v" + str(CURRENT_VERSION) + ".srt")]
+        srt_files = [x for x in os.listdir(segments_dir) if os.path.isfile(os.path.join(segments_dir, x)) and x.endswith(".v" + str(CURRENT_VERSION) + ".srt") or x.endswith(".MANUAL.srt")]
         for srt_file in srt_files:
-            total_ms += count_label_ms_in_srt(label, os.path.join(segments_dir, srt_file), rounding_ms)
+
+            # Skip the file if a manual override file of it exists
+            if srt_file.endswith(current_v_ending) and srt_file.replace(current_v_ending, manual_ending) in srt_files:
+                continue
+            else:
+                total_ms += count_label_ms_in_srt(label, os.path.join(segments_dir, srt_file), rounding_ms)
     return total_ms
 
 def count_label_ms_in_srt(label: str, srt_filename: str, rounding_ms: int) -> int:
@@ -116,6 +153,19 @@ def count_label_ms_in_srt(label: str, srt_filename: str, rounding_ms: int) -> in
             start_ms = -1
     
     return total_ms
+
+def count_frames_in_srt(label: str, srt_filename: str, rounding_ms: int) -> int:
+    transition_events = parse_srt_file(srt_filename, rounding_ms, False)
+    start_ms = -1
+    frames = 0
+    for transition_event in transition_events:
+        if transition_event.label == label:
+            start_ms = transition_event.start_ms
+        elif start_ms > -1 and transition_event.label != label:
+            frames += round((transition_event.start_ms - start_ms - rounding_ms) / 15)
+            start_ms = -1
+    
+    return frames
 
 def print_detection_performance_compared_to_srt(actual_frames: List[DetectionFrame], frames_to_read: int, srt_file_location: str, output_wave_file = None):
     ms_per_frame = actual_frames[0].duration_ms
@@ -155,6 +205,7 @@ def print_detection_performance_compared_to_srt(actual_frames: List[DetectionFra
     # Loop over the results and compare them against the expected transition events
     index = 0
     t_index = 0
+
     for frame in actual_frames:
         index += 1
         total_ms += ms_per_frame
@@ -234,7 +285,7 @@ def print_detection_performance_compared_to_srt(actual_frames: List[DetectionFra
                         # Misrecognition in between a full event
                         if false_index_end < event_end:
                             ms_event = ( false_index_end - false_index_start ) * ms_per_frame
-                            false_event_type = "full_false_positive" if event.label == BACKGROUND_LABEL else "stutter"
+                            false_event_type = "full_false_positive" if event.label == BACKGROUND_LABEL else "stutter"                            
                         # Misrecognition of the end of an event
                         else:
                             ms_event = (event_end - false_index_start) * ms_per_frame
@@ -246,6 +297,7 @@ def print_detection_performance_compared_to_srt(actual_frames: List[DetectionFra
                     # Reset the index to the start of the next event if the event can be followed by another false event
                     if false_event_type in ["false_start", "cutoff", "full_miss", "full_false_positive"]:
                         false_index_start = event_end
+
                 false_detections = 0
 
             if expected != BACKGROUND_LABEL:
@@ -269,6 +321,7 @@ def print_detection_performance_compared_to_srt(actual_frames: List[DetectionFra
         false_types[false_type] = {
             "data": false_types[false_type],
         }
+
         amount = len(false_types[false_type]["data"])
         
         false_types[false_type]["times"] = amount            
@@ -325,4 +378,4 @@ def print_detection_performance_compared_to_srt(actual_frames: List[DetectionFra
     print("--------------------------------------")
     
     print("Excel row")
-    print( "	".join(export_row) )
+    print( ",".join(export_row) )
