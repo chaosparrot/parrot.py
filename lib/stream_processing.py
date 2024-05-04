@@ -484,7 +484,7 @@ def post_processing(frames: List[DetectionFrame], detection_state: DetectionStat
     # Persist the detection wave file
     if output_wave_file is not None:
         frames_to_write = round( RATE * RECORD_SECONDS / SLIDING_WINDOW_AMOUNT )
-        sample_width = 2# 16 bit = 2 bytes
+        sample_width = output_wave_file.getsampwidth() # 16 bit = 2 bytes
         detection_audio_frames = []
 
         for index, frame in enumerate(frames):
