@@ -186,7 +186,7 @@ class StreamRecorder:
             os.remove(self.total_wav_filename)        
 
         comparison_wav_file = wave.open(self.comparison_wav_filename, 'wb')
-        comparison_wav_file.setnchannels(1)
+        comparison_wav_file.setnchannels(CHANNELS)
         comparison_wav_file.setsampwidth(self.audio.get_sample_size(FORMAT))
         comparison_wav_file.setframerate(RATE)
         post_processing(self.detection_frames, self.detection_state, self.srt_filename, self.thresholds_filename, callback, comparison_wav_file)
