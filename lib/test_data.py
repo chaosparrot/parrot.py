@@ -8,7 +8,6 @@ import audioop
 import math
 import numpy as np
 from numpy.fft import rfft
-from scipy.signal import blackmanharris
 import os
 import joblib
 import pandas as pd
