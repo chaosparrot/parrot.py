@@ -8,7 +8,6 @@ from queue import *
 import numpy as np
 from scipy.fftpack import fft
 from scipy.fftpack import fftfreq
-from scipy.signal import blackmanharris
 from lib.machinelearning import get_loudest_freq, get_recording_power
 import audioop
 
