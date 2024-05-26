@@ -17,6 +17,18 @@ If you accidentally did record a different sound, you can always press BACKSPACE
 
 You can look at the 'Recorded' part during the recording session to see how much of your sound has been detected.
 
+### Recording speed
+
+For the automatic sound detection to work well, it is best to make a bunch of sounds early on in a recording ( first 15 seconds ). The more sounds it can work with, the easier it is for it to find the right balance between sound and noise.
+The recommended style is atleast a noise per second for continuous noises, and two per second for discrete. Once a decent threshold has been found, you can slow to your own pace.
+
+If you cannot make these sounds fast enough, there is a setting that you can add which will allow you to make noises at a slower pace that might fit better.
+Adding the following line to your `data/code/config.py` file should enable that setting for the next time you restart Parrot.
+
+```
+THRESHOLD_DETECTION = "lenient"
+```
+
 ### Amount of data needed
 
 The Data quantity part of the recording shows you whether we think you have enough data for a model.

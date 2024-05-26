@@ -1,5 +1,5 @@
 from .typing import DetectionLabel, DetectionFrame, DetectionEvent, DetectionState
-from config.config import BACKGROUND_LABEL, RECORD_SECONDS, SLIDING_WINDOW_AMOUNT, RATE, CURRENT_VERSION, CURRENT_DETECTION_STRATEGY
+from config.config import BACKGROUND_LABEL, RECORD_SECONDS, SLIDING_WINDOW_AMOUNT, RATE, CURRENT_VERSION, CURRENT_DETECTION_STRATEGY, THRESHOLD_DETECTION
 from typing import List
 import wave
 import math
@@ -510,6 +510,7 @@ def post_processing(frames: List[DetectionFrame], detection_state: DetectionStat
 
 def determine_detection_state(detection_frames: List[DetectionFrame], detection_state: DetectionState) -> DetectionState:
     dBFS_frames = [x.dBFS for x in detection_frames]
+    threshold_confidence = 1 if THRESHOLD_DETECTION == "strict" else 0.5
     
     # Calculate the onset thresholds using spectral flux
     spectral_flux_max = np.percentile([frame.spectral_flux for frame in detection_frames], 95)
@@ -529,7 +530,7 @@ def determine_detection_state(detection_frames: List[DetectionFrame], detection_
     # Determine a upper bound of dBFS threshold based on the known valleys determined by the onset detection
     if len(detection_state.dBFS_valleys) >= 10:
         mean_dB_threshold = np.mean(detection_state.dBFS_valleys)
-        std_dB_threshold = np.std(detection_state.dBFS_valleys)
+        std_dB_threshold = np.std(detection_state.dBFS_valleys) * threshold_confidence
 
         is_continuous = len([label for label in detection_state.labels if label.duration_type != "discrete"]) > 0
         if is_continuous:

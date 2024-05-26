@@ -89,7 +89,11 @@ def parse_srt_file(srt_filename: str, rounding_ms: int, show_errors: bool = True
             ms_start = math.floor(int(time_event.split("---")[0]))
             
             # If the time between the end and start of a new event is 0, then the previous event should be removed
-            if len(transition_events) > 0 and ms_start - transition_events[-1].start_ms <= rounding_ms:
+            # But short silence parts are allowed
+            last_transition_event = None if len(transition_events) == 0 else transition_events[-1]
+            if last_transition_event is not None and \
+                (( last_transition_event.label == BACKGROUND_LABEL and ms_start - last_transition_event.start_ms < rounding_ms ) or \
+                ( last_transition_event.label != BACKGROUND_LABEL and ms_start - last_transition_event.start_ms <= rounding_ms )):
                 transition_events.pop()
             
             transition_events.append( TransitionEvent(time_event.split("---")[1], math.floor(ms_start / rounding_ms), ms_start) )

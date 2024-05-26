@@ -76,3 +76,8 @@ MAX_RAM = 7000000000 # 7GB of usable RAM is assumed to be the maximum size to be
 # Detection strategies
 CURRENT_VERSION = 3
 CURRENT_DETECTION_STRATEGY = "auto_dBFS_secondary_dBFS_reject_cont_45ms_repair"
+
+# Threshold detection strategies
+# Lenient allows for more space between noises to gather a proper threshold
+# Strict allows you to do rapid recordings
+THRESHOLD_DETECTION = "strict" # "lenient"
