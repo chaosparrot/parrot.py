@@ -20,7 +20,7 @@ def get_grouped_data_directories( labels ):
             category_name = directory_name
         if category_name not in grouped_data_directories:
             grouped_data_directories[ category_name ] = []
-        data_directory = f"{ DATASET_FOLDER }/{ directory_name.lower() }"
+        data_directory = f"{ DATASET_FOLDER }/{ directory_name }"
         grouped_data_directories[ category_name ].append( data_directory )
     return grouped_data_directories
 
@@ -32,15 +32,14 @@ def generate_data_balance_strategy_map(grouped_data_directories):
     background_label_size = 0
     for index, label in enumerate( grouped_data_directories ):
         directories = grouped_data_directories[ label ]
-        if label != BACKGROUND_LABEL:
-            label_count = 0
-            for directory in directories:
-                label_count += count_total_frames(label, directory, ms_per_frame)
-                background_label_size += count_total_silence_frames(directory, ms_per_frame)
-            directory_counts[label] = label_count
-            max_size = max(max_size, label_count)
-            if label_count > 0:
-                min_size = min(min_size, label_count)
+        label_count = 0
+        for directory in directories:
+            label_count += count_total_frames(label, directory, ms_per_frame)
+            background_label_size += count_total_silence_frames(directory, ms_per_frame)
+        directory_counts[label] = label_count
+        max_size = max(max_size, label_count)
+        if label_count > 0:
+            min_size = min(min_size, label_count)
 
     strategies = ['oversample', 'undersample', 'sample', 'background']
     max_oversample_ratio = 2
@@ -69,13 +68,13 @@ def generate_data_balance_strategy_map(grouped_data_directories):
             "sample_from_each": -1
         }
 
-    sampling_strategies[BACKGROUND_LABEL] = {
-        "strategy": strategies[3],
-        "truncate_after": total_truncation,
-        "total_loaded": total_truncation,
-        "total_size": background_label_size,
-        "sample_from_each": round(min(total_truncation, background_label_size) / len(grouped_data_directories.keys()))
-    }
+    #sampling_strategies[BACKGROUND_LABEL] = {
+    #    "strategy": strategies[3],
+    #    "truncate_after": total_truncation,
+    #    "total_loaded": total_truncation,
+    #    "total_size": background_label_size,
+    #    "sample_from_each": round(min(total_truncation, background_label_size) / len(grouped_data_directories.keys()))
+    #}
 
     return rebalance_sampling_strategies_for_memory(sampling_strategies)
 
@@ -207,11 +206,11 @@ def sample_data_from_label(label, grouped_data_directories, sample_strategies, i
         seed = round(time.time() * 1000)
 
         # Truncate the background label samples
-        if BACKGROUND_LABEL in sample_strategies and len(total_background_samples) > sample_strategies[BACKGROUND_LABEL]["sample_from_each"]:
-            random.seed(seed)
-            total_background_samples = random.sample(total_background_samples, sample_strategies[BACKGROUND_LABEL]["sample_from_each"])
-            random.seed(seed)
-            total_augmented_background_samples = random.sample(total_augmented_background_samples, sample_strategies[BACKGROUND_LABEL]["sample_from_each"])
+        #if BACKGROUND_LABEL in sample_strategies and len(total_background_samples) > sample_strategies[BACKGROUND_LABEL]["sample_from_each"]:
+        #    random.seed(seed)
+        #    total_background_samples = random.sample(total_background_samples, sample_strategies[BACKGROUND_LABEL]["sample_from_each"])
+        #    random.seed(seed)
+        #    total_augmented_background_samples = random.sample(total_augmented_background_samples, sample_strategies[BACKGROUND_LABEL]["sample_from_each"])
         
         # Truncate the sample data randomly, but ensure the seed is the same so that the augmented data matches the non-augmented data index
         if strategy in ["oversample", "undersample"] and len(total_label_samples) > truncate_after:

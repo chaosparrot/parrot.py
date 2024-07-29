@@ -150,9 +150,9 @@ def count_label_ms_in_srt(label: str, srt_filename: str, rounding_ms: int) -> in
     total_ms = 0
     start_ms = -1
     for transition_event in transition_events:
-        if transition_event.label == label:
+        if transition_event.label.lower() == label.lower():
             start_ms = transition_event.start_ms
-        elif start_ms > -1 and transition_event.label != label:
+        elif start_ms > -1 and transition_event.label.lower() != label.lower():
             total_ms += transition_event.start_ms - start_ms
             start_ms = -1
     
@@ -163,9 +163,9 @@ def count_frames_in_srt(label: str, srt_filename: str, rounding_ms: int) -> int:
     start_ms = -1
     frames = 0
     for transition_event in transition_events:
-        if transition_event.label == label:
+        if transition_event.label.lower() == label.lower():
             start_ms = transition_event.start_ms
-        elif start_ms > -1 and transition_event.label != label:
+        elif start_ms > -1 and transition_event.label.lower() != label.lower():
             frames += round((transition_event.start_ms - start_ms - rounding_ms) / 15)
             start_ms = -1
     
