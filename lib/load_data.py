@@ -191,19 +191,19 @@ def sample_data_from_label(label, grouped_data_directories, sample_strategies, i
 
         listed_source_files = listed_files.keys()
         for file_index, full_filename in enumerate( listed_source_files ):
-            label_samples = load_wav_data_from_srt(listed_files[full_filename], full_filename, input_type, should_oversample, sequence_length=sequence_length)
+            label_samples = load_wav_data_from_srt(listed_files[full_filename], full_filename, input_type, should_oversample)
             for sample in label_samples:
                 total_label_samples.append([full_filename, sample])
 
-            augmented_samples = load_wav_data_from_srt(listed_files[full_filename], full_filename, input_type, should_oversample, True, sequence_length=sequence_length)
+            augmented_samples = load_wav_data_from_srt(listed_files[full_filename], full_filename, input_type, should_oversample, True)
             for augmented_sample in augmented_samples:
                 total_augmented_samples.append([full_filename, augmented_sample])
 
-            background_samples = load_wav_data_from_srt(listed_files[full_filename], full_filename, input_type, False, False, True, sequence_length=sequence_length)
+            background_samples = load_wav_data_from_srt(listed_files[full_filename], full_filename, input_type, False, False, True)
             for background_sample in background_samples:
                 total_background_samples.append([full_filename, background_sample])
             
-            augmented_background_samples = load_wav_data_from_srt(listed_files[full_filename], full_filename, input_type, True, False, True, sequence_length=sequence_length)
+            augmented_background_samples = load_wav_data_from_srt(listed_files[full_filename], full_filename, input_type, True, False, True)
             for augmented_background_sample in augmented_background_samples:
                 total_augmented_background_samples.append([full_filename, augmented_background_sample])
 
@@ -262,7 +262,7 @@ def load_pytorch_data( filtered_data_directory_names, input_type):
     dataset = {}
     augmented = {}
     dataset[BACKGROUND_LABEL] = []
-    augmented[BACKGROUND_LABEL] = []    
+    augmented[BACKGROUND_LABEL] = []
     for label in grouped_data_directories:
         if label != BACKGROUND_LABEL:
             data_sample = sample_data_from_label( label, grouped_data_directories, sample_strategies, input_type)
@@ -282,19 +282,41 @@ def load_sequential_pytorch_data( filtered_data_directory_names, input_type, seq
     grouped_data_directories = get_grouped_data_directories( filtered_data_directory_names )
     sample_strategies = generate_data_balance_strategy_map(grouped_data_directories )
 
-    dataset = {}
-    augmented = {}
+    dataset = {"__streams": []}
+    augmented = {"__streams": []}
     dataset[BACKGROUND_LABEL] = []
     augmented[BACKGROUND_LABEL] = []
     for label in grouped_data_directories:
+        if label not in dataset:
+            dataset[label] = []
+            augmented[label] = []
+
         if label != BACKGROUND_LABEL:
-            data_sample = sample_sequential_data_from_label( label, grouped_data_directories, sample_strategies, input_type, sequence_length=sequence_length)
-            # TODO SPLIT INTO AUGMENTED AND DATA
-            return
-            #dataset[label] = [[x[0], torch.tensor(x[1]).float()] for x in data_sample["label"]]
-            #augmented[label] =[[x[0], torch.tensor(x[1]).float()] for x in data_sample["augmented"]]
-            #dataset[BACKGROUND_LABEL].extend([[x[0], torch.tensor(x[1]).float()] for x in data_sample["background"]])
-            #augmented[BACKGROUND_LABEL].extend([[x[0], torch.tensor(x[1]).float()] for x in data_sample["background_augmented"]])
+            data_samples = sample_sequential_data_from_label( label, grouped_data_directories, sample_strategies, input_type, sequence_length=sequence_length)
+
+            # Add the data stream
+            stream_index_offset = len(dataset["__streams"])
+            for stream in data_samples["streams"]:
+                torch_stream = []
+                for stream_frame in stream:
+                    torch_stream.append(torch.tensor(stream_frame[0]).float())
+                dataset["__streams"].append(torch_stream)
+
+            # Add the augmented stream
+            for augmented_stream in data_samples["augmented_streams"]:
+                torch_stream = []
+                for stream_frame in augmented_stream:
+                    torch_stream.append(torch.tensor(stream_frame[0]).float())
+                augmented["__streams"].append(torch_stream)
+
+            # Add the indices on the stream for each label
+            for frame_sequence in data_samples["label"]:
+                dataset[label].append([[stream_index_offset + x[0], x[1], x[2]] for x in frame_sequence])
+                augmented[label].append([[stream_index_offset + x[0], x[1], x[2]] for x in frame_sequence])
+
+            for frame_sequence in data_samples["background"]:
+                dataset[BACKGROUND_LABEL].append([[stream_index_offset + x[0], x[1], x[2]] for x in frame_sequence])
+                augmented[BACKGROUND_LABEL].append([[stream_index_offset + x[0], x[1], x[2]] for x in frame_sequence])
 
     return {
         "data": dataset,
@@ -305,9 +327,8 @@ def sample_sequential_data_from_label(label, grouped_data_directories, sample_st
     listed_files = get_listed_files_from_label(label, grouped_data_directories)
     listed_files_size = len( listed_files )
 
-    # TODO USE SEQUENCE LENGTH!
+    # TODO - IMPROVE DATA LOADING SPEED? Currently takes twice as long
     # TODO PROPER SAMPLE TRUNCATING FOR OVER- UNDER SAMPLING
-    # TODO LAY OUT DATA IN A LOGICAL STREAM FORMAT FOR RETRIEVAL
 
     data = {"background": [], "background_augmented": [], "label": [], "augmented": []}
     total_label_samples = []
@@ -332,37 +353,44 @@ def sample_sequential_data_from_label(label, grouped_data_directories, sample_st
 
         should_oversample = strategy == "oversample"
 
+        data["streams"] = []
+        data["augmented_streams"] = []
+
         listed_source_files = listed_files.keys()
+        total_count_label_samples = 0
         for file_index, full_filename in enumerate( listed_source_files ):
             all_sample_streams = load_sequential_wav_data_from_srt(listed_files[full_filename], full_filename, input_type, should_oversample)
             augmented_sample_streams = load_sequential_wav_data_from_srt(listed_files[full_filename], full_filename, input_type, should_oversample, True)
 
-            #for sample in label_samples:
-            #    total_label_samples.append([full_filename, sample])
+            data["streams"].extend(all_sample_streams)
+            data["augmented_streams"].extend(augmented_sample_streams)
+        
+        # Count the total label samples for over- and undersampling
+        for stream in data["streams"]:
+            for stream_index, stream_frame in enumerate(stream):
+                if stream_index > sequence_length - 1 and stream_frame[1] == label:
+                    total_count_label_samples += 1
 
-            #augmented_samples = load_wav_data_from_srt(listed_files[full_filename], full_filename, input_type, should_oversample, True, sequence_length=sequence_length)
-            #for augmented_sample in augmented_samples:
-            #    total_augmented_samples.append([full_filename, augmented_sample])
-
-            #background_samples = load_wav_data_from_srt(listed_files[full_filename], full_filename, input_type, False, False, True, sequence_length=sequence_length)
-            #for background_sample in background_samples:
-            #    total_background_samples.append([full_filename, background_sample])
-
-            #augmented_background_samples = load_wav_data_from_srt(listed_files[full_filename], full_filename, input_type, True, False, True, sequence_length=sequence_length)
-            #for augmented_background_sample in augmented_background_samples:
-            #    total_augmented_background_samples.append([full_filename, augmented_background_sample])
-
-        #seed = round(time.time() * 1000)
+        seed = round(time.time() * 1000)
 
         # Truncate the sample data randomly, but ensure the seed is the same so that the augmented data matches the non-augmented data index
-        #if strategy in ["oversample", "undersample"] and len(total_label_samples) > truncate_after:
-        #    random.seed(seed)
-        #    total_label_samples = random.sample(total_label_samples, truncate_after)
-        #    random.seed(seed)
-        #    total_augmented_samples = random.sample(total_augmented_samples, truncate_after)
+        if strategy in ["oversample", "undersample"] and total_count_label_samples > truncate_after:
+            print( "TODO SPLIT STREAMS ACCORDING TO DATA FOR AUGMENTED AND REGULAR" )
 
-    #data["label"] = total_label_samples
-    #data["augmented"] = total_augmented_samples
-    #data["background"] = total_background_samples
-    #data["background_augmented"] = total_augmented_background_samples
+    for stream_index, stream in enumerate(data["streams"]):
+        total_stream = []
+        for stream_frame_index, stream_frame in enumerate(stream):
+            total_stream.append([stream_index, stream_frame_index, stream_frame[1]])
+
+            if stream_frame_index > sequence_length - 1:
+                last_sequence_length_frames = total_stream[-sequence_length:]
+
+                if stream_frame[1] == label:
+                    data["label"].append(last_sequence_length_frames)
+                    data["augmented"].append(last_sequence_length_frames)
+
+                elif stream_frame[1] == BACKGROUND_LABEL:
+                    data["background"].append(last_sequence_length_frames)
+                    data["background_augmented"].append(last_sequence_length_frames)
+
     return data
