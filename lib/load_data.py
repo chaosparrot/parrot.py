@@ -7,7 +7,7 @@ import os
 import warnings
 from lib.machinelearning import *
 from lib.srt import count_total_frames, count_total_silence_frames
-from lib.wav import load_wav_files_with_srts, load_wav_data_from_srt
+from lib.wav import load_wav_files_with_srts, load_wav_data_from_srt, load_sequential_wav_data_from_srt
 
 def get_grouped_data_directories( labels ):
     # If the microphone separator setting is set use that to split directory names into categories/labels.
@@ -125,7 +125,7 @@ def rebalance_sampling_strategies_for_memory(sampling_strategies):
     
     return sampling_strategies
 
-def sample_data_from_label(label, grouped_data_directories, sample_strategies, input_type):
+def get_listed_files_from_label(label, grouped_data_directories):
     warnings.filterwarnings("ignore", "n_fft=2048 is too small for input signal")
     directories = grouped_data_directories[ label ]
 
@@ -160,6 +160,10 @@ def sample_data_from_label(label, grouped_data_directories, sample_strategies, i
                         srt_file = possible_srt_file
             
             listed_files[os.path.join(source_directory, source_file)] = os.path.join(segments_directory, srt_file)
+    return listed_files
+
+def sample_data_from_label(label, grouped_data_directories, sample_strategies, input_type):
+    listed_files = get_listed_files_from_label(label, grouped_data_directories)
     listed_files_size = len( listed_files )
     
     data = {"background": [], "background_augmented": [], "label": [], "augmented": []}
@@ -182,36 +186,29 @@ def sample_data_from_label(label, grouped_data_directories, sample_strategies, i
             return data
         else:
             print( f"Loading in {label}" )
-        
+
         should_oversample = strategy == "oversample"
-        
+
         listed_source_files = listed_files.keys()
         for file_index, full_filename in enumerate( listed_source_files ):
-            label_samples = load_wav_data_from_srt(listed_files[full_filename], full_filename, input_type, should_oversample)
+            label_samples = load_wav_data_from_srt(listed_files[full_filename], full_filename, input_type, should_oversample, sequence_length=sequence_length)
             for sample in label_samples:
                 total_label_samples.append([full_filename, sample])
 
-            augmented_samples = load_wav_data_from_srt(listed_files[full_filename], full_filename, input_type, should_oversample, True)
+            augmented_samples = load_wav_data_from_srt(listed_files[full_filename], full_filename, input_type, should_oversample, True, sequence_length=sequence_length)
             for augmented_sample in augmented_samples:
                 total_augmented_samples.append([full_filename, augmented_sample])
 
-            background_samples = load_wav_data_from_srt(listed_files[full_filename], full_filename, input_type, False, False, True)
+            background_samples = load_wav_data_from_srt(listed_files[full_filename], full_filename, input_type, False, False, True, sequence_length=sequence_length)
             for background_sample in background_samples:
                 total_background_samples.append([full_filename, background_sample])
             
-            augmented_background_samples = load_wav_data_from_srt(listed_files[full_filename], full_filename, input_type, True, False, True)
+            augmented_background_samples = load_wav_data_from_srt(listed_files[full_filename], full_filename, input_type, True, False, True, sequence_length=sequence_length)
             for augmented_background_sample in augmented_background_samples:
                 total_augmented_background_samples.append([full_filename, augmented_background_sample])
 
         seed = round(time.time() * 1000)
 
-        # Truncate the background label samples
-        #if BACKGROUND_LABEL in sample_strategies and len(total_background_samples) > sample_strategies[BACKGROUND_LABEL]["sample_from_each"]:
-        #    random.seed(seed)
-        #    total_background_samples = random.sample(total_background_samples, sample_strategies[BACKGROUND_LABEL]["sample_from_each"])
-        #    random.seed(seed)
-        #    total_augmented_background_samples = random.sample(total_augmented_background_samples, sample_strategies[BACKGROUND_LABEL]["sample_from_each"])
-        
         # Truncate the sample data randomly, but ensure the seed is the same so that the augmented data matches the non-augmented data index
         if strategy in ["oversample", "undersample"] and len(total_label_samples) > truncate_after:
             random.seed(seed)
@@ -278,3 +275,94 @@ def load_pytorch_data( filtered_data_directory_names, input_type):
         "data": dataset,
         "augmented": augmented
     }
+
+def load_sequential_pytorch_data( filtered_data_directory_names, input_type, sequence_length = 3):
+    import torch
+
+    grouped_data_directories = get_grouped_data_directories( filtered_data_directory_names )
+    sample_strategies = generate_data_balance_strategy_map(grouped_data_directories )
+
+    dataset = {}
+    augmented = {}
+    dataset[BACKGROUND_LABEL] = []
+    augmented[BACKGROUND_LABEL] = []
+    for label in grouped_data_directories:
+        if label != BACKGROUND_LABEL:
+            data_sample = sample_sequential_data_from_label( label, grouped_data_directories, sample_strategies, input_type, sequence_length=sequence_length)
+            # TODO SPLIT INTO AUGMENTED AND DATA
+            return
+            #dataset[label] = [[x[0], torch.tensor(x[1]).float()] for x in data_sample["label"]]
+            #augmented[label] =[[x[0], torch.tensor(x[1]).float()] for x in data_sample["augmented"]]
+            #dataset[BACKGROUND_LABEL].extend([[x[0], torch.tensor(x[1]).float()] for x in data_sample["background"]])
+            #augmented[BACKGROUND_LABEL].extend([[x[0], torch.tensor(x[1]).float()] for x in data_sample["background_augmented"]])
+
+    return {
+        "data": dataset,
+        "augmented": augmented
+    }
+
+def sample_sequential_data_from_label(label, grouped_data_directories, sample_strategies, input_type, sequence_length=1):
+    listed_files = get_listed_files_from_label(label, grouped_data_directories)
+    listed_files_size = len( listed_files )
+
+    # TODO USE SEQUENCE LENGTH!
+    # TODO PROPER SAMPLE TRUNCATING FOR OVER- UNDER SAMPLING
+    # TODO LAY OUT DATA IN A LOGICAL STREAM FORMAT FOR RETRIEVAL
+
+    data = {"background": [], "background_augmented": [], "label": [], "augmented": []}
+    total_label_samples = []
+    total_augmented_samples = []
+    total_background_samples = []
+    total_augmented_background_samples = []
+
+    if label in sample_strategies:
+        strategy = sample_strategies[label]["strategy"]
+        truncate_after = sample_strategies[label]["truncate_after"]
+        if strategy == "oversample":
+            print( f"Loading in {label} using oversampling: +" + str(abs(round(sample_strategies[label]["total_loaded"] / sample_strategies[label]["total_size"] * 100) - 100)) + "%" )
+        elif strategy == "undersample":
+            print( f"Loading in {label} using undersampling: -" + str(abs(round(sample_strategies[label]["total_loaded"] / sample_strategies[label]["total_size"] * 100) - 100)) + "%" )
+        elif strategy == "background":
+            print( f"Loading in {label} by sampling from other labels" )
+
+            # Early return for background loading as we do that during other loading sequences
+            return data
+        else:
+            print( f"Loading in {label}" )
+
+        should_oversample = strategy == "oversample"
+
+        listed_source_files = listed_files.keys()
+        for file_index, full_filename in enumerate( listed_source_files ):
+            all_sample_streams = load_sequential_wav_data_from_srt(listed_files[full_filename], full_filename, input_type, should_oversample)
+            augmented_sample_streams = load_sequential_wav_data_from_srt(listed_files[full_filename], full_filename, input_type, should_oversample, True)
+
+            #for sample in label_samples:
+            #    total_label_samples.append([full_filename, sample])
+
+            #augmented_samples = load_wav_data_from_srt(listed_files[full_filename], full_filename, input_type, should_oversample, True, sequence_length=sequence_length)
+            #for augmented_sample in augmented_samples:
+            #    total_augmented_samples.append([full_filename, augmented_sample])
+
+            #background_samples = load_wav_data_from_srt(listed_files[full_filename], full_filename, input_type, False, False, True, sequence_length=sequence_length)
+            #for background_sample in background_samples:
+            #    total_background_samples.append([full_filename, background_sample])
+
+            #augmented_background_samples = load_wav_data_from_srt(listed_files[full_filename], full_filename, input_type, True, False, True, sequence_length=sequence_length)
+            #for augmented_background_sample in augmented_background_samples:
+            #    total_augmented_background_samples.append([full_filename, augmented_background_sample])
+
+        #seed = round(time.time() * 1000)
+
+        # Truncate the sample data randomly, but ensure the seed is the same so that the augmented data matches the non-augmented data index
+        #if strategy in ["oversample", "undersample"] and len(total_label_samples) > truncate_after:
+        #    random.seed(seed)
+        #    total_label_samples = random.sample(total_label_samples, truncate_after)
+        #    random.seed(seed)
+        #    total_augmented_samples = random.sample(total_augmented_samples, truncate_after)
+
+    #data["label"] = total_label_samples
+    #data["augmented"] = total_augmented_samples
+    #data["background"] = total_background_samples
+    #data["background_augmented"] = total_augmented_background_samples
+    return data

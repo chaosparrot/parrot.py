@@ -4,7 +4,7 @@ from lib.machinelearning import feature_engineering_raw
 from .srt import parse_srt_file
 import numpy as np
 import audioop
-from typing import List
+from typing import List,Tuple
 import os
 import time
 import math
@@ -134,3 +134,78 @@ def load_wav_data_from_srt(srt_file: str, source_file: str, feature_engineering_
                             keep_collecting = False
     
     return wav_file_data
+
+# Load the wav data as a single sequential stream
+# With the labels on each frame
+# To save on memory later during training
+# [
+#     [
+#       [[1.0,....], "background"],
+#       [[0.8,....], "label"],
+#     ], even stream - Starting at frame 0 - next frame being 2
+#     [ ], uneven stream - Starting at frame 1 - next frame being 3
+# ]
+def load_sequential_wav_data_from_srt(srt_file: str, source_file: str, feature_engineering_type = TYPE_FEATURE_ENGINEERING_NORM_MFSC, with_offset = True, should_augment=False) -> List[List[Tuple[List[float], str]]]:
+    wf = wave.open(source_file, 'rb')
+    frame_rate = wf.getframerate()
+    number_channels = wf.getnchannels()
+    total_frames = wf.getnframes()
+    frames_to_read = round( frame_rate * RECORD_SECONDS / SLIDING_WINDOW_AMOUNT )
+    ms_per_frame = math.floor(RECORD_SECONDS / SLIDING_WINDOW_AMOUNT * 1000)
+
+    # If offsets are required - We seek half a frame behind the expected frame to get more data from a different location
+    halfframe_offset = round( frames_to_read * number_channels * 0.5 )
+    start_offsets = [0, -halfframe_offset] if with_offset else [0]
+
+    transition_events = parse_srt_file(srt_file, ms_per_frame)
+    if len(transition_events) < 2:
+        print( "Empty .SRT file for " + source_file + " - Consider deleting " + srt_file + " to resegment the audio file" )
+
+    streams = []
+    for offset in start_offsets:
+        audioFrames = []
+        stream = []
+        wf.setpos(offset + frames_to_read)
+        current_transition_event_index = 0
+        total_frames_to_read = total_frames / frames_to_read
+        keep_collecting = True
+        frame_end_index = 0
+        while keep_collecting:
+            try:
+                raw_wav = wf.readframes(frames_to_read * number_channels)
+                frame_end_index += 1
+            except RuntimeError:
+                raw_wav = ""
+                print( "Error loading in all of the .SRT file for " + source_file + " - Consider deleting " + srt_file + " to resegment the audio file" )
+                keep_collecting = False
+
+            # Reached the end of wav - do not keep collecting
+            if (len(raw_wav) != SLIDING_WINDOW_AMOUNT * frames_to_read * number_channels ):
+                keep_collecting = False
+                break
+
+            # Detect if we have transitioned over to the next event
+            current_ms = ms_per_frame * frame_end_index
+            if current_transition_event_index + 1 < len(transition_events) and current_ms > transition_events[current_transition_event_index + 1].start_ms:
+                current_transition_event_index += 1
+            current_label = transition_events[current_transition_event_index].label
+
+            raw_wav = resample_audio(raw_wav, frame_rate, number_channels)
+            audioFrames.append(raw_wav)
+            if( len( audioFrames ) >= SLIDING_WINDOW_AMOUNT ):
+                audioFrames = audioFrames[-SLIDING_WINDOW_AMOUNT:]
+
+                byteString = b''.join(audioFrames)
+                wave_data = np.frombuffer( byteString, dtype=np.int16 )
+                if should_augment and PYTORCH_AVAILABLE:
+                    wave_data = augment_wav_data(wave_data, RATE)
+
+                # Add the label for the current frame
+                stream.append([feature_engineering_raw(wave_data, RATE, 0, RECORD_SECONDS, feature_engineering_type)[0], current_label])
+
+                if wf.tell() >= ( total_frames_to_read * frames_to_read ) + offset:
+                    keep_collecting = False
+        streams.append(stream)
+    wf.close()
+
+    return streams

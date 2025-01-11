@@ -9,7 +9,7 @@ from lib.machinelearning import *
 from sklearn.neural_network import *
 from lib.combine_models import define_settings, get_current_default_settings
 from lib.audio_model import AudioModel
-from lib.load_data import load_sklearn_data, load_pytorch_data
+from lib.load_data import load_sklearn_data, load_pytorch_data, load_sequential_pytorch_data
 
 def learn_data():
     dir_path = os.path.join( os.path.dirname( os.path.dirname( os.path.realpath(__file__)) ), DATASET_FOLDER)    
@@ -37,6 +37,7 @@ def learn_data():
     print( "- [R] Random Forest ( SKLEARN - For quick verification )" )
     if( PYTORCH_AVAILABLE ):
         print( "- [A] Audio Net ( Neural net in Pytorch - Required by TalonVoice )" )
+        print( "- [S] Sequential Audio Net ( EXPERIMENTAL Gru net in Pytorch )" )
     print( "- [M] Multi Layer Perceptron ( Neural net in SKLEARN )" )
     print( "- [X] Exit the learning" )
 
@@ -75,16 +76,38 @@ def learn_data():
         # Import pytorch related thins here to make sure pytorch isn't a hard requirement
         from lib.audio_net import AudioNetTrainer
         from lib.audio_dataset import AudioDataset
-        
+
         print( "--------------------------" )
         dataset_labels = determine_labels( dir_path )
         print( "--------------------------" )
-        data = load_pytorch_data(dataset_labels, settings["FEATURE_ENGINEERING_TYPE"])        
+        data = load_pytorch_data(dataset_labels, settings["FEATURE_ENGINEERING_TYPE"])
         dataset = AudioDataset( data )
         trainer = AudioNetTrainer(dataset, net_count, settings)
-        
+
         print( "Learning the data..." )
         trainer.train( clf_filename )
+    elif( model_type.lower() == "s" and PYTORCH_AVAILABLE ):
+        print( "Selected Sequential Audio Net!")
+        print( "How many nets do you wish to train at the same time? ( Default is 3 )" )
+        net_count = input("")
+        if ( net_count == "" ):
+            net_count = 3
+        else:
+            net_count = int(net_count)
+
+        # Import pytorch related thins here to make sure pytorch isn't a hard requirement
+        from lib.audio_net import AudioNetTrainer
+        from lib.audio_dataset import AudioDataset
+
+        print( "--------------------------" )
+        dataset_labels = determine_labels( dir_path )
+        print( "--------------------------" )
+        data = load_sequential_pytorch_data(dataset_labels, settings["FEATURE_ENGINEERING_TYPE"])
+        #dataset = AudioDataset( data )
+        #trainer = AudioNetTrainer(dataset, net_count, settings)
+
+        #print( "Learning the data..." )
+        #trainer.train( clf_filename )
 
 def fit_sklearn_classifier( classifier,  dir_path, clf_filename, settings ):    
     print( "--------------------------" )
