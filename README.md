@@ -69,3 +69,33 @@ I will expand this document once I learn more during the development. In the mea
 
 If you desire to use Parrot.PY inside of Talon, take a look at this page explaining the [integration with Talon Voice](docs/TALON_VOICE.md).
 For examples and explanation of how to interact with a running Parrot instance from your own programs, read up on [interfacing with other programs](docs/INTERFACING.md).
+
+# TODOs for GRU net training
+
+I want to start making Parrot smarter ( by including data from previous segments for the recognition ).
+
+[ ]: Data loading
+  [x]: Load in sequential streams of data per file
+  [ ]: Truncate random sequences for undersampling
+  [ ]: Bundle indices together in sequence for learning transitions
+  [ ]: Load torch data from stream using file and item indices
+[ ]: Sequential Audio Net
+  [ ]: Create a class with GRU nets
+  [ ]: Test to make sure that it can handle streams of data without resetting its hidden layer
+  [ ]: Test CPU usage for Audio net and Sequential Audio net for recording
+[ ]: Dataset creation
+  [ ]: Test if it can do train / validation splits properly per net
+  [ ]: Load sequences of data per batch
+  [ ]: Test and tweak performance of loading
+  [ ]: Train Sequential Audio Net with it
+[ ]: Create test set and control
+  [ ]: Pick number of labels for testing
+  [ ]: Create a few ( 3 ) baseline wav recordings for testing
+  [ ]: Create a TRUE SRT file for the recordings
+  [ ]: Create a control model ( Regular combined AudioNets ) with N labels
+  [ ]: Run control model and create the SRT from the recognitions
+  [ ]: Note down the performance
+[ ]: Experiementation
+  [ ]: Create sequential models ( new arch ) with the same N labels and data as control model
+  [ ]: Run sequential models and create the SRT from the recognitions
+  [ ]: Compare results to TRUE SRT and control results to see if things improve
