@@ -74,11 +74,11 @@ For examples and explanation of how to interact with a running Parrot instance f
 
 I want to start making Parrot smarter ( by including data from previous segments for the recognition ).
 
-- [ ] Data loading  
+- [x] Data loading  
   - [x] Load in sequential streams of data per file  
   - [x] Make a list of streams  
   - [x] Bundle indices together in sequence for learning transitions    
-  - [ ] Truncate random sequences for undersampling  
+  - [x] Truncate random sequences for undersampling  
   - [x] Normalize streams into a single list and increment indices  
 - [ ] Sequential Audio Net  
   - [ ] Create a class with GRU nets  

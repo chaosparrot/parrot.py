@@ -365,17 +365,63 @@ def sample_sequential_data_from_label(label, grouped_data_directories, sample_st
             data["streams"].extend(all_sample_streams)
             data["augmented_streams"].extend(augmented_sample_streams)
         
-        # Count the total label samples for over- and undersampling
-        for stream in data["streams"]:
-            for stream_index, stream_frame in enumerate(stream):
-                if stream_index > sequence_length - 1 and stream_frame[1] == label:
-                    total_count_label_samples += 1
+        # Collect the label events and count
+        # The total label samples for over- and undersampling
+        total_label_events = []
+        for stream_index, stream in enumerate(data["streams"]):
+            current_label_event = []            
+            for stream_frame_index, stream_frame in enumerate(stream):
+                if stream_frame[1] == label:
+                    if stream_frame_index > sequence_length - 1:
+                        total_count_label_samples += 1
+                    current_label_event.append([stream_index, stream_frame_index])
+                else:
+                    if len(current_label_event) > 0:
+                        total_label_events.append(current_label_event)
+                    current_label_event = []
+
+            if len(current_label_event) > 0:
+                total_label_events.append(current_label_event)
 
         seed = round(time.time() * 1000)
 
-        # Truncate the sample data randomly, but ensure the seed is the same so that the augmented data matches the non-augmented data index
+        # Remove events 
         if strategy in ["oversample", "undersample"] and total_count_label_samples > truncate_after:
-            print( "TODO SPLIT STREAMS ACCORDING TO DATA FOR AUGMENTED AND REGULAR" )
+            # Shuffle the total events randomly so our later removal is randomly sampled
+            random.shuffle(total_label_events)
+
+            # Remove events one by one until the total count is below the truncated threshold
+            removed_events = []
+            while total_count_label_samples > truncate_after:
+                removed_event = total_label_events.pop()
+                removed_events.append(removed_event)
+                total_count_label_samples -= len(removed_event)
+
+            # Sort the events chronologically again so we can easily split streams
+            removed_events.sort(key = lambda event: (event[0][0] * 1000000) + event[0][1])
+
+            # Rebuild the streams and augmented streams by splitting up the existing ones
+            new_streams = []
+            new_augmented_streams = []
+            for stream_index, stream in enumerate(data["streams"]):
+                augmented_stream = data["augmented_streams"][stream_index]
+
+                all_removed_events_from_stream_index = [event for event in removed_events if event[0][0] == stream_index]
+                while len(all_removed_events_from_stream_index) > 0:
+                    last_event = all_removed_events_from_stream_index.pop()
+                    from_index = last_event[-1][1] + 1
+                    keep_until_index = last_event[0][1]
+
+                    # Keep the stream from the end of the event onward
+                    new_streams.append(stream[from_index:])
+                    new_augmented_streams.append(augmented_stream[from_index:])
+
+                    # Truncate the stream from the start of the deleted event onward
+                    stream = stream[:keep_until_index]
+                    augmented_stream = augmented_stream[:keep_until_index]
+
+            data["streams"] = new_streams
+            data["augmented_streams"] = new_augmented_streams
 
     for stream_index, stream in enumerate(data["streams"]):
         total_stream = []
