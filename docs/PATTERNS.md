@@ -28,7 +28,8 @@ What you can do to trigger a button based on hissing, would be a pattern that lo
 This is just fine to start off with, however, you will quickly find some problems. As the model isn't that sophisticated, it will recognize some sounds that it doesn't know as hissing.
 Maybe you were just sliding a mouse over a mouse mat, or you were brushing your hand through your hair, and the model might think that is a hissing sound, because it doesn't know those other sounds.
 
-The easiest fix for that is the 'power' and 'intensity' thresholds, which are basically just indications of how loud the sound needs to be. I would recommend using the 'power' threshold, as it is a more accurate representation of loudness.
+The easiest fix for that is the 'power' threshold, which are basically just indications of how loud the sound needs to be to activate. 
+
 When we change the threshold bit in the above example to this:
 ```
 	'threshold': {
@@ -36,7 +37,8 @@ When we change the threshold bit in the above example to this:
 		'power': 10000
 	}
 ```
-It will only detect action_one when the sound is louder than 10.000 . Loudness is affected by how loud the microphone is set up, and how close the microphone is to the source of the sound.
+
+It will only detect action_one when the sound reaches a power higher than 10.000. Power is affected by how sensitive the microphone is set up ( Input volume), and how close the microphone is to the source of the sound.
 In the case of brushing over your hair now, the sound will be very quiet, and thus not detect 'action_one'. This allows you to filter out a lot of different sounds that the microphone might pick up.
 
 Another threshold is 'frequency', which is a measurement of the tone of the sound frame. Let's make a new action for the whistling sound, action_two.
@@ -218,6 +220,16 @@ To understand how it works, its probably the easiest to see some examples of sou
 As you can see, we have successfully made sure action_one and action_five never overlap detection wise
 
 If you want to get fancy, you can even put these 'ratio' and 'below_ratio' thresholds in the continual thresholds area, but so far I haven't found a use for that yet
+
+### Notes on Talon Voice Integration
+
+In the Talon Voice integration, the patterns are set up slightly different, for example in the values used.
+
+Power, for example, is a different value and scale in Talon Voice than in Parrot. This is because during the development of the integration I made some fixes that were backwards incompatible with older versions of Parrot, so I kept the old calculation in place to make sure updating a parrot version wouldn't break existing users' set ups.
+
+Frequency thresholding is also done using F1 and F2 in Talon Voice, for the formant frequencies, while in parrot there is only frequency.
+
+This doesn't affect performance in either of the programs, just the values you need to use for thresholding.  
 
 ### Conclusion
 
