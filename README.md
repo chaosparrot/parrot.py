@@ -92,10 +92,10 @@ I want to start making Parrot smarter ( by including data from previous segments
   - [ ] Train Sequential Audio Net with it  
   - [ ] Test and tweak performance of loading    
 - [-] Create test set and control
-  - [x] Pick number of labels for testing  ( Sh, S, Ah, Ooh, Cluck, Dental, Pop )
-  - [ ] Create a baseline wav recording for testing  
-  - [ ] Create a TRUE SRT file for the recordings  
-  - [ ] Create a control model ( Regular combined AudioNets ) with N labels  ( Sh, S, Ah, Ooh, Cluck, Dental, Pop, Mm, Ff, Z )
+  - [x] Pick number of labels for testing  ( Sh, S, Ah, Ooh, Cluck, Palatal, Pop )
+  - [x] Create a baseline wav recording for testing  
+  - [x] Create a TRUE SRT file for the recordings  
+  - [ ] Create a control model ( Regular combined AudioNets ) with N labels  ( Sh, S, Ah, Ooh, Cluck, Palatal, Pop, Mm, Ff, Z )
   - [ ] Run control model and create the SRT from the recognitions  
   - [ ] Note down the performance  
 - [ ] Experimentation  
