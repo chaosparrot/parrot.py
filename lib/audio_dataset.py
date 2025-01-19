@@ -1,10 +1,6 @@
 import torch
-from torch.utils.data import Dataset, DataLoader
-import os
+from torch.utils.data import Dataset
 from lib.machinelearning import *
-import numpy as np
-import random
-import math
 
 class AudioDataset(Dataset):
 

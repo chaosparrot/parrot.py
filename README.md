@@ -80,24 +80,25 @@ I want to start making Parrot smarter ( by including data from previous segments
   - [x] Bundle indices together in sequence for learning transitions    
   - [x] Truncate random sequences for undersampling  
   - [x] Normalize streams into a single list and increment indices  
-- [ ] Sequential Audio Net  
-  - [ ] Create a class with GRU nets  
+- [x] Sequential Audio Net  
+  - [x] Create a class with GRU nets  
   - [ ] Test to make sure that it can handle streams of data without resetting its hidden layer  
   - [ ] Test CPU usage for Audio net and Sequential Audio net for recording  
-- [ ] Dataset creation  
-  - [ ] Load torch data from stream using file and item indices  
-  - [ ] Test if it can do train / validation splits properly per net  
-  - [ ] Load sequences of data per batch  
-  - [ ] Test and tweak performance of loading  
+- [-] Dataset creation  
+  - [x] Load torch data from stream using file and item indices  
+  - [x] Test if it can do train / validation splits properly per net  
+  - [x] Load sequences of data per batch    
+  - [ ] Add pad_packed_sequence  
   - [ ] Train Sequential Audio Net with it  
-- [ ] Create test set and control
-  - [ ] Pick number of labels for testing  
-  - [ ] Create a few ( 3 ) baseline wav recordings for testing  
+  - [ ] Test and tweak performance of loading    
+- [-] Create test set and control
+  - [x] Pick number of labels for testing  ( Sh, S, Ah, Ooh, Cluck, Dental, Pop )
+  - [ ] Create a baseline wav recording for testing  
   - [ ] Create a TRUE SRT file for the recordings  
-  - [ ] Create a control model ( Regular combined AudioNets ) with N labels  
+  - [ ] Create a control model ( Regular combined AudioNets ) with N labels  ( Sh, S, Ah, Ooh, Cluck, Dental, Pop, Mm, Ff, Z )
   - [ ] Run control model and create the SRT from the recognitions  
   - [ ] Note down the performance  
-- [ ] Experiementation  
+- [ ] Experimentation  
   - [ ] Create sequential models ( new arch ) with the same N labels and data as control model  
   - [ ] Run sequential models and create the SRT from the recognitions  
   - [ ] Compare results to TRUE SRT and control results to see if things improve  

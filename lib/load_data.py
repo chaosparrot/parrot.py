@@ -325,16 +325,10 @@ def load_sequential_pytorch_data( filtered_data_directory_names, input_type, seq
 
 def sample_sequential_data_from_label(label, grouped_data_directories, sample_strategies, input_type, sequence_length=1):
     listed_files = get_listed_files_from_label(label, grouped_data_directories)
-    listed_files_size = len( listed_files )
 
     # TODO - IMPROVE DATA LOADING SPEED? Currently takes twice as long
-    # TODO PROPER SAMPLE TRUNCATING FOR OVER- UNDER SAMPLING
 
     data = {"background": [], "background_augmented": [], "label": [], "augmented": []}
-    total_label_samples = []
-    total_augmented_samples = []
-    total_background_samples = []
-    total_augmented_background_samples = []
 
     if label in sample_strategies:
         strategy = sample_strategies[label]["strategy"]

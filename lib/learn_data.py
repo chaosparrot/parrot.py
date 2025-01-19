@@ -96,18 +96,18 @@ def learn_data():
             net_count = int(net_count)
 
         # Import pytorch related thins here to make sure pytorch isn't a hard requirement
-        from lib.audio_net import AudioNetTrainer
-        from lib.audio_dataset import AudioDataset
+        from lib.sequential_audio_net import SequentialAudioNetTrainer
+        from lib.sequential_audio_dataset import SequentialAudioDataset
 
         print( "--------------------------" )
         dataset_labels = determine_labels( dir_path )
         print( "--------------------------" )
         data = load_sequential_pytorch_data(dataset_labels, settings["FEATURE_ENGINEERING_TYPE"])
-        #dataset = AudioDataset( data )
-        #trainer = AudioNetTrainer(dataset, net_count, settings)
+        dataset = SequentialAudioDataset( data )
+        trainer = SequentialAudioNetTrainer(dataset, net_count, settings)
 
-        #print( "Learning the data..." )
-        #trainer.train( clf_filename )
+        print( "Learning the data..." )
+        trainer.train( clf_filename )
 
 def fit_sklearn_classifier( classifier,  dir_path, clf_filename, settings ):    
     print( "--------------------------" )

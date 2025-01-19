@@ -123,7 +123,7 @@ class AudioNetTrainer:
         
         input_size = 120
         
-        with open(REPLAYS_FOLDER + "/model_training_" + filename + str(starttime) + ".csv", 'a', newline='') as csvfile:	
+        with open(REPLAYS_FOLDER + "/model_training_" + filename + str(starttime) + ".csv", 'a', newline='') as csvfile:
             headers = ['epoch', 'loss', 'avg_validation_accuracy']
             headers.extend(self.dataset_labels)
             writer = csv.DictWriter(csvfile, fieldnames=headers, delimiter=',')
