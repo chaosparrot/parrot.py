@@ -203,8 +203,11 @@ def connect_model( clf_filename, classifier_map, model_type, during_training = F
     elif( model_type == "ensemble" ):
         classifier = EnsembleClassifier( classifier_map )
     elif( model_type == "ensemble_torch" ):
-        from lib.torch_ensemble_classifier import TorchEnsembleClassifier    
-        classifier = TorchEnsembleClassifier( classifier_map )        
+        from lib.torch_ensemble_classifier import TorchEnsembleClassifier
+        classifier = TorchEnsembleClassifier( classifier_map )
+    elif( model_type == "ensemble_torch_sequence" ):
+        from lib.torch_ensemble_classifier import TorchSequenceEnsembleClassifier
+        classifier = TorchSequenceEnsembleClassifier( classifier_map )
 
     if (settings == None):
         settings = define_settings( get_current_default_settings() )

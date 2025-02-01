@@ -34,14 +34,14 @@ class TorchEnsembleClassifier:
             self.classes_ = state_dict['labels']
             if ('input_size' in state_dict):
                 input_size = state_dict['input_size']
-            model = TinyAudioNet(input_size, len(state_dict['labels']))
+            model = self.get_model(input_size, len(state_dict['labels']))
             model.load_state_dict(state_dict['state_dict'])
             model.to( self.device )
             model.double()
             model.eval()
             self.classifiers[key] = model
             classifierArray.append( key )
-        self.combinedClassifier = TinyAudioNetEnsemble( list(self.classifiers.values()) )
+        self.combinedClassifier = self.get_combined_model( list(self.classifiers.values()) )
         self.combinedClassifier.eval()
         self.combinedClassifier.to( self.device )
                                     
@@ -52,7 +52,13 @@ class TorchEnsembleClassifier:
             predictions.append( self.predict_single_proba(data_row) )
                 
         return np.asarray( predictions )
-            
+
+    def get_model(self, input_size, label_length):
+        return TinyAudioNet(input_size, label_length)
+
+    def get_combined_model(self, classifiers):
+        return TinyAudioNetEnsemble( classifiers )
+
     # Predict a single data row
     # This will ask all the classifiers for a prediction
     # The one with the highest prediction wins
@@ -67,3 +73,11 @@ class TorchEnsembleClassifier:
             totalProbabilities = self.combinedClassifier( data_row ).cpu()
             
         return np.asarray( totalProbabilities[0], dtype=np.float64 )
+
+class TorchSequenceEnsembleClassifier(TorchEnsembleClassifier):
+    
+    def get_model(self, input_size, label_length):
+        return TinySequentialAudioNet(input_size, label_length)
+
+    def get_combined_model(self, classifiers):
+        return TinySequentialAudioNetEnsemble( classifiers )

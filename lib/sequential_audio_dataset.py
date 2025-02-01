@@ -57,10 +57,9 @@ class SequentialAudioDataset(Dataset):
             item.append(streams[sample_frame[0]][sample_frame[1]]) 
             idx_tags.append(sample_frame[2])
 
-        labels = torch.from_numpy(np.array(idx_tags, dtype=np.int16))
+        #labels = torch.from_numpy(np.array(idx_tags, dtype=np.int16))
         torch_item = torch.stack(item)
-        print( torch_item.shape )
-        return torch_item, labels
+        return torch_item, torch.tensor(idx_tags[-1])
 
     def get_labels(self):
         return self.labels
