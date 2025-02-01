@@ -80,7 +80,7 @@ class AudioNetTrainer:
     device = torch.device("cuda" if use_cuda else "cpu")
     dataset = False
     train_indices = []
-    input_size = 120
+    input_size = 160
     
     def __init__(self, dataset, net_count = 1, audio_settings = None):
         self.net_count = net_count
@@ -121,8 +121,6 @@ class AudioNetTrainer:
         starttime = int(time.time())
         combined_model = TinyAudioNetEnsemble(self.nets).to(self.device)
         
-        input_size = 120
-        
         with open(REPLAYS_FOLDER + "/model_training_" + filename + str(starttime) + ".csv", 'a', newline='') as csvfile:
             headers = ['epoch', 'loss', 'avg_validation_accuracy']
             headers.extend(self.dataset_labels)
@@ -139,7 +137,6 @@ class AudioNetTrainer:
                     
                     i = 0
                     with torch.set_grad_enabled(True):
-                        st_batch= time.time()
                         for local_batch, local_labels in self.train_loaders[j]:
                             # Transfer to GPU
                             local_batch, local_labels = local_batch.to(self.device), local_labels.to(self.device)

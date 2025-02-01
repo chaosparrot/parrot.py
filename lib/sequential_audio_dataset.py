@@ -1,4 +1,5 @@
 import torch
+import numpy as np
 from torch.utils.data import Dataset
 from lib.machinelearning import *
 
@@ -28,7 +29,12 @@ class SequentialAudioDataset(Dataset):
                     numbered_sample.append([sample_frame[0], sample_frame[1], index if sample_frame[2] == label else background_index])
                 self.samples.append(numbered_sample)
             for augmented_sample in pytorch_data["augmented"][label]:
-                self.augmented_samples.append([index, augmented_sample])
+
+                # Replace the string variant of labels to the index used
+                numbered_sample = []
+                for sample_frame in augmented_sample:
+                    numbered_sample.append([sample_frame[0], sample_frame[1], index if sample_frame[2] == label else background_index])
+                self.augmented_samples.append(numbered_sample)
 
     def set_training(self, training):
         self.training = training
@@ -42,7 +48,7 @@ class SequentialAudioDataset(Dataset):
             self.random_tensor.uniform_(0, 1, generator=self.generator)
             if self.random_tensor.item() >= 0.9:
                 self.transform_item_to_stream(self.augmented_samples[idx], self.augmented_streams)
-        return self.transform_item_to_stream(self.samples[idx], self.streams)
+        return self.transform_item_to_stream(self.samples[idx], self.streams) 
 
     def transform_item_to_stream(self, sample, streams):
         item = []
@@ -50,7 +56,11 @@ class SequentialAudioDataset(Dataset):
         for sample_frame in sample:
             item.append(streams[sample_frame[0]][sample_frame[1]]) 
             idx_tags.append(sample_frame[2])
-        return item, idx_tags
+
+        labels = torch.from_numpy(np.array(idx_tags, dtype=np.int16))
+        torch_item = torch.stack(item)
+        print( torch_item.shape )
+        return torch_item, labels
 
     def get_labels(self):
         return self.labels

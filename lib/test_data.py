@@ -27,7 +27,7 @@ def test_data( with_intro ):
 
     available_replays = []
     for fileindex, file in enumerate(os.listdir( REPLAYS_FOLDER )):
-        if ( file.endswith(".csv") ):
+        if ( file.endswith(".csv") and not (file.startswith("model_training_") or file.startswith("sequential_model_training_")) ):
             available_replays.append( file )
             
     available_sounds = []
@@ -46,10 +46,6 @@ def test_data( with_intro ):
         print(" - [U] for analyzing a set of recordings for statistical purposes")
         print(" - [M] for analyzing the accuracy of recordings on a specific model")        
         print(" - [X] for exiting analysis mode")
-        
-    #learn_data = pd.read_csv( 'model_training_bronze_league_1.pkl1578823389.csv', skiprows=0, header=0)
-    #for index in range(0,199):
-    #    plot_bars( learn_data, index )
     
     analyze_replay_or_audio( available_models, available_replays, available_sounds )
         

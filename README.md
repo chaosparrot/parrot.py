@@ -88,14 +88,14 @@ I want to start making Parrot smarter ( by including data from previous segments
   - [x] Load torch data from stream using file and item indices  
   - [x] Test if it can do train / validation splits properly per net  
   - [x] Load sequences of data per batch    
-  - [ ] Add pad_packed_sequence  
+  - [-] Add pad_packed_sequence  
   - [ ] Train Sequential Audio Net with it  
-  - [ ] Test and tweak performance of loading    
+  - [ ] Test and tweak performance of loading  
 - [-] Create test set and control
   - [x] Pick number of labels for testing  ( Sh, S, Ah, Ooh, Cluck, Palatal, Pop )
   - [x] Create a baseline wav recording for testing  
   - [x] Create a TRUE SRT file for the recordings  
-  - [ ] Create a control model ( Regular combined AudioNets ) with N labels  ( Sh, S, Ah, Ooh, Cluck, Palatal, Pop, Mm, Ff, Z )
+  - [x] Create a control model ( Regular combined AudioNets ) with N labels  ( Sh, S, Ah, Ooh, Cluck, Palatal, Pop, Mm, Ff, Z )
   - [ ] Run control model and create the SRT from the recognitions  
   - [ ] Note down the performance  
 - [ ] Experimentation  
