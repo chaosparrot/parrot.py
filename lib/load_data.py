@@ -356,8 +356,9 @@ def sample_sequential_data_from_label(label, grouped_data_directories, sample_st
             all_sample_streams = load_sequential_wav_data_from_srt(listed_files[full_filename], full_filename, input_type, should_oversample)
             augmented_sample_streams = load_sequential_wav_data_from_srt(listed_files[full_filename], full_filename, input_type, should_oversample, True)
 
-            data["streams"].extend(all_sample_streams)
-            data["augmented_streams"].extend(augmented_sample_streams)
+            if len(all_sample_streams) > 0:
+                data["streams"].extend(all_sample_streams)
+                data["augmented_streams"].extend(augmented_sample_streams)
         
         # Collect the label events and count
         # The total label samples for over- and undersampling

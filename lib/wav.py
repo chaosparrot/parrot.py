@@ -92,7 +92,7 @@ def load_wav_data_from_srt(srt_file: str, source_file: str, feature_engineering_
     transition_events = parse_srt_file(srt_file, ms_per_frame)
     if len(transition_events) < 2:
         print( "Empty .SRT file for " + source_file + " - Consider deleting " + srt_file + " to resegment the audio file" )
-        
+
     for index, transition_event in enumerate(transition_events):
         next_event_index = total_frames / frames_to_read if index + 1 >= len(transition_events) else transition_events[index + 1].start_index
         audioFrames = []
@@ -160,6 +160,7 @@ def load_sequential_wav_data_from_srt(srt_file: str, source_file: str, feature_e
     transition_events = parse_srt_file(srt_file, ms_per_frame)
     if len(transition_events) < 2:
         print( "Empty .SRT file for " + source_file + " - Consider deleting " + srt_file + " to resegment the audio file" )
+        return []
 
     streams = []
     for offset in start_offsets:
