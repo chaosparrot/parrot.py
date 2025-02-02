@@ -8,6 +8,7 @@ import numpy as np
 import copy
 import torch
 from lib.audio_net import TinyAudioNet, TinyAudioNetEnsemble
+from lib.sequential_audio_net import TinySequentialAudioNet, TinySequentialAudioNetEnsemble
 
 torch.set_num_threads(1)
 torch.backends.cudnn.benchmark = True

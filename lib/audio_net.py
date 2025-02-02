@@ -24,7 +24,7 @@ class TinyAudioNet(nn.Module):
         self.selu = nn.SELU()
         self.dropOut = nn.Dropout(p=0.15)
         
-        self.batchNorm = nn.BatchNorm1d(inputsize)        
+        self.batchNorm = nn.BatchNorm1d(inputsize)
         self.fc1 = nn.Linear(inputsize, 512)
         self.fc2 = nn.Linear(512, 512)
         self.fc3 = nn.Linear(512, 512)
@@ -72,7 +72,7 @@ class AudioNetTrainer:
     validation_loaders = []
     train_loaders = []
     criterion = nn.NLLLoss()
-    batch_size = 512
+    batch_size = 128
     validation_split = .2
     max_epochs = 300
     random_seeds = []

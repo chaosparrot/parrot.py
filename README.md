@@ -74,6 +74,19 @@ For examples and explanation of how to interact with a running Parrot instance f
 
 I want to start making Parrot smarter ( by including data from previous segments for the recognition ).
 
+Traditional audio net training on GPU
+31.56 - Loading + 2 labels 1 epoch including validation
+3.36 seconds per net epoch
+Sequential audio net training on GPU
+1:22.92 - Loading + 2 labels 1 epoch including validation
+17.73 seconds per net epoch
+Technically speaking 3 times as much data, so expected per epoch = 3x for the regular audio net
+Also a bit more epochs since we are also covering start and end.
+About 10ish more epochs, meaning 15% more, so we expect 3.5 times more
+It is more like 5 times as long now
+
+CPU usage is about the same, but the performance seems MUCH better than the regular audio net
+
 - [x] Data loading  
   - [x] Load in sequential streams of data per file  
   - [x] Make a list of streams  
@@ -82,15 +95,16 @@ I want to start making Parrot smarter ( by including data from previous segments
   - [x] Normalize streams into a single list and increment indices  
 - [x] Sequential Audio Net  
   - [x] Create a class with GRU nets  
-  - [ ] Test to make sure that it can handle streams of data without resetting its hidden layer  
-  - [ ] Test CPU usage for Audio net and Sequential Audio net for recording  
+  - [x] Test to make sure that it can handle streams of data without resetting its hidden layer   
+  - [x] Test CPU usage for Audio net and Sequential Audio net for recording  
 - [-] Dataset creation  
   - [x] Load torch data from stream using file and item indices  
   - [x] Test if it can do train / validation splits properly per net  
   - [x] Load sequences of data per batch    
-  - [-] Add pad_packed_sequence  
-  - [ ] Train Sequential Audio Net with it  
-  - [ ] Test and tweak performance of loading  
+  - [?] Add pad_packed_sequence  
+  - [x] Train Sequential Audio Net with it  
+  - [-] Test and tweak performance of loading  
+  - [ ] Research speeding up performance  
 - [-] Create test set and control
   - [x] Pick number of labels for testing  ( Sh, S, Ah, Ooh, Cluck, Palatal, Pop )
   - [x] Create a baseline wav recording for testing  

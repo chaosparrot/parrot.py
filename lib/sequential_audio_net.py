@@ -21,6 +21,7 @@ class TinySequentialAudioNet(nn.Module):
         self.gru_layers = 1
         self.hidden_dim = 256
         self.linear_dim = 512
+        self.is_validating = False
 
         self.only_logsoftmax = only_logsoftmax
         self.softmax = nn.Softmax(dim=-1)
@@ -33,25 +34,36 @@ class TinySequentialAudioNet(nn.Module):
         self.fc2 = nn.Linear(self.linear_dim, self.linear_dim)
         self.fc3 = nn.Linear(self.linear_dim, outputsize)
         self.h0 = None
-		
+
+    def validation(self, validation):
+        self.is_validating = validation
+
     def forward(self, x):
         outputs = []
         # TODO - SHOULD WE INSERT THE SEQUENCE OR ONE FRAME AT A TIME?
-        for sequence in x:
-            s, n = sequence.shape
-            out, h0 = self.rnn(sequence.unsqueeze(1), self.h0)
+        if self.training or self.is_validating:
+            for sequence in x:
+                s, n = sequence.shape
+                out, h0 = self.rnn(sequence.unsqueeze(1), self.h0)
+                self.h0 = h0
+                out = out.view(s, 1, self.gru_layers, self.hidden_dim)
+                out = out[-1, :, 0]
+                outputs.append(out.squeeze())
+
+                # Only reset the hidden state during training
+                # We want this to be a continuous sequence classifier
+                # In real time usage
+                self.reset_hidden()
+        # We work with streamed data when not training
+        else:
+            s, n = x.shape
+            out, h0 = self.rnn(x.unsqueeze(1), self.h0)
             self.h0 = h0
             out = out.view(s, 1, self.gru_layers, self.hidden_dim)
             out = out[-1, :, 0]
             outputs.append(out.squeeze())
 
-            # Only reset the hidden state during training
-            # We want this to be a continuous sequence classifier
-            # In real time usage
-            if self.training:
-                self.reset_hidden()
         outputs = torch.stack(outputs)
-
         x = self.dropOut(self.relu(self.fc1(outputs)))
         x = self.dropOut(self.relu(self.fc2(x)))
         x = self.fc3(x)
@@ -154,6 +166,7 @@ class SequentialAudioNetTrainer:
                 for j in range(self.net_count):
                     running_loss.append(0.0)
                     self.nets[j].train(True)
+                    self.nets[j].validation(False)
                     
                     i = 0
                     with torch.set_grad_enabled(True):
@@ -185,58 +198,59 @@ class SequentialAudioNetTrainer:
                                 print('[Net: %d, %d, %5d] loss: %.3f acc: %.3f' % (j + 1, epoch + 1, i + 1, (running_loss[j] / 10), correct_in_minibatch.item()/self.batch_size))
                                 running_loss[j] = 0.0
 
-                    epoch_loss = epoch_loss / ( self.dataset_size * (1 - self.validation_split) )
-                    print('Training loss: {:.4f}'.format(epoch_loss))
-                    print( "Validating..." )
-                    for j in range(self.net_count):
-                        self.nets[j].train(False)
+                epoch_loss = epoch_loss / ( self.dataset_size * (1 - self.validation_split) )
+                print('Training loss: {:.4f}'.format(epoch_loss))
+                print( "Validating..." )
+                for j in range(self.net_count):
+                    self.nets[j].train(False)
+                    self.nets[j].validation(True)                    
+                
+                # Validation
+                self.dataset.set_training(False)
+                epoch_validation_loss = []
+                correct = []
+                epoch_loss = []
+                accuracy = []
+                combined_correct = 0
+                for j in range(self.net_count):
+                    epoch_validation_loss.append(0.0)
+                    correct.append(0)
+                
+                    with torch.set_grad_enabled(False):
+                        accuracy_batch = {'total': {}, 'correct': {}, 'percent': {}}
+                        for dataset_label in self.dataset_labels:
+                            accuracy_batch['total'][dataset_label] = 0
+                            accuracy_batch['correct'][dataset_label] = 0
+                            accuracy_batch['percent'][dataset_label] = 0
                     
-                    # Validation
-                    self.dataset.set_training(False)
-                    epoch_validation_loss = []
-                    correct = []
-                    epoch_loss = []
-                    accuracy = []
-                    combined_correct = 0
-                    for j in range(self.net_count):
-                        epoch_validation_loss.append(0.0)
-                        correct.append(0)
-                    
-                        with torch.set_grad_enabled(False):
-                            accuracy_batch = {'total': {}, 'correct': {}, 'percent': {}}
-                            for dataset_label in self.dataset_labels:
-                                accuracy_batch['total'][dataset_label] = 0
-                                accuracy_batch['correct'][dataset_label] = 0
-                                accuracy_batch['percent'][dataset_label] = 0
-                        
-                            for local_batch, local_labels in self.validation_loaders[j]:
-                                # Transfer to GPU
-                                local_labels = local_labels.to(self.device)
-                                local_batch = local_batch.to(self.device)
-                                
-                                # Zero the gradients for this batch
-                                optimizer = self.optimizers[j]
-                                net = self.nets[j]
-                                optimizer.zero_grad()
-                                
-                                # Calculating loss
-                                output = net(local_batch)
-                                correct[j] += ( local_labels == output.max(dim = 1)[1] ).sum().item()
-                                loss = self.criterion(output, local_labels)
-                                epoch_validation_loss[j] += output.shape[0] * loss.item()
-                                
-                                # Calculate combined accuracy on last validation pass
-                                if (j + 1 == self.net_count):
-                                    combined_output = combined_model(local_batch)
-                                    combined_correct += ( local_labels == combined_output.max(dim = 1)[1] ).sum().item()
-                                
-                                # Calculate the percentages
-                                for index, label in enumerate(local_labels):
-                                    local_label_string = self.dataset_labels[label]
-                                    accuracy_batch['total'][local_label_string] += 1
-                                    if( output[index].argmax() == label ):
-                                        accuracy_batch['correct'][local_label_string] += 1
-                                    accuracy_batch['percent'][local_label_string] = accuracy_batch['correct'][local_label_string] / accuracy_batch['total'][local_label_string]
+                        for local_batch, local_labels in self.validation_loaders[j]:
+                            # Transfer to GPU
+                            local_labels = local_labels.to(self.device)
+                            local_batch = local_batch.to(self.device)
+                            
+                            # Zero the gradients for this batch
+                            optimizer = self.optimizers[j]
+                            net = self.nets[j]
+                            optimizer.zero_grad()
+                            
+                            # Calculating loss
+                            output = net(local_batch)
+                            correct[j] += ( local_labels == output.max(dim = 1)[1] ).sum().item()
+                            loss = self.criterion(output, local_labels)
+                            epoch_validation_loss[j] += output.shape[0] * loss.item()
+                            
+                            # Calculate combined accuracy on last validation pass
+                            if (j + 1 == self.net_count):
+                                combined_output = combined_model(local_batch)
+                                combined_correct += ( local_labels == combined_output.max(dim = 1)[1] ).sum().item()
+                            
+                            # Calculate the percentages
+                            for index, label in enumerate(local_labels):
+                                local_label_string = self.dataset_labels[label]
+                                accuracy_batch['total'][local_label_string] += 1
+                                if( output[index].argmax() == label ):
+                                    accuracy_batch['correct'][local_label_string] += 1
+                                accuracy_batch['percent'][local_label_string] = accuracy_batch['correct'][local_label_string] / accuracy_batch['total'][local_label_string]
 
                 for j in range(self.net_count):
                     epoch_loss.append(epoch_validation_loss[j] / ( self.dataset_size * self.validation_split ) )
@@ -253,6 +267,7 @@ class SequentialAudioNetTrainer:
                                 
                 new_best = False
                 for j in range(self.net_count):
+                    self.nets[j].validation(False)
                     current_filename = filename + '_' + str(j+1)
                     if( accuracy[j] > best_accuracy[j] ):
                         best_accuracy[j] = accuracy[j]
@@ -274,7 +289,7 @@ class SequentialAudioNetTrainer:
                     print( "------------------------------------------------------")
                     print( "Persisting new combined best in " + filename )
                     print( "------------------------------------------------------")                    
-                    connect_model( filename, combined_classifier_map, "ensemble_torch", True, self.audio_settings )
+                    connect_model( filename, combined_classifier_map, "ensemble_torch_sequence", True, self.audio_settings )
                 
                 with KeyPoller() as key_poller:
                     ESCAPEKEY = '\x1b'
