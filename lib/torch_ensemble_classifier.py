@@ -30,7 +30,7 @@ class TorchEnsembleClassifier:
         self.device = torch.device('cpu')
         classifierArray = []
         for index, key in enumerate(classifier_map):
-            state_dict = torch.load(classifier_map[key], map_location=self.device)
+            state_dict = torch.load(classifier_map[key], map_location=self.device, weights_only=False)
             self.classes_ = state_dict['labels']
             if ('input_size' in state_dict):
                 input_size = state_dict['input_size']

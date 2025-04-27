@@ -18,8 +18,8 @@ Step one - Installing python
 
 ![Installing python](media/install-python.png)
 
-This can be done by following the [Python installation link](https://www.python.org/downloads/release/python-380/) and selecting your desired way of installing - I used the Windows x86 executable installer option.
-Make sure you have the checkbox 'Add Python 3.8 to PATH' enabled and pick the Install Now option. 
+This can be done by following the [Python installation link](https://www.python.org/downloads/release/python-31210/) and selecting your desired way of installing - I used the Windows x86 executable installer option.
+Make sure you have the checkbox 'Add Python 3.12 to PATH' enabled and pick the Install Now option.
 
 Step two - Download and extract the zipfile from this github repository
 ---------------
@@ -37,19 +37,9 @@ Step three - Installing all the packages
 ![Installing packages](media/install-libs.png)
 
 Now that you have python installed, you can use it to download packages. Open a command line program ( Search for cmd in your Windows search box ) and test if your python is installed properly.
-This can be done by typing 'python --version', this will display the version of your current python installation. If it is 3.8, you should be good to run the following code.
+This can be done by typing 'python --version', this will display the version of your current python installation. If it is 3.12, you should be good to run the following code.
 
-For PyAudio to work, you have to download a .whl corresponding to your python version installation.
-You can find the .whl files here: https://www.lfd.uci.edu/~gohlke/pythonlibs/#pyaudio
-It's easiest to place the whl file inside of the parrot folder, as you already have the command line program opened there.
-As I use python 3.8, my install instructions look like this:
-
-```bash
-pip3 install PyAudio-0.2.11-cp38-cp38-win_amd64.whl
-pip3 install pyaudio
-```
-
-After this, you can install the remaining requirements using the following command.
+Now you can install the requirements for Windows using the following command.
 
 ```bash
 pip3 install -r requirements-windows.txt
@@ -108,3 +98,11 @@ Installing ffmpeg on windows is as easy as downloading it and unzipping it somew
 By default, the program assumes the ffmpeg executable is placed in ffmpeg/bin inside parrot.
 Therefore, it is recommended to move the whole ffmpeg folder over to the parrot root directory and rename the ffmpeg root directory name to ffmpeg. 
 That way it should work out of the box without having to go into configuration.
+
+Optional - Increasing the python version
+----------------
+
+When I want to increase a python version for parrot, I need to ensure it works on both Windows, Mac and Linux. This takes a while so I don't usually do this. Currently Parrot supports Python v3.12 because audiomentations, used for augmenting audio, only supports up to Python v3.12.
+
+If you want to increase the python version yourself, you will need to do a lot more tinkering to figure out if everything works for you.
+For example, `audioop` has been removed from Python 3.13, so you need to install `audioop-lts` to fix dependency issues.

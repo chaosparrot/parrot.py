@@ -56,7 +56,7 @@ class TestMode:
 		self.mode = "plotting"
 		self.preventDoubleClickInPlotMode = time.time()
 		
-		plt.style.use('seaborn-darkgrid')
+		plt.style.use('seaborn-v0_8-darkgrid')
 		palette = plt.get_cmap('Set1')
 		num = 0
 		bottom=0
