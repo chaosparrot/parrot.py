@@ -4,8 +4,8 @@
 Step one - Installing required programs
 ----------
 
-Open up a terminal and see if python is installed by running the following snippet ```python --version```. If it shows 3.8, you're good to go!
-Otherwise you can install python using your local package manager, make sure you install 3.8, as some libraries don't work well with 3.9 yet.
+Open up a terminal and see if python is installed by running the following snippet ```python --version```. If it shows 3.12, you're good to go!
+Otherwise you can install python using your local package manager, make sure you install 3.12, as some libraries don't work well with 3.9 yet.
 
 The two dependencies that I needed to install on Linux for my testdrive were 'TK' and 'portaudio'. 
 
@@ -27,7 +27,7 @@ To do this, run the following commands:
 
 ```
 pip install pipenv
-pipenv --python 3.8
+pipenv --python 3.12
 ```
 
 Step four - Installing all the packages

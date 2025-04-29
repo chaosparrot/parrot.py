@@ -1,6 +1,7 @@
-numpy == 1.22.4
-pandas == 1.4.2
-numba == 0.55.2
+pyaudio==0.2.14
+numpy==2.2.5
+pandas==2.2.3
+numba==0.61.2
 matplotlib
 scikit-learn
 python_speech_features
@@ -9,5 +10,5 @@ pydirectinput
 dragonfly2
 pywin32
 joblib
-torch == 1.11.0
-audiomentations == 0.24.0
+audiomentations==0.40.0
+torch==2.7.0

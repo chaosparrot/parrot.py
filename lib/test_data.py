@@ -365,7 +365,7 @@ def analyze_replay_or_audio( available_models, available_replays, available_soun
         analyze_replay_or_audio( available_models, available_replays, available_sounds )
         
 def plot_replay( replay_data ):
-    plt.style.use('seaborn-darkgrid')
+    plt.style.use('seaborn-v0_8-darkgrid')
     num = 0
     bottom=0
     
