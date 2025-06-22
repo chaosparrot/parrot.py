@@ -1,7 +1,7 @@
-pyaudio==0.2.14
-numpy==2.2.5
-pandas==2.2.3
-numba==0.61.2
+pyaudio
+numpy
+pandas
+numba
 matplotlib
 scikit-learn
 python_speech_features
@@ -11,4 +11,4 @@ dragonfly2
 pywin32
 joblib
 audiomentations==0.40.0
-torch==2.7.1
+torch
