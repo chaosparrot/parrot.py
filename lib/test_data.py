@@ -138,14 +138,16 @@ def plot_audio( folder ):
 
     print( "                                                                                           ", end="\r" )    
     
-    print( "Intensity ------- " )
-    print( "Average: " + str( np.average( intensities ) ) )
-    print( "Lowest: " + str( min( intensities ) ) )    
-    print( "Standard deviation: " + str( np.std( intensities ) ) )
-    print( "Frequency ------- " )
-    print( "Lowest: " + str( min( frequencies ) ) )    
-    print( "Average: " + str( np.average( frequencies ) ) )
-    print( "Standard deviation: " + str( np.std( frequencies ) ) )
+    if len(intensities) > 0:
+        print( "Intensity ------- " )
+        print( "Average: " + str( np.average( intensities ) ) )
+        print( "Lowest: " + str( min( intensities ) ) )    
+        print( "Standard deviation: " + str( np.std( intensities ) ) )
+    if len(frequencies) > 0:
+        print( "Frequency ------- " )
+        print( "Lowest: " + str( min( frequencies ) ) )    
+        print( "Average: " + str( np.average( frequencies ) ) )
+        print( "Standard deviation: " + str( np.std( frequencies ) ) )
         
 def audio_analysis( available_models ):
     print( "-------------------------" )
