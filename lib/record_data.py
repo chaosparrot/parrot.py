@@ -292,7 +292,8 @@ def record_sound():
     
     if currently_recording != -1:    
         main_state.state = "processed"
-        print_status(main_state, secondary_states)    
+        print_status(main_state, secondary_states)
+        print_unlabeled_warning(recorders)    
 
 # Consumes the recordings in a sliding window fashion - Always combining the two latest chunks together    
 def record_consumer(labels, FULL_WAVE_OUTPUT_FILENAME, SRT_FILE, MICROPHONE_INPUT_INDEX, print_stuff=False):
@@ -379,6 +380,23 @@ def print_status(detection_state: DetectionState, extra_states: List[DetectionSt
     reset_previous_lines(len(current_status))
     for line in current_status:
         print( line )
+
+def print_unlabeled_warning(recorders):
+    for mic_index in recorders:
+        recorder = recorders[mic_index]
+        state = recorder.get_detection_state()
+        if state.unlabeled_frames == 0:
+            continue
+        silenced = state.unlabeled_frames * state.ms_per_frame / 1000
+        span = "%.1fs of %.1fs" % (silenced, state.ms_recorded / 1000)
+        print( "" )
+        print( "Silenced " + span + " recorded" )
+        print( "The final threshold ended up above them" )
+        print( "Usually clipping (gain too high)" )
+        print( "Lower the gain and record again" )
+        print( "Or set min_dbfs and restart:" )
+        print( recorder.thresholds_filename )
+        print( "" )
 
 def validate_microphone_index(audio, input_index):
     micDict = {'name': 'Missing Microphone index ' + str(input_index)}

@@ -171,7 +171,9 @@ def sample_data_from_label(label, grouped_data_directories, sample_strategies, i
     if label in sample_strategies:
         strategy = sample_strategies[label]["strategy"]
         truncate_after = sample_strategies[label]["truncate_after"]
-        if strategy == "oversample":
+        if sample_strategies[label]["total_size"] == 0:
+            print( f"Found no segmented audio for {label}" )
+        elif strategy == "oversample":
             print( f"Loading in {label} using oversampling: +" + str(abs(round(sample_strategies[label]["total_loaded"] / sample_strategies[label]["total_size"] * 100) - 100)) + "%" )
         elif strategy == "undersample":
             print( f"Loading in {label} using undersampling: -" + str(abs(round(sample_strategies[label]["total_loaded"] / sample_strategies[label]["total_size"] * 100) - 100)) + "%" )

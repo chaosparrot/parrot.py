@@ -15,7 +15,9 @@ checked at all, since load_data seeds its sampling with the clock and three
 epochs on eight seconds of audio predicts nothing.
 """
 import atexit
+import contextlib
 import glob
+import io
 import os
 import re
 import shutil
@@ -115,12 +117,86 @@ for label in LABELS:
             label, heard, detected.get(label + "_min_dbfs", "?"), DURATION_TYPES[label]))
 print("  took %.1fs" % (time.time() - t))
 
+t = stage("Clamping the discrete threshold at the noise floor")
+from lib.typing import DetectionFrame, DetectionLabel, DetectionState
+from lib.stream_processing import post_processing
+# Only a discrete take drops the threshold, and duration type is measured, not
+# declared: equal length events with widely varying loudness read as discrete
+FLOOR, BOUND, MARGIN = -60.0, -58.0, 3.0
+spiky, frame_index = [], 0
+for loudness in (-20.0, -32.0, -44.0, -56.0, -68.0):
+    for _ in range(3):
+        frame_index += 1
+        spiky.append(DetectionFrame(frame_index, 15, True, False, 1.0,
+                                    loudness, [], 0.0, LABELS[0]))
+    for _ in range(3):
+        frame_index += 1
+        spiky.append(DetectionFrame(frame_index, 15, False, False, 1.0, -90.0,
+                                    [], 0.0, config.config.BACKGROUND_LABEL))
+spiky_state = DetectionState(
+    config.config.CURRENT_DETECTION_STRATEGY, "recording", 15, 900, False,
+    -20.0, 0.0, 30.0, FLOOR,
+    [DetectionLabel(LABELS[0], 0, 0, "", 0, -96, -96, 0, 0)], [])
+spiky_state.upper_bound_dBFS_threshold = BOUND
+spiky_state.current_dBFS_threshold = BOUND
+spiky_state.dBFS_error_margin = MARGIN
+with contextlib.redirect_stdout(io.StringIO()):
+    post_processing(spiky, spiky_state, os.path.join(workdir, "spiky"),
+                    os.path.join(workdir, "spiky_thresholds.txt"))
+check("a discrete drop stops at the noise floor",
+      spiky_state.current_dBFS_threshold == FLOOR,
+      "(%.2f, unclamped would be %.2f)" % (spiky_state.current_dBFS_threshold,
+                                           BOUND - MARGIN * 3))
+
+t = stage("Post processing frames stamped under a lower threshold")
+# The live pass marked these detected against a lower bar. Nothing
+# matches the settled one, so there is no label to write them under
+SETTLED = 0.63
+clipped = [DetectionFrame(index + 1, 15, True, False, 1.0, -20.0, [], 0.0, LABELS[0])
+           for index in range(60)]
+clipped_state = DetectionState(
+    config.config.CURRENT_DETECTION_STRATEGY, "recording", 15, 900, False,
+    -20.0, 0.0, 30.0, -60.0,
+    [DetectionLabel(LABELS[0], 0, 0, "", 0, -96, -96, 0, 0)], [])
+clipped_state.upper_bound_dBFS_threshold = SETTLED
+clipped_state.current_dBFS_threshold = SETTLED
+clipped_state.dBFS_error_margin = 1.5
+try:
+    with contextlib.redirect_stdout(io.StringIO()):
+        post_processing(clipped, clipped_state, os.path.join(workdir, "stamped"),
+                        os.path.join(workdir, "stamped_thresholds.txt"))
+    check("a stamp with nothing to label it does not crash",
+          not any(frame.positive for frame in clipped))
+    check("and it counts what it silenced", clipped_state.unlabeled_frames == 60,
+          "(%d frames)" % clipped_state.unlabeled_frames)
+except Exception as error:
+    check("a stamp with nothing to label it does not crash", False,
+          "%s: %s" % (type(error).__name__, error))
+print("  took %.1fs" % (time.time() - t))
+
 t = stage("Loading that segmentation as training data")
 lib.load_data.DATASET_FOLDER = segmented
 data_x, data_y, _ = lib.load_data.load_sklearn_data(LABELS, settings["FEATURE_ENGINEERING_TYPE"])
 print("  took %.1fs" % (time.time() - t))
 check("samples were loaded", len(data_x) > 0, "(%d)" % len(data_x))
 check("every label is there, not just silence", sorted(set(data_y)) == sorted(EXPECTED_CLASSES), str(sorted(set(data_y))))
+
+t = stage("Loading a label that segmented to nothing")
+empty_label = "quiet"
+empty_source = os.path.join(segmented, empty_label, "source")
+empty_segments = os.path.join(segmented, empty_label, "segments")
+os.makedirs(empty_source)
+os.makedirs(empty_segments)
+shutil.copy(os.path.join(FIXTURES, LABELS[0], "source", LABELS[0] + ".wav"), empty_source)
+open(os.path.join(empty_segments, empty_label + ".v3.srt"), "w").close()
+try:
+    with_empty_x, with_empty_y, _ = lib.load_data.load_sklearn_data(LABELS + [empty_label], settings["FEATURE_ENGINEERING_TYPE"])
+    check("an empty label does not stop the rest loading", len(with_empty_x) > 0, "(%d samples)" % len(with_empty_x))
+    check("and it contributes nothing", empty_label not in set(with_empty_y), str(sorted(set(with_empty_y))))
+except Exception as error:
+    check("an empty label does not stop the rest loading", False, "%s: %s" % (type(error).__name__, error))
+shutil.rmtree(os.path.join(segmented, empty_label), ignore_errors=True)
+print("  took %.1fs" % (time.time() - t))
 
 t = stage("Training a random forest")
 from sklearn.ensemble import RandomForestClassifier
