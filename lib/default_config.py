@@ -74,6 +74,7 @@ if( SPEECHREC_ENABLED == True ):
 
 BACKGROUND_LABEL = "silence"
 AUTOMATIC_DATASET_BALANCING = True
+SILENCE_TRAINING_MODE = "all" # how much silence is used in training - "all", "balanced", "none"
 SHOULD_FIT_INSIDE_RAM = True # Ensure the dataset fits inside RAM for faster training
 # Turning this to FALSE might crash the dataloading
 MAX_RAM = 7000000000 # 7GB of usable RAM is assumed to be the maximum size to be loaded in for data
