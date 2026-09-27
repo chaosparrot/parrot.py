@@ -390,7 +390,7 @@ def print_unlabeled_warning(recorders):
         print( recorder.thresholds_filename )
         print( "" )
 
-def validate_microphone_index(audio, input_index):
+def validate_microphone_index(input_index):
     micDict = {'name': 'Missing Microphone index ' + str(input_index)}
     try:
         micDict = sd.query_devices( input_index )
