@@ -24,7 +24,13 @@ def get_grouped_data_directories( labels ):
         grouped_data_directories[ category_name ].append( data_directory )
     return grouped_data_directories
 
-def generate_data_balance_strategy_map(grouped_data_directories):
+def generate_data_balance_strategy_map(grouped_data_directories, silence=None, balance_sounds=None):
+    if silence is None:
+        silence = SILENCE_TRAINING_MODE
+    if silence not in ("all", "balanced", "none"):
+        raise ValueError(f'SILENCE_TRAINING_MODE must be "all", "balanced" or "none", not {silence!r}')
+    if balance_sounds is None:
+        balance_sounds = AUTOMATIC_DATASET_BALANCING
     ms_per_frame = math.floor(RECORD_SECONDS / SLIDING_WINDOW_AMOUNT * 1000)
     directory_counts = {}
     max_size = 0
@@ -52,7 +58,7 @@ def generate_data_balance_strategy_map(grouped_data_directories):
     for label in directory_counts:            
         strategy = strategies[2]
         total_loaded = directory_counts[label]
-        if AUTOMATIC_DATASET_BALANCING:
+        if balance_sounds:
             if directory_counts[label] < total_truncation / 1.25:
                 strategy = strategies[0]
                 total_loaded = min(directory_counts[label] * max_oversample_ratio, total_truncation)
@@ -68,18 +74,21 @@ def generate_data_balance_strategy_map(grouped_data_directories):
             "sample_from_each": -1
         }
 
-    #sampling_strategies[BACKGROUND_LABEL] = {
-    #    "strategy": strategies[3],
-    #    "truncate_after": total_truncation,
-    #    "total_loaded": total_truncation,
-    #    "total_size": background_label_size,
-    #    "sample_from_each": round(min(total_truncation, background_label_size) / len(grouped_data_directories.keys()))
-    #}
+    if silence == "balanced":
+        sampling_strategies[BACKGROUND_LABEL] = {
+            "strategy": strategies[3],
+            "truncate_after": total_truncation,
+            "total_loaded": total_truncation,
+            "total_size": background_label_size,
+            "sample_from_each": round(min(total_truncation, background_label_size) / len(grouped_data_directories.keys()))
+        }
 
-    return rebalance_sampling_strategies_for_memory(sampling_strategies)
+    return rebalance_sampling_strategies_for_memory(sampling_strategies, balance_sounds)
 
-def rebalance_sampling_strategies_for_memory(sampling_strategies):
-    if not SHOULD_FIT_INSIDE_RAM or not AUTOMATIC_DATASET_BALANCING:
+def rebalance_sampling_strategies_for_memory(sampling_strategies, balance_sounds=None):
+    if balance_sounds is None:
+        balance_sounds = AUTOMATIC_DATASET_BALANCING
+    if not SHOULD_FIT_INSIDE_RAM or not balance_sounds:
         return sampling_strategies
 
     # Make sure the additional data loaded does not increase past a certain point
@@ -125,7 +134,7 @@ def rebalance_sampling_strategies_for_memory(sampling_strategies):
     
     return sampling_strategies
 
-def sample_data_from_label(label, grouped_data_directories, sample_strategies, input_type):
+def sample_data_from_label(label, grouped_data_directories, sample_strategies, input_type, silence):
     warnings.filterwarnings("ignore", "n_fft=2048 is too small for input signal")
     directories = grouped_data_directories[ label ]
 
@@ -208,11 +217,11 @@ def sample_data_from_label(label, grouped_data_directories, sample_strategies, i
         seed = round(time.time() * 1000)
 
         # Truncate the background label samples
-        #if BACKGROUND_LABEL in sample_strategies and len(total_background_samples) > sample_strategies[BACKGROUND_LABEL]["sample_from_each"]:
-        #    random.seed(seed)
-        #    total_background_samples = random.sample(total_background_samples, sample_strategies[BACKGROUND_LABEL]["sample_from_each"])
-        #    random.seed(seed)
-        #    total_augmented_background_samples = random.sample(total_augmented_background_samples, sample_strategies[BACKGROUND_LABEL]["sample_from_each"])
+        if silence == "balanced" and len(total_background_samples) > sample_strategies[BACKGROUND_LABEL]["sample_from_each"]:
+            random.seed(seed)
+            total_background_samples = random.sample(total_background_samples, sample_strategies[BACKGROUND_LABEL]["sample_from_each"])
+            random.seed(seed)
+            total_augmented_background_samples = random.sample(total_augmented_background_samples, sample_strategies[BACKGROUND_LABEL]["sample_from_each"])
         
         # Truncate the sample data randomly, but ensure the seed is the same so that the augmented data matches the non-augmented data index
         if strategy in ["oversample", "undersample"] and len(total_label_samples) > truncate_after:
@@ -233,19 +242,24 @@ def shannon_entropy(label_counts):
     h = -sum([(count / n) * np.log((count / n)) for count in totals])
     return h / np.log(len(totals))
 
-def load_sklearn_data( filtered_data_directory_names, input_type ):
+def load_sklearn_data( filtered_data_directory_names, input_type, silence=None, balance_sounds=None ):
+    if silence is None:
+        silence = SILENCE_TRAINING_MODE
     grouped_data_directories = get_grouped_data_directories( filtered_data_directory_names )
-    sample_strategies = generate_data_balance_strategy_map(grouped_data_directories )
+    sample_strategies = generate_data_balance_strategy_map(grouped_data_directories, silence, balance_sounds )
     
     dataset = {}
-    dataset[BACKGROUND_LABEL] = []
+    include_silence = silence != "none"
+    if include_silence:
+        dataset[BACKGROUND_LABEL] = []
     for label in grouped_data_directories:
         if label != BACKGROUND_LABEL:
-            data_sample = sample_data_from_label( label, grouped_data_directories, sample_strategies, input_type)
+            data_sample = sample_data_from_label( label, grouped_data_directories, sample_strategies, input_type, silence)
             dataset[label] = [x[1] for x in data_sample["label"]]
             dataset[label].extend([x[1] for x in data_sample["augmented"]])
-            dataset[BACKGROUND_LABEL].extend([x[1] for x in data_sample["background"]])
-            dataset[BACKGROUND_LABEL].extend([x[1] for x in data_sample["background_augmented"]])
+            if include_silence:
+                dataset[BACKGROUND_LABEL].extend([x[1] for x in data_sample["background"]])
+                dataset[BACKGROUND_LABEL].extend([x[1] for x in data_sample["background_augmented"]])
 
     # Generate the training set and labels with them
     dataset_x = []
@@ -258,23 +272,28 @@ def load_sklearn_data( filtered_data_directory_names, input_type ):
 
     return dataset_x, dataset_labels, grouped_data_directories.keys()
     
-def load_pytorch_data( filtered_data_directory_names, input_type):
+def load_pytorch_data( filtered_data_directory_names, input_type, silence=None, balance_sounds=None):
+    if silence is None:
+        silence = SILENCE_TRAINING_MODE
     import torch
 
     grouped_data_directories = get_grouped_data_directories( filtered_data_directory_names )
-    sample_strategies = generate_data_balance_strategy_map(grouped_data_directories )
+    sample_strategies = generate_data_balance_strategy_map(grouped_data_directories, silence, balance_sounds )
 
     dataset = {}
     augmented = {}
-    dataset[BACKGROUND_LABEL] = []
-    augmented[BACKGROUND_LABEL] = []    
+    include_silence = silence != "none"
+    if include_silence:
+        dataset[BACKGROUND_LABEL] = []
+        augmented[BACKGROUND_LABEL] = []
     for label in grouped_data_directories:
         if label != BACKGROUND_LABEL:
-            data_sample = sample_data_from_label( label, grouped_data_directories, sample_strategies, input_type)
+            data_sample = sample_data_from_label( label, grouped_data_directories, sample_strategies, input_type, silence)
             dataset[label] = [[x[0], torch.tensor(x[1]).float()] for x in data_sample["label"]]
             augmented[label] =[[x[0], torch.tensor(x[1]).float()] for x in data_sample["augmented"]]
-            dataset[BACKGROUND_LABEL].extend([[x[0], torch.tensor(x[1]).float()] for x in data_sample["background"]])
-            augmented[BACKGROUND_LABEL].extend([[x[0], torch.tensor(x[1]).float()] for x in data_sample["background_augmented"]])
+            if include_silence:
+                dataset[BACKGROUND_LABEL].extend([[x[0], torch.tensor(x[1]).float()] for x in data_sample["background"]])
+                augmented[BACKGROUND_LABEL].extend([[x[0], torch.tensor(x[1]).float()] for x in data_sample["background_augmented"]])
     
     return {
         "data": dataset,

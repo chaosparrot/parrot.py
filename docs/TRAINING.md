@@ -41,4 +41,14 @@ Adding this line to your data/code/config.py will remove the automatic dataset b
 AUTOMATIC_DATASET_BALANCING = False
 ```
 
+To change how silence is used during training, add the following line to your data/code/config.py:
+
+```py
+SILENCE_TRAINING_MODE = "balanced"
+```
+
+- `"all"`: every part (default)
+- `"balanced"`: limited the same way other sounds are
+- `"none"`: no silence in training
+
 [Step 3 - Analysing the results](ANALYSING.md)

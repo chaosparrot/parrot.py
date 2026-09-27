@@ -181,6 +181,16 @@ print("  took %.1fs" % (time.time() - t))
 check("samples were loaded", len(data_x) > 0, "(%d)" % len(data_x))
 check("every label is there, not just silence", sorted(set(data_y)) == sorted(EXPECTED_CLASSES), str(sorted(set(data_y))))
 
+t = stage("Loading with silence balanced, then left out")
+silence = config.config.BACKGROUND_LABEL
+all_silence = data_y.count(silence)
+_, balanced_y, _ = lib.load_data.load_sklearn_data(LABELS, settings["FEATURE_ENGINEERING_TYPE"], silence="balanced")
+check("balanced keeps less silence", 0 < balanced_y.count(silence) < all_silence,
+      "(%d of %d)" % (balanced_y.count(silence), all_silence))
+_, none_y, _ = lib.load_data.load_sklearn_data(LABELS, settings["FEATURE_ENGINEERING_TYPE"], silence="none")
+check("none has no silence class", sorted(set(none_y)) == sorted(LABELS), str(sorted(set(none_y))))
+print("  took %.1fs" % (time.time() - t))
+
 t = stage("Loading a label that segmented to nothing")
 empty_label = "quiet"
 empty_source = os.path.join(segmented, empty_label, "source")
