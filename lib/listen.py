@@ -1,7 +1,7 @@
 import numpy as np
 from config.config import *
 from lib.machinelearning import feature_engineering, feature_engineering_raw, get_label_for_directory, get_highest_intensity_of_wav_file, get_recording_power
-import pyaudio
+import sounddevice as sd
 import wave
 import time
 import scipy
@@ -118,7 +118,7 @@ def action_consumer( stream, classifier, dataDicts, persist_replay, replay_file,
         print( "----------- ERROR DURING CONSUMING ACTIONS -------------- " )
         exc_type, exc_value, exc_tb = sys.exc_info()
         traceback.print_exception(exc_type, exc_value, exc_tb)
-        listening_state['stream'].stop_stream()
+        listening_state['stream'].stop()
         listening_state['currently_recording'] = False
 
     
@@ -165,15 +165,13 @@ def classification_consumer( stream, classifier, persist_files, high_speed ):
         print( "----------- ERROR DURING AUDIO CLASSIFICATION -------------- " )
         exc_type, exc_value, exc_tb = sys.exc_info()
         traceback.print_exception(exc_type, exc_value, exc_tb)
-        listening_state['stream'].stop_stream()
+        listening_state['stream'].stop()
         listening_state['currently_recording'] = False
     
     
-def nonblocking_record( in_data, frame_count, time_info, status ):
+def nonblocking_record( indata, frames, time_info, status ):
     global listening_state
-    listening_state['audioQueue'].put( in_data )
-    
-    return in_data, pyaudio.paContinue
+    listening_state['audioQueue'].put( indata.tobytes() )
     
 def start_nonblocking_listen_loop( classifier, mode_switcher = False, persist_replay = False, persist_files = False, amount_of_seconds=-1, high_speed=False ):
     global listening_state
@@ -200,8 +198,7 @@ def start_nonblocking_listen_loop( classifier, mode_switcher = False, persist_re
     replay_file = REPLAYS_FOLDER + "/replay_" + str(int(starttime)) + ".csv"
     
     infinite_duration = amount_of_seconds == -1
-    audio = pyaudio.PyAudio()
-    if ( validate_microphone_input(audio) == False ):
+    if ( validate_microphone_input() == False ):
         return None
     
     if( infinite_duration ):
@@ -210,7 +207,7 @@ def start_nonblocking_listen_loop( classifier, mode_switcher = False, persist_re
         print ( "Listening for " + str( amount_of_seconds ) + " seconds..." )
     print ( "" )
     
-    listening_state['stream'] = open_input_stream(audio, INPUT_DEVICE_INDEX,
+    listening_state['stream'] = open_input_stream(INPUT_DEVICE_INDEX,
         rate=classifier.get_setting('RATE', RATE),
         channels=classifier.get_setting('CHANNELS', CHANNELS),
         record_seconds=classifier.get_setting('RECORD_SECONDS', RECORD_SECONDS),
@@ -226,7 +223,7 @@ def start_nonblocking_listen_loop( classifier, mode_switcher = False, persist_re
     actionConsumer.start()
     
     listening_state['last_audio_update'] = time.time()
-    listening_state['stream'].start_stream()
+    listening_state['stream'].start()
     ipc_manager.setParrotState("running")
 
     while listening_state['currently_recording'] == True and listening_state['restart_listen_loop'] == False:
@@ -238,9 +235,8 @@ def start_nonblocking_listen_loop( classifier, mode_switcher = False, persist_re
         time.sleep(STATE_POLLING_THRESHOLD)
 
     # Stop all the streams and different threads
-    listening_state['stream'].stop_stream()
+    listening_state['stream'].stop()
     listening_state['stream'].close()
-    audio.terminate()
     listening_state['audioQueue'].queue.clear()
     listening_state['classifierQueue'].queue.clear()
     classificationConsumer.join()
@@ -374,15 +370,15 @@ def load_running_classifier( classifier_name ):
     return classifier
     
 # Validate and print the currently used microphone
-def validate_microphone_input( audio ):
+def validate_microphone_input():
     try:
-        micDict = audio.get_device_info_by_index( INPUT_DEVICE_INDEX )
-        if (micDict and micDict['maxInputChannels'] > 0):
+        micDict = sd.query_devices( INPUT_DEVICE_INDEX )
+        if (micDict and micDict['max_input_channels'] > 0):
             print( "Using input from " + micDict['name'] )
             return True
         else:
             raise IOError( "Invalid number of channels" )
-    except IOError as e:
+    except (IOError, sd.PortAudioError) as e:
         print( "------ ERROR - NO VALID MICROPHONE FOUND DURING START UP ------ " )
         print( "Make sure your microphone is connected before starting up Parrot" )
         print( "or change the INPUT_DEVICE_INDEX in the config/config.py file.")

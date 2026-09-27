@@ -1,5 +1,5 @@
 from config.config import *
-import pyaudio
+import sounddevice as sd
 import time
 import math
 import os
@@ -160,8 +160,6 @@ def record_controls( key_poller, recordQueue=None ):
     return True    
     
 def record_sound():
-    audio = pyaudio.PyAudio()
-
     print( "-------------------------" )
     print( "Let's record some sounds!")
     print( "This script is going to listen to your microphone input" )
@@ -212,11 +210,10 @@ def record_sound():
     # Note - this assumes a maximum of 10 possible input devices, which is probably wrong but eh
     print("What microphone do you want to record with? ( Empty is the default system mic, [X] exits the recording menu )")
     print("You can put a space in between numbers to record with multiple microphones")
-    for index in range(audio.get_device_count()):
-        device_info = audio.get_device_info_by_index(index)
-        if (device_info and device_info['name'] and device_info['maxInputChannels'] > 0):
+    for index, device_info in enumerate(sd.query_devices()):
+        if (device_info and device_info['name'] and device_info['max_input_channels'] > 0):
             default_mic = " - " if index != INPUT_DEVICE_INDEX else " DEFAULT - "
-            host_api = audio.get_host_api_info_by_index(device_info['hostApi'])
+            host_api = sd.query_hostapis(device_info['hostapi'])
             host_api_string = " " + host_api["name"] if host_api else ""
             print("[" + str(index) + "]" + default_mic + device_info['name'] + host_api_string)
                 
@@ -230,7 +227,7 @@ def record_sound():
         mic_indecis = mic_index_string.split()
     valid_mics = []
     for mic_index in mic_indecis:
-        if (str.isdigit(mic_index) and validate_microphone_index(audio, int(mic_index))):
+        if (str.isdigit(mic_index) and validate_microphone_index(int(mic_index))):
             valid_mics.append(int(mic_index))
     
     if len(valid_mics) == 0:
@@ -337,10 +334,8 @@ def record_consumer(labels, FULL_WAVE_OUTPUT_FILENAME, SRT_FILE, MICROPHONE_INPU
         traceback.print_exception(exc_type, exc_value, exc_tb)
         currently_recording = -1
 
-def multithreaded_record( in_data, frame_count, time_info, status, queue ):
-    queue.put( in_data )
-    
-    return in_data, pyaudio.paContinue
+def multithreaded_record( indata, frames, time_info, status, queue ):
+    queue.put( indata.tobytes() )
                 
 # Records a non blocking audio stream and saves the source and SRT file for it
 def non_blocking_record(labels, FULL_WAVE_OUTPUT_FILENAME, SRT_FILE, MICROPHONE_INPUT_INDEX, print_logs):
@@ -350,7 +345,7 @@ def non_blocking_record(labels, FULL_WAVE_OUTPUT_FILENAME, SRT_FILE, MICROPHONE_
     mic_index = 'index' + str(MICROPHONE_INPUT_INDEX)
 
     recordQueue[mic_index] = Queue(maxsize=0)
-    micindexed_lambda = lambda in_data, frame_count, time_info, status, queue=recordQueue[mic_index]: multithreaded_record(in_data, frame_count, time_info, status, queue)
+    micindexed_lambda = lambda indata, frames, time_info, status, queue=recordQueue[mic_index]: multithreaded_record(indata, frames, time_info, status, queue)
     
     detection_strategy = CURRENT_DETECTION_STRATEGY
     ms_per_frame = math.floor(RECORD_SECONDS / SLIDING_WINDOW_AMOUNT * 1000)
@@ -358,11 +353,8 @@ def non_blocking_record(labels, FULL_WAVE_OUTPUT_FILENAME, SRT_FILE, MICROPHONE_
     for label in list(labels.keys()):
         detection_labels.append(DetectionLabel(label, 0, labels[label], "", 0, 0, 0, 0, 0))
     
-    audio = pyaudio.PyAudio()
-
     recorders[mic_index] = StreamRecorder(
-        audio,
-        open_input_stream(audio, MICROPHONE_INPUT_INDEX,
+        open_input_stream(MICROPHONE_INPUT_INDEX,
             rate=RATE, channels=CHANNELS, record_seconds=RECORD_SECONDS,
             sliding_window_amount=SLIDING_WINDOW_AMOUNT, callback=micindexed_lambda),
         FULL_WAVE_OUTPUT_FILENAME,
@@ -398,17 +390,17 @@ def print_unlabeled_warning(recorders):
         print( recorder.thresholds_filename )
         print( "" )
 
-def validate_microphone_index(audio, input_index):
+def validate_microphone_index(input_index):
     micDict = {'name': 'Missing Microphone index ' + str(input_index)}
     try:
-        micDict = audio.get_device_info_by_index( input_index )
-        if (micDict and micDict['maxInputChannels'] > 0):            
-            host_api = audio.get_host_api_info_by_index(micDict['hostApi'])
+        micDict = sd.query_devices( input_index )
+        if (micDict and micDict['max_input_channels'] > 0):            
+            host_api = sd.query_hostapis(micDict['hostapi'])
             host_api_string = " " + host_api["name"] if host_api else ""
             print( "Using input from " + micDict['name'] + host_api_string )
             return True
         else:
             raise IOError( "Invalid number of channels" )
-    except IOError as e:
+    except (IOError, sd.PortAudioError) as e:
         print("Could not connect enough audio channels to " + micDict['name'] + ", disabling this mic for recording")
         return False

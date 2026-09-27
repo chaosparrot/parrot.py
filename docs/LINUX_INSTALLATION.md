@@ -7,7 +7,7 @@ Step one - Installing required programs
 Open up a terminal and see if python is installed by running the following snippet ```python --version```. If it shows 3.12, you're good to go!
 Otherwise you can install python using your local package manager, make sure you install 3.12, as some libraries don't work well with 3.9 yet.
 
-The two dependencies that I needed to install on Linux for my testdrive were 'TK' and 'portaudio'. 
+The two dependencies that I needed to install on Linux for my testdrive were 'TK' ( `python3-tk` ) and 'portaudio' ( `libportaudio2` on Debian and Ubuntu ). Linux is the only platform that needs portaudio installed separately: the sounddevice wheel carries its own copy on Windows and MacOS. 
 
 Step two - Download and extract the zipfile from this github repository
 ---------------

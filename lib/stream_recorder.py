@@ -1,5 +1,5 @@
 from config.config import *
-import pyaudio
+import sounddevice as sd
 import struct
 import wave
 import math
@@ -35,8 +35,7 @@ class StreamRecorder:
     thresholds_filename: str
     comparison_wav_filename: str
     
-    audio: pyaudio.PyAudio
-    stream: pyaudio.Stream
+    stream: sd.InputStream
     detection_state: DetectionState
     
     length_per_frame: int
@@ -47,13 +46,12 @@ class StreamRecorder:
     current_occurrence: List[DetectionFrame]
     false_occurrence: List[DetectionFrame]
     
-    def __init__(self, audio: pyaudio.PyAudio, stream: pyaudio.Stream, total_wav_filename: str, srt_filename: str, detection_state: DetectionState):
+    def __init__(self, stream: sd.InputStream, total_wav_filename: str, srt_filename: str, detection_state: DetectionState):
         self.total_wav_filename = total_wav_filename
         self.srt_filename = srt_filename
         self.comparison_wav_filename = srt_filename.replace(".v" + str(CURRENT_VERSION) + ".srt", "_comparison.wav")
         self.thresholds_filename = srt_filename.replace(".v" + str(CURRENT_VERSION) + ".srt", "_thresholds.txt")
         
-        self.audio = audio
         self.stream = stream
         self.detection_state = detection_state
         self.total_audio_frames = []
@@ -111,10 +109,10 @@ class StreamRecorder:
 
     # Resume playing
     def resume(self):
-        self.stream.start_stream()
+        self.stream.start()
     
     def pause(self):
-        self.stream.stop_stream()
+        self.stream.stop()
         
         self.index -= len(self.total_audio_frames)
         if self.index != 0 and len(self.total_audio_frames) > 0:
@@ -188,7 +186,6 @@ class StreamRecorder:
         comparison_wav_file.setframerate(RATE)
         post_processing(self.detection_frames, self.detection_state, self.srt_filename, self.thresholds_filename, callback, comparison_wav_file)
         self.stream.close()
-        self.audio.terminate()
         self.detection_frames = []
 
     # Do all post processing related tasks that cannot be done during runtime

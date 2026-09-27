@@ -1,4 +1,4 @@
-pyaudio
+sounddevice
 numpy
 pandas
 matplotlib

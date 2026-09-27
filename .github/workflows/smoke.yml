@@ -30,16 +30,13 @@ jobs:
           cache: pip
           cache-dependency-path: requirements-*.txt
 
-      # portaudio builds pyaudio, xvfb is for the pyautogui import.
+      # sounddevice needs portaudio at run time, xvfb is for the pyautogui
+      # import. The wheel carries portaudio on Windows and macOS, not on Linux.
       - name: Install system libraries (Linux)
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y portaudio19-dev libasound2-dev xvfb
-
-      - name: Install system libraries (macOS)
-        if: runner.os == 'macOS'
-        run: brew install portaudio
+          sudo apt-get install -y libportaudio2 xvfb
 
       # The torch on PyPI is the CUDA build here, ~2.5 GB of nvidia wheels.
       # Only sticks while requirements-posix.txt asks for a torch this one

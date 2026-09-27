@@ -1,7 +1,21 @@
 from importlib.util import find_spec
 import sys
 
-import pyaudio
+import numpy as np
+
+try:
+    import sounddevice as sd
+except ImportError:
+    raise SystemExit(
+        "Parrot records audio through sounddevice.\n"
+        "Update your environment with: pip install -r requirements-" +
+        ("windows" if sys.platform == "win32" else "posix") + ".txt")
+except OSError as error:
+    # sounddevice needs PortAudio itself at run time. Its wheel carries a copy
+    # on Windows and macOS, so only Linux can arrive here.
+    raise SystemExit(
+        "sounddevice could not load PortAudio: " + str(error) + "\n"
+        "On Debian and Ubuntu: sudo apt-get install libportaudio2")
 
 if sys.platform == "darwin":
     # This is necessary to import before pyautogui
@@ -13,16 +27,16 @@ import pyautogui
 pyautogui.FAILSAFE = False
 
 try:
-    default_audio = pyaudio.PyAudio().get_default_input_device_info()
-except OSError:
+    default_audio = sd.query_devices(kind="input")
+except (sd.PortAudioError, ValueError):
     default_audio = None
 
 REPEAT_DELAY = 0.5
 REPEAT_RATE = 33
 SPEECHREC_ENABLED = False
 
-FORMAT = pyaudio.paInt16
-SAMPLE_WIDTH = pyaudio.get_sample_size(FORMAT)
+FORMAT = "int16"
+SAMPLE_WIDTH = np.dtype(FORMAT).itemsize
 CHANNELS = 1
 RATE = 16000
 CHUNK = 1024

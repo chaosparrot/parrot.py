@@ -27,16 +27,11 @@ FRAMES_WRITTEN = 15
 WAV_HEADER_SIZE = 44
 
 
-class UnusedAudio:
-    # The recorder only holds this to terminate() it, which these tests never do
-    pass
-
-
 class StoppableStream:
-    def start_stream(self):
+    def start(self):
         pass
 
-    def stop_stream(self):
+    def stop(self):
         pass
 
 
@@ -62,7 +57,7 @@ class WavHeaderTest(unittest.TestCase):
         state = DetectionState("strategy", "recording", MS_PER_FRAME, 0, False,
                                0, 0, 0, 0, [label])
         self.recorder = StreamRecorder(
-            UnusedAudio(), StoppableStream(), self.wav_file,
+            StoppableStream(), self.wav_file,
             os.path.join(workdir, "total.v%d.srt" % config.config.CURRENT_VERSION),
             state)
         self.recorder.total_audio_frames = [b"\0" * FRAME_BYTES] * FRAMES_WRITTEN

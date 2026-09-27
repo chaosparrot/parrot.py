@@ -11,18 +11,15 @@ brew --version
 
 If it isn't returning a version, you need to install it. Follow the instructions here: [Homebrew installation](https://docs.brew.sh/Installation)
 
-After you have installed homebrew, you need to install Python 3.8 and portaudio. This can be done using the following commands
+After you have installed homebrew, you need to install Python 3.12. This can be done using the following command
 
 ```
 brew install python@3.12
-brew install portaudio
-brew install six
 ```
 
 Test if your python version is correct by typing ```python --version``` in your Terminal, if it shows 3.12, you're good to go!
 
-On the M1, some issues can occur while installing portaudio. There are a number of possible fixes that are outlined in these links:
-- [Unable to install pyaudio on M1 Mac](https://stackoverflow.com/questions/68251169/unable-to-install-pyaudio-on-m1-mac-portaudio-already-installed)
+On the M1, some libraries can fail to build. A possible fix is outlined here:
 - [MacOS Brew install libsndfile but still not found](https://stackoverflow.com/questions/70737503/macos-brew-install-libsndfile-but-still-not-found)
 
 Step two - Download and extract the zipfile from this github repository

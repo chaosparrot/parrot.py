@@ -1,14 +1,19 @@
+import sounddevice as sd
+
 from config.config import FORMAT
 
 def open_input_stream(
-        audio, device_index, *, rate, channels, record_seconds,
+        device_index, *, rate, channels, record_seconds,
         sliding_window_amount, callback=None):
-    """Open a microphone stream, for recording, listening or probing a device."""
-    return audio.open(
-        format=FORMAT,
+    """Open a microphone stream, for recording, listening or probing a device.
+
+    The stream comes back stopped. Every caller starts its own, once whatever
+    consumes the frames is ready for them.
+    """
+    return sd.InputStream(
+        dtype=FORMAT,
         channels=channels,
-        rate=rate,
-        input=True,
-        input_device_index=device_index,
-        frames_per_buffer=round(rate * record_seconds / sliding_window_amount),
-        stream_callback=callback)
+        samplerate=rate,
+        device=device_index,
+        blocksize=round(rate * record_seconds / sliding_window_amount),
+        callback=callback)

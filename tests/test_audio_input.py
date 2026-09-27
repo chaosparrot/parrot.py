@@ -23,7 +23,10 @@ ROOT = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 sys.path.insert(0, ROOT)
 os.chdir(ROOT)
 
-import pyaudio
+import numpy as np
+import sounddevice as sd
+from unittest import mock
+
 import lib.listen
 # The shipped defaults, not config.config: that one execs the user's own
 # config.py over the top, and setting your own RATE should not fail a test about
@@ -46,33 +49,33 @@ MISSING = object()
 
 def library_frame(pcm):
     """16 bit PCM as the library hands it to a callback."""
-    return pcm
+    return np.frombuffer(pcm, dtype=np.int16).reshape(-1, 1)
 
 
 def keep_going(frame):
     """What a callback returns to leave the stream running."""
-    return frame, pyaudio.paContinue
+    return None
 
 
 def device(name, input_channels):
     """A device row as the library reports it."""
-    return {"name": name, "maxInputChannels": input_channels, "hostApi": 0}
+    return {"name": name, "max_input_channels": input_channels, "hostapi": 0}
 
 
 def stream_settings(kwargs):
     """An open call in plain values, whatever the library names them."""
     return {
-        "rate": kwargs["rate"],
+        "rate": kwargs["samplerate"],
         "channels": kwargs["channels"],
-        "sample_width": pyaudio.get_sample_size(kwargs["format"]),
-        "frame_samples": kwargs["frames_per_buffer"],
-        "device": kwargs["input_device_index"],
+        "sample_width": np.dtype(kwargs["dtype"]).itemsize,
+        "frame_samples": kwargs["blocksize"],
+        "device": kwargs["device"],
     }
 
 
-# Raised for a device index that is not there. sounddevice raises
-# PortAudioError, which is not an OSError, so `except IOError` would miss it.
-NO_SUCH_DEVICE = IOError
+# Raised for a device index that is not there. PortAudioError is not an
+# OSError, so `except IOError` alone would miss it.
+NO_SUCH_DEVICE = sd.PortAudioError
 
 MIC = device("Fake mic", 1)
 SPEAKERS = device("Fake speakers", 0)
@@ -80,36 +83,42 @@ HOST_API = {"name": "Fake host API"}
 
 
 class DeviceTable:
-    """pyaudio.PyAudio(), as far as the probes use it."""
+    """The library's device list, as far as the probes read it."""
 
     def __init__(self, devices):
         self.devices = devices
 
-    def get_device_info_by_index(self, index):
+    def query_devices(self, index):
         if index not in self.devices:
             raise NO_SUCH_DEVICE("Invalid device index")
         return self.devices[index]
 
-    def get_host_api_info_by_index(self, index):
+    def query_hostapis(self, index):
         return HOST_API
+
+
+def listing(devices):
+    """The probes read the library's module level table, so it is patched."""
+    table = DeviceTable(devices)
+    return mock.patch.multiple(sd, query_devices=table.query_devices,
+                               query_hostapis=table.query_hostapis)
 
 
 class OpenedStream:
     def __init__(self):
         self.running = False
 
-    def start_stream(self):
+    def start(self):
         self.running = True
 
 
-class RecordingLibrary(DeviceTable):
+class RecordingLibrary:
     """Remembers what a stream was opened for instead of opening one."""
 
     def __init__(self):
-        super().__init__({})
         self.opened = {}
 
-    def open(self, **kwargs):
+    def __call__(self, **kwargs):
         self.opened.update(kwargs)
         return OpenedStream()
 
@@ -121,19 +130,22 @@ def quietly(function, *arguments):
 
 
 def probe_index(devices, index):
-    return quietly(validate_microphone_index, DeviceTable(devices), index)
+    with listing(devices):
+        return quietly(validate_microphone_index, index)
 
 
 def probe_configured_input(devices):
-    return quietly(validate_microphone_input, DeviceTable(devices))
+    with listing(devices):
+        return quietly(validate_microphone_input)
 
 
 def open_a_stream(rate=RATE, channels=CHANNELS, seconds=RECORD_SECONDS,
                   sliding_window=SLIDING_WINDOW_AMOUNT):
     """What the library was asked for, and the stream it gave back."""
     library = RecordingLibrary()
-    stream = open_input_stream(library, MIC_INDEX, rate=rate, channels=channels,
-                               record_seconds=seconds, sliding_window_amount=sliding_window)
+    with mock.patch.object(sd, "InputStream", library):
+        stream = open_input_stream(MIC_INDEX, rate=rate, channels=channels,
+                                   record_seconds=seconds, sliding_window_amount=sliding_window)
     return stream_settings(library.opened), stream
 
 
@@ -233,9 +245,9 @@ class StreamSettingsTest(unittest.TestCase):
         self.assertEqual(settings["frame_samples"], 960)
 
     def test_the_helper_does_not_start_the_stream(self):
-        # Nobody notices today, since pyaudio's open starts it anyway. Starting
-        # here would move when frames begin for the record and listen paths,
-        # which wait for their consumer threads first.
+        # Every caller starts its own. Starting here would move when frames
+        # begin for the record and listen paths, which wait for their consumer
+        # threads first.
         _, stream = open_a_stream()
 
         self.assertFalse(stream.running)

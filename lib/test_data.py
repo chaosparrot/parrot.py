@@ -1,5 +1,5 @@
 from config.config import *
-import pyaudio
+import sounddevice as sd
 import wave
 import time
 from time import sleep
@@ -12,7 +12,7 @@ import os
 import joblib
 import pandas as pd
 import matplotlib.pyplot as plt
-import pyaudio
+import sounddevice as sd
 from lib.listen import start_nonblocking_listen_loop, predict_wav_files, validate_microphone_input
 from lib.machinelearning import feature_engineering
 import csv
@@ -171,8 +171,7 @@ def audio_analysis( available_models ):
         new_or_existing = input("")
     
     if( new_or_existing.lower() == "n" ):
-        audio = pyaudio.PyAudio()
-        if (validate_microphone_input(audio) == False):
+        if (validate_microphone_input() == False):
             return
     
         for wav_file in wav_files:

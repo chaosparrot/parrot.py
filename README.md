@@ -5,7 +5,7 @@ It's name is inspired by the way parrots and parakeets communicate, using chirps
 
 # Software requirements
 * Windows version 7 and up, MacOS or Linux (X11)
-* Python 3.8 (64 bit)
+* Python 3.12 (64 bit)
 * Project IRIS ( OPTIONAL - Used for turning the eyetracker into a mouse cursor )
 
 Python packages such as
@@ -13,7 +13,7 @@ Python packages such as
 * pandas 
 * matplotlib *( for the graphing of test results )*
 * scikit-learn *( for the machine learning bits )*
-* pyaudio *( audio recording and playing )*
+* sounddevice *( audio recording and playing )*
 * python_speech_features *( for audio manipulation, specifically the MFCC algorithm )*
 * pyautogui *( for mouse and keyboard simulation )*
 * pydirectinput *( for mouse and keyboard simulation, but with DirectX keycodes instead )*
