@@ -3,7 +3,9 @@ from lib.system_toggles import toggle_speechrec
 import sys
 import inspect
 import importlib
+import importlib.util
 import lib.ipc_manager as ipc_manager
+from config.config import CODE_FOLDER
 import os.path as path
 
 class ModeSwitcher(object):
@@ -47,15 +49,18 @@ class ModeSwitcher(object):
             if (path.exists("lib/modes/" + nextMode + ".p")):
                 full_module_name = "lib.modes." + nextMode 
             # Use data/code for new users
-            elif (not path.exists("data/code/" + nextMode + ".py")):
+            elif (not path.exists(CODE_FOLDER + "/" + nextMode + ".py")):
                 print("")            
                 print("---- MODE NOT FOUND ERROR ----")
-                print( "Could not find " + nextMode + ", does the " + nextMode + ".py file exist in the data/code folder?" )
+                print( "Could not find " + nextMode + ", does the " + nextMode + ".py file exist in the " + CODE_FOLDER + " folder?" )
                 print("------------------------------")                
                 exit()
             else:
                 full_module_name = "data.code." + nextMode
-                nextModule = importlib.import_module(full_module_name)
+                spec = importlib.util.spec_from_file_location(full_module_name, CODE_FOLDER + "/" + nextMode + ".py")
+                nextModule = importlib.util.module_from_spec(spec)
+                sys.modules[full_module_name] = nextModule
+                spec.loader.exec_module(nextModule)
             
             module_found = False
             clsmembers = inspect.getmembers(sys.modules[full_module_name], inspect.isclass)

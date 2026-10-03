@@ -468,4 +468,4 @@ def plot_bars( learning_data, index ):
         plt.bar(num, learning_row[column] * 100, color=color, linewidth=1, alpha=0.9, label=column)
             
     plt.legend(loc=1, ncol=7)
-    plt.savefig('data/evolution_images/8884-' + string_epoch + '.png')			
+    plt.savefig(DATA_DIR + '/evolution_images/8884-' + string_epoch + '.png')			

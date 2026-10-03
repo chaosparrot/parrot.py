@@ -1,4 +1,5 @@
 from importlib.util import find_spec
+import os
 import sys
 
 import numpy as np
@@ -58,15 +59,19 @@ TYPE_FEATURE_ENGINEERING_NORM_MFCC = 3
 TYPE_FEATURE_ENGINEERING_NORM_MFSC = 4
 FEATURE_ENGINEERING_TYPE = TYPE_FEATURE_ENGINEERING_NORM_MFSC
 
-DATASET_FOLDER = "data/recordings"
-RECORDINGS_FOLDER = "data/recordings"
-REPLAYS_FOLDER = "data/replays"
-REPLAYS_AUDIO_FOLDER = "data/replays/audio"
+_data_dir = os.environ.get("PARROT_DATA_DIR")
+DATA_DIR = os.path.abspath(_data_dir) if _data_dir else "data"
+DATASET_FOLDER = DATA_DIR + "/recordings"
+RECORDINGS_FOLDER = DATA_DIR + "/recordings"
+REPLAYS_FOLDER = DATA_DIR + "/replays"
+REPLAYS_AUDIO_FOLDER = DATA_DIR + "/replays/audio"
 REPLAYS_FILE = REPLAYS_FOLDER + "/run.csv"
-CLASSIFIER_FOLDER = "data/models"
+CLASSIFIER_FOLDER = DATA_DIR + "/models"
+CODE_FOLDER = DATA_DIR + "/code"
+# Ships with parrot, not user data
 OVERLAY_FOLDER = "data/overlays"
 COORDINATE_FILEPATH = "config/current-coordinate.txt"
-CONVERSION_OUTPUT_FOLDER = "data/output"
+CONVERSION_OUTPUT_FOLDER = DATA_DIR + "/output"
 PATH_TO_FFMPEG = "ffmpeg/bin/ffmpeg"
 
 DEFAULT_CLF_FILE = ""

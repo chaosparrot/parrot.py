@@ -62,28 +62,28 @@ def count_events(srt_path):
 
 started = time.time()
 
+# So that a local run cannot touch your own recordings or models.
+workdir = tempfile.mkdtemp(prefix="parrot_smoke_")
+atexit.register(shutil.rmtree, workdir, ignore_errors=True)
+os.environ["PARROT_DATA_DIR"] = workdir
+os.makedirs(os.path.join(workdir, "code"))
+
 t = stage("Importing the configuration")
 import config.config
 from lib.combine_models import get_current_default_settings
-import lib.combine_models
 import lib.load_data
 print("  took %.1fs, with no input device attached" % (time.time() - t))
+check("the data folder is the temporary one", config.config.DATA_DIR == workdir, config.config.DATA_DIR)
 
-# Rebound so that a local run cannot touch your own recordings or models.
-workdir = tempfile.mkdtemp(prefix="parrot_smoke_")
-atexit.register(shutil.rmtree, workdir, ignore_errors=True)
 models_dir = os.path.join(workdir, "models")
-replays_dir = os.path.join(workdir, "replays")
 os.makedirs(models_dir)
-os.makedirs(replays_dir)
-lib.combine_models.CLASSIFIER_FOLDER = models_dir
 
 settings = get_current_default_settings()
 
 t = stage("Segmenting the fixture recordings")
 from lib.stream_processing import process_wav_file
 
-segmented = os.path.join(workdir, "segmented")
+segmented = os.path.join(workdir, "recordings")
 for label in LABELS:
     source = os.path.join(FIXTURES, label, "source", label + ".wav")
     source_dir = os.path.join(segmented, label, "source")
@@ -175,7 +175,6 @@ except Exception as error:
 print("  took %.1fs" % (time.time() - t))
 
 t = stage("Loading that segmentation as training data")
-lib.load_data.DATASET_FOLDER = segmented
 data_x, data_y, _ = lib.load_data.load_sklearn_data(LABELS, settings["FEATURE_ENGINEERING_TYPE"])
 print("  took %.1fs" % (time.time() - t))
 check("samples were loaded", len(data_x) > 0, "(%d)" % len(data_x))
@@ -226,8 +225,6 @@ check("it predicts", len(reloaded.predict_proba(data_x[:4])) == 4)
 
 t = stage("Training an audio net of %d, %d epochs" % (NET_COUNT, EPOCHS))
 import lib.audio_net
-lib.audio_net.CLASSIFIER_FOLDER = models_dir
-lib.audio_net.REPLAYS_FOLDER = replays_dir
 from lib.audio_dataset import AudioDataset
 from lib.audio_net import AudioNetTrainer
 
