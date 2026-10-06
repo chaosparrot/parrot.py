@@ -8,6 +8,7 @@ import warnings
 from lib.machinelearning import *
 from lib.srt import count_total_frames, count_total_silence_frames
 from lib.wav import load_wav_files_with_srts, load_wav_data_from_srt
+from lib.typing import RunSettings
 
 def get_grouped_data_directories( labels ):
     # If the microphone separator setting is set use that to split directory names into categories/labels.
@@ -23,6 +24,17 @@ def get_grouped_data_directories( labels ):
         data_directory = f"{ DATASET_FOLDER }/{ directory_name }"
         grouped_data_directories[ category_name ].append( data_directory )
     return grouped_data_directories
+
+class LoadingStopped(Exception):
+    pass
+
+def resolved_balance(silence=None, balance_sounds=None) -> RunSettings:
+    """What loading actually applies, defaults filled in."""
+    if silence is None:
+        silence = SILENCE_TRAINING_MODE
+    if balance_sounds is None:
+        balance_sounds = AUTOMATIC_DATASET_BALANCING
+    return {"silence": silence, "balance_sounds": bool(balance_sounds)}
 
 def generate_data_balance_strategy_map(grouped_data_directories, silence=None, balance_sounds=None):
     if silence is None:
@@ -134,7 +146,7 @@ def rebalance_sampling_strategies_for_memory(sampling_strategies, balance_sounds
     
     return sampling_strategies
 
-def sample_data_from_label(label, grouped_data_directories, sample_strategies, input_type, silence):
+def sample_data_from_label(label, grouped_data_directories, sample_strategies, input_type, silence, progress_callback=None, stop_check=None):
     warnings.filterwarnings("ignore", "n_fft=2048 is too small for input signal")
     directories = grouped_data_directories[ label ]
 
@@ -180,6 +192,10 @@ def sample_data_from_label(label, grouped_data_directories, sample_strategies, i
     if label in sample_strategies:
         strategy = sample_strategies[label]["strategy"]
         truncate_after = sample_strategies[label]["truncate_after"]
+        if progress_callback is not None:
+            total_size = sample_strategies[label]["total_size"]
+            percent = round(sample_strategies[label]["total_loaded"] / total_size * 100) - 100 if total_size else 0
+            progress_callback(label, strategy, percent)
         if sample_strategies[label]["total_size"] == 0:
             print( f"Found no segmented audio for {label}" )
         elif strategy == "oversample":
@@ -198,6 +214,8 @@ def sample_data_from_label(label, grouped_data_directories, sample_strategies, i
         
         listed_source_files = listed_files.keys()
         for file_index, full_filename in enumerate( listed_source_files ):
+            if stop_check is not None and stop_check():
+                raise LoadingStopped()
             label_samples = load_wav_data_from_srt(listed_files[full_filename], full_filename, input_type, should_oversample)
             for sample in label_samples:
                 total_label_samples.append([full_filename, sample])
@@ -272,7 +290,20 @@ def load_sklearn_data( filtered_data_directory_names, input_type, silence=None, 
 
     return dataset_x, dataset_labels, grouped_data_directories.keys()
     
-def load_pytorch_data( filtered_data_directory_names, input_type, silence=None, balance_sounds=None):
+def load_pytorch_data( filtered_data_directory_names, input_type, silence=None, balance_sounds=None, progress_callback=None, stop_check=None):
+    """Load recordings as tensors for AudioDataset.
+
+    Args:
+        filtered_data_directory_names: folders in DATASET_FOLDER to load.
+        input_type: a TYPE_FEATURE_ENGINEERING_* value.
+        silence: "all", "balanced" or "none". Defaults to SILENCE_TRAINING_MODE.
+        balance_sounds: defaults to AUTOMATIC_DATASET_BALANCING.
+        progress_callback: called as each label starts loading with
+            (label, strategy, percent), percent being how far balancing
+            plans to over or undersample it, like +52 or -30.
+        stop_check: called before each file. Return True to stop,
+            which raises LoadingStopped.
+    """
     if silence is None:
         silence = SILENCE_TRAINING_MODE
     import torch
@@ -288,7 +319,7 @@ def load_pytorch_data( filtered_data_directory_names, input_type, silence=None, 
         augmented[BACKGROUND_LABEL] = []
     for label in grouped_data_directories:
         if label != BACKGROUND_LABEL:
-            data_sample = sample_data_from_label( label, grouped_data_directories, sample_strategies, input_type, silence)
+            data_sample = sample_data_from_label( label, grouped_data_directories, sample_strategies, input_type, silence, progress_callback=progress_callback, stop_check=stop_check)
             dataset[label] = [[x[0], torch.tensor(x[1]).float()] for x in data_sample["label"]]
             augmented[label] =[[x[0], torch.tensor(x[1]).float()] for x in data_sample["augmented"]]
             if include_silence:

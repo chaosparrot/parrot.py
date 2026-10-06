@@ -228,13 +228,38 @@ import lib.audio_net
 from lib.audio_dataset import AudioDataset
 from lib.audio_net import AudioNetTrainer
 
-dataset = AudioDataset(lib.load_data.load_pytorch_data(LABELS, settings["FEATURE_ENGINEERING_TYPE"]))
+loaded = []
+dataset = AudioDataset(lib.load_data.load_pytorch_data(LABELS, settings["FEATURE_ENGINEERING_TYPE"], progress_callback=lambda *args: loaded.append(args)))
+check("the load callback named every label", sorted(args[0] for args in loaded) == sorted(LABELS), str(loaded))
+
+try:
+    lib.load_data.load_pytorch_data(LABELS, settings["FEATURE_ENGINEERING_TYPE"], stop_check=lambda: True)
+    check("a stop during loading raises", False)
+except lib.load_data.LoadingStopped:
+    check("a stop during loading raises", True)
 check("the dataset holds the fixture labels", sorted(dataset.get_labels()) == sorted(EXPECTED_CLASSES), str(dataset.get_labels()))
 
-trainer = AudioNetTrainer(dataset, NET_COUNT, settings)
+trainer = AudioNetTrainer(dataset, NET_COUNT, settings, run_settings=lib.load_data.resolved_balance())
 trainer.max_epochs = EPOCHS
-trainer.train("smoke_net")
+epochs = []
+trainer.train("smoke_net", epoch_callback=lambda *args: epochs.append(args))
 print("  took %.1fs" % (time.time() - t))
+check("the epoch callback fired for epochs 0 to %d" % (EPOCHS - 1), [epoch[0] for epoch in epochs] == list(range(EPOCHS)), str([epoch[0] for epoch in epochs]))
+check("it reported every net's accuracy", all(len(epoch[2]) == NET_COUNT for epoch in epochs))
+check("the first epoch is a new best", bool(epochs) and epochs[0][4])
+
+t = stage("Stopping an audio net mid epoch")
+# Batches are only reported every 10, more than the fixtures fill at full size.
+class SmallBatchTrainer(AudioNetTrainer):
+    batch_size = 8
+
+stopped_batches = []
+stopped_epochs = []
+trainer = SmallBatchTrainer(dataset, NET_COUNT, settings)
+trainer.train("smoke_net_stopped", batch_callback=lambda *args: stopped_batches.append(args), epoch_callback=lambda *args: stopped_epochs.append(args), stop_check=lambda: len(stopped_batches) > 0)
+print("  took %.1fs" % (time.time() - t))
+check("the batch callback fired once, at batch 10", [args[2] for args in stopped_batches] == [10], str([args[2] for args in stopped_batches]))
+check("it stopped before finishing an epoch", len(stopped_epochs) == 0, "(%d)" % len(stopped_epochs))
 
 net_file = os.path.join(models_dir, "smoke_net")
 check("the audio net model saved", os.path.exists(net_file))
@@ -246,9 +271,10 @@ for index in range(NET_COUNT):
         check("net %d saved its best weights" % (index + 1), False)
         continue
     weights = torch.load(weights_file, weights_only=False)
-    missing = [key for key in ["state_dict", "labels", "input_size", "accuracy"] if key not in weights]
+    missing = [key for key in ["state_dict", "labels", "input_size", "accuracy", "label_accuracy", "combined_accuracy", "label_frames", "trained_at", "run_settings"] if key not in weights]
     check("net %d saved its best weights" % (index + 1), not missing, "missing %s" % missing if missing else "")
     check("net %d recorded the fixture labels" % (index + 1), sorted(weights["labels"]) == sorted(EXPECTED_CLASSES))
+    check("net %d counted the frames loaded for each label" % (index + 1), sorted(weights.get("label_frames", {})) == sorted(EXPECTED_CLASSES))
 
 if os.path.exists(net_file):
     ensemble = joblib.load(net_file)
