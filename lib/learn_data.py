@@ -9,7 +9,7 @@ from lib.machinelearning import *
 from sklearn.neural_network import *
 from lib.combine_models import define_settings, get_current_default_settings
 from lib.audio_model import AudioModel
-from lib.load_data import load_sklearn_data, load_pytorch_data
+from lib.load_data import load_sklearn_data, load_pytorch_data, resolved_balance
 
 def learn_data():
     dir_path = os.path.join( os.path.dirname( os.path.dirname( os.path.realpath(__file__)) ), DATASET_FOLDER)    
@@ -81,7 +81,7 @@ def learn_data():
         print( "--------------------------" )
         data = load_pytorch_data(dataset_labels, settings["FEATURE_ENGINEERING_TYPE"])        
         dataset = AudioDataset( data )
-        trainer = AudioNetTrainer(dataset, net_count, settings)
+        trainer = AudioNetTrainer(dataset, net_count, settings, run_settings=resolved_balance())
         
         print( "Learning the data..." )
         trainer.train( clf_filename )
