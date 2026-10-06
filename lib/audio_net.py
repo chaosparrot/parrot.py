@@ -77,7 +77,7 @@ class AudioNetTrainer:
     dataset = False
     input_size = 120
     
-    def __init__(self, dataset, net_count = 1, audio_settings = None, *, run_settings: Optional[RunSettings] = None):
+    def __init__(self, dataset, net_count = 1, audio_settings = None, run_settings: Optional[RunSettings] = None):
         self.nets = []
         self.optimizers = []
         self.random_seeds = []
@@ -114,7 +114,7 @@ class AudioNetTrainer:
             self.train_loaders.append(torch.utils.data.DataLoader(dataset, batch_size=self.batch_size, sampler=train_sampler, pin_memory=False, num_workers=0))
             self.validation_loaders.append(torch.utils.data.DataLoader(dataset, batch_size=self.batch_size, sampler=valid_sampler, pin_memory=False, num_workers=0))
         
-    def train(self, filename: str, *, batch_callback=None, epoch_callback=None, stop_check=None):
+    def train(self, filename: str, batch_callback=None, epoch_callback=None, stop_check=None):
         """Train every net, saving the best combined model as it improves.
 
         Args:

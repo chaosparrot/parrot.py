@@ -146,7 +146,7 @@ def rebalance_sampling_strategies_for_memory(sampling_strategies, balance_sounds
     
     return sampling_strategies
 
-def sample_data_from_label(label, grouped_data_directories, sample_strategies, input_type, silence, *, progress_callback=None, stop_check=None):
+def sample_data_from_label(label, grouped_data_directories, sample_strategies, input_type, silence, progress_callback=None, stop_check=None):
     warnings.filterwarnings("ignore", "n_fft=2048 is too small for input signal")
     directories = grouped_data_directories[ label ]
 
@@ -290,7 +290,7 @@ def load_sklearn_data( filtered_data_directory_names, input_type, silence=None, 
 
     return dataset_x, dataset_labels, grouped_data_directories.keys()
     
-def load_pytorch_data( filtered_data_directory_names, input_type, silence=None, balance_sounds=None, *, progress_callback=None, stop_check=None):
+def load_pytorch_data( filtered_data_directory_names, input_type, silence=None, balance_sounds=None, progress_callback=None, stop_check=None):
     """Load recordings as tensors for AudioDataset.
 
     Args:
