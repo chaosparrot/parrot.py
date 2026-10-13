@@ -523,12 +523,13 @@ def post_processing(frames: List[DetectionFrame], detection_state: DetectionStat
     return frames
 
 def determine_detection_state(detection_frames: List[DetectionFrame], detection_state: DetectionState) -> DetectionState:
-    dBFS_frames = [x.dBFS for x in detection_frames]
+    dBFS_frames = np.array([frame.dBFS for frame in detection_frames])
+    spectral_flux_frames = np.array([frame.spectral_flux for frame in detection_frames])
     threshold_confidence = 1 if THRESHOLD_DETECTION == "strict" else 0.5
     
     # Calculate the onset thresholds using spectral flux
-    spectral_flux_max = np.percentile([frame.spectral_flux for frame in detection_frames], 95)
-    spectral_flux_min = np.percentile([frame.spectral_flux for frame in detection_frames], 5)
+    spectral_flux_max = np.percentile(spectral_flux_frames, 95)
+    spectral_flux_min = np.percentile(spectral_flux_frames, 5)
     detection_state.spectral_onset_threshold = (spectral_flux_max - spectral_flux_min) * 0.5
 
     # Calculate the signal variance
@@ -537,8 +538,8 @@ def determine_detection_state(detection_frames: List[DetectionFrame], detection_
     detection_state.expected_noise_floor = np.percentile(dBFS_frames, 10)
     
     # Determine an error margin of about 4% of the rough dBFS range
-    dBFS_max = np.percentile([frame.dBFS for frame in detection_frames], 95)
-    dBFS_min = np.percentile([frame.dBFS for frame in detection_frames], 5)
+    dBFS_max = np.percentile(dBFS_frames, 95)
+    dBFS_min = np.percentile(dBFS_frames, 5)
     detection_state.dBFS_error_margin = abs(dBFS_min - dBFS_max) / 25
 
     # Determine a upper bound of dBFS threshold based on the known valleys determined by the onset detection
