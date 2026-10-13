@@ -12,12 +12,6 @@ import os
 snr_cutoff = 30
 
 def process_wav_file(input_file, srt_file, output_file, thresholds_file, labels, progress_callback = None, comparison_srt_file = None, override_file = None, print_statistics = False):
-    audioFrames = []
-    wf = wave.open(input_file, 'rb')
-    number_channels = wf.getnchannels()
-    total_frames = wf.getnframes()
-    frame_rate = wf.getframerate()
-    frames_to_read = round( frame_rate * RECORD_SECONDS / SLIDING_WINDOW_AMOUNT )
     ms_per_frame = math.floor(RECORD_SECONDS / SLIDING_WINDOW_AMOUNT * 1000)
     sample_width = 2# 16 bit = 2 bytes
     
@@ -46,6 +40,13 @@ def process_wav_file(input_file, srt_file, output_file, thresholds_file, labels,
             
             override_labels.append(DetectionLabel(override_label, 0, 0, duration_type, 0, min_dBFS, 0, 0, 0))    
     detection_state.override_labels = override_labels
+
+    audioFrames = []
+    wf = wave.open(input_file, 'rb')
+    number_channels = wf.getnchannels()
+    total_frames = wf.getnframes()
+    frame_rate = wf.getframerate()
+    frames_to_read = round( frame_rate * RECORD_SECONDS / SLIDING_WINDOW_AMOUNT )
 
     false_occurrence = []
     current_occurrence = []
