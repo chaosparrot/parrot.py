@@ -69,3 +69,14 @@ I will expand this document once I learn more during the development. In the mea
 
 If you desire to use Parrot.PY inside of Talon, take a look at this page explaining the [integration with Talon Voice](docs/TALON_VOICE.md).
 For examples and explanation of how to interact with a running Parrot instance from your own programs, read up on [interfacing with other programs](docs/INTERFACING.md).
+
+# Desktop app (work in progress)
+
+Not ready for use yet. Being added in pieces.
+
+On top of a [working install](docs/INSTALLATION.md):
+
+```
+pip install -r requirements-gui.txt
+python -m gui
+```
