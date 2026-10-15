@@ -15,6 +15,36 @@ PROGRESS_FILLED = '#' if sys.stdout.encoding != 'utf-8' else '\u2588'
 PROGRESS_AVAILABLE = '-' if sys.stdout.encoding != 'utf-8' else '\u2591'
 LINE_LENGTH = 50
 
+QUANTITIES = {
+    "not_enough": "Not enough",
+    "sufficient": "Sufficient",
+    "good": "Good",
+    "excellent": "Excellent",
+}
+
+QUANTITY_SUFFICIENT_MS = 16500
+QUANTITY_GOOD_MS = 41250
+QUANTITY_EXCELLENT_MS = 82500
+
+def get_quantity_rating(total_ms_detected):
+    # Quantity rating is based on 5000 30ms windows being good enough to train a label from the example model
+    # And 1000 30ms windows being enough to train a label decently
+    # With atleast 10 percent extra for a possible hold-out set during training
+    percent_to_next = 0
+    quantity = ""
+    if total_ms_detected < QUANTITY_SUFFICIENT_MS:
+        percent_to_next = (total_ms_detected / QUANTITY_SUFFICIENT_MS ) * 100
+        quantity = QUANTITIES["not_enough"]
+    elif total_ms_detected >= QUANTITY_SUFFICIENT_MS and total_ms_detected < QUANTITY_GOOD_MS:
+        percent_to_next = ((total_ms_detected - QUANTITY_SUFFICIENT_MS) / (QUANTITY_GOOD_MS - QUANTITY_SUFFICIENT_MS) ) * 100
+        quantity = QUANTITIES["sufficient"]
+    elif total_ms_detected >= QUANTITY_GOOD_MS and total_ms_detected < QUANTITY_EXCELLENT_MS:
+        percent_to_next = ((total_ms_detected - QUANTITY_GOOD_MS) / (QUANTITY_EXCELLENT_MS - QUANTITY_GOOD_MS) ) * 100
+        quantity = QUANTITIES["good"]
+    elif total_ms_detected >= QUANTITY_EXCELLENT_MS:
+        quantity = QUANTITIES["excellent"]
+    return quantity, percent_to_next
+
 def create_progress_bar(percentage: float = 1.0) -> str:
     filled_characters = round(max(0, min(LINE_LENGTH, LINE_LENGTH * percentage)))
     return "".rjust(filled_characters, PROGRESS_FILLED).ljust(LINE_LENGTH, PROGRESS_AVAILABLE)
@@ -71,29 +101,13 @@ def get_current_status(detection_state: DetectionState, extra_states: List[Detec
        ])
 
     for label in detection_state.labels:
-        # Quantity rating is based on 5000 30ms windows being good enough to train a label from the example model
-        # And 1000 30ms windows being enough to train a label decently
-        # With atleast 10 percent extra for a possible hold-out set during training
         total_ms_detected = label.ms_detected + label.previous_detected
         for extra_state in extra_states:
             for extra_label in extra_state.labels:
                 if extra_label.label == label.label:
                     total_ms_detected += extra_label.ms_detected + extra_label.previous_detected
         
-        percent_to_next = 0
-        quantity = ""
-        if total_ms_detected < 16500:
-            percent_to_next = (total_ms_detected / 16500 ) * 100
-            quantity = "Not enough"
-        elif total_ms_detected > 16500 and total_ms_detected < 41250:
-            percent_to_next = ((total_ms_detected - 16500) / (41250 - 16500) ) * 100
-            quantity = "Sufficient"
-        elif total_ms_detected >= 41250 and total_ms_detected < 82500:
-            percent_to_next = ((total_ms_detected - 41250) / (82500 - 41250) ) * 100        
-            quantity = "Good"
-        elif total_ms_detected >= 82500:
-            quantity = "Excellent"
-            
+        quantity, percent_to_next = get_quantity_rating(total_ms_detected)
         if percent_to_next != 0:
             quantity += " (" + str(round(percent_to_next)) + "%)"
 
