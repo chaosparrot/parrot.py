@@ -22,6 +22,8 @@ def primary_button_style():
             # Else the app-wide QPushButton:hover greys it out.
             f"QPushButton#primaryAction:hover {{ "
             f"background-color: {t['accent']}; }} "
+            f"QPushButton#primaryAction:focus {{ "
+            f"border: 2px solid {t['focus']}; padding: 4px 16px; }} "
             f"QPushButton#primaryAction:disabled {{ "
             f"background-color: {t['disabled_bg']}; "
             f"color: {t['disabled_text']}; }}")

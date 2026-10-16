@@ -41,7 +41,7 @@ class _StepCard(QFrame):
         v.addStretch()
 
         self.action = QPushButton(action_text)
-        self.action.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.action.setFocusPolicy(Qt.FocusPolicy.TabFocus)
         v.addWidget(self.action)
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
 
@@ -67,6 +67,8 @@ class _StepCard(QFrame):
         self.status.setStyleSheet(
             f"color: {t['accent'] if done else t['text']}; border: none;")
         self.status.setText(status_text)
+        # Screen readers skip the label, so the button carries the status
+        self.action.setAccessibleDescription(status_text)
         self.action.setObjectName(
             "primaryAction" if (current or action_primary) else "")
         self.action.setStyleSheet(
@@ -92,6 +94,7 @@ class HomePage(QWidget):
         outer = QVBoxLayout(self)
         outer.setContentsMargins(0, 0, 0, 0)
         scroll = QScrollArea()
+        scroll.setAccessibleName("Home")
         scroll.setWidgetResizable(True)
         scroll.setFrameShape(QFrame.Shape.NoFrame)
         outer.addWidget(scroll)
@@ -136,7 +139,7 @@ class HomePage(QWidget):
         data_row = QHBoxLayout()
         data_row.addStretch()
         open_data_btn = QPushButton("Open data folder")
-        open_data_btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        open_data_btn.setFocusPolicy(Qt.FocusPolicy.TabFocus)
         open_data_btn.setToolTip("Recordings and models, in one folder")
         open_data_btn.clicked.connect(self._on_open_data_folder)
         data_row.addWidget(open_data_btn)

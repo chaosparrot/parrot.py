@@ -18,7 +18,7 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(self.stack)
 
         self.home_page = HomePage(self.app_state, self)
-        self.home_page.navigate.connect(self._go_to_tab)
+        self.home_page.navigate.connect(self._go_to_page)
         self.pages = {
             "Home": self.home_page,
             "Sounds": QWidget(),
@@ -41,16 +41,18 @@ class MainWindow(QMainWindow):
         for name in self.pages:
             action = QAction(name, self)
             action.setCheckable(True)
-            action.triggered.connect(lambda _checked, n=name: self._show_tab(n))
+            action.triggered.connect(lambda _checked, n=name: self._show_page(n))
             group.addAction(action)
             toolbar.addAction(action)
+            # Qt default is NoFocus. TabFocus so a click doesn't leave a ring
+            toolbar.widgetForAction(action).setFocusPolicy(Qt.FocusPolicy.TabFocus)
             self.nav_actions[name] = action
         self.nav_actions["Home"].setChecked(True)
 
-    def _go_to_tab(self, name):
+    def _go_to_page(self, name):
         """Navigation from page buttons: keeps the toolbar checked state in sync."""
         self.nav_actions[name].setChecked(True)
-        self._show_tab(name)
+        self._show_page(name)
 
-    def _show_tab(self, name):
+    def _show_page(self, name):
         self.stack.setCurrentWidget(self.pages[name])
