@@ -11,6 +11,7 @@ os.chdir(ROOT)
 
 from lib.srt import (count_label_ms_in_srt, count_frames_in_srt, count_total_label_ms,
                      count_total_frames, count_total_silence_frames,
+                     get_srt_paths, get_srt_path_for_wav,
                      current_v_ending, manual_ending)
 
 
@@ -80,6 +81,63 @@ class SrtCountsTest(unittest.TestCase):
         self.assertEqual(count_total_label_ms("pop", self.dir, ROUNDING_MS), 1050)
         self.assertEqual(count_total_frames("pop", self.dir, ROUNDING_MS), 67)
         self.assertEqual(count_total_silence_frames(self.dir, ROUNDING_MS), 177)
+
+
+class SrtPathsTest(unittest.TestCase):
+
+    def setUp(self):
+        self.base = tempfile.mkdtemp()
+        self.dir = os.path.join(self.base, "segments")
+        os.mkdir(self.dir)
+        for name, content in {
+            "both" + current_v_ending: srt_text((900, 1800, "pop")),       # not used
+            "both" + manual_ending: srt_text((900, 1200, "pop")),          # 300 ms
+            "generated" + current_v_ending: srt_text((900, 1500, "pop")),  # 600 ms
+            "generated2" + current_v_ending: srt_text((900, 1200, "pop")), # 300 ms
+            "manual" + manual_ending: srt_text((900, 1050, "pop")),        # 150 ms
+            "old.v1.srt": srt_text((900, 1800, "pop")),                    # not used
+            "folder" + current_v_ending: srt_text((900, 1200, "pop")),     # 300 ms
+        }.items():
+            with open(self.path(name), "w") as f:
+                f.write(content)
+        # A folder with an srt's name is not an srt
+        os.mkdir(self.path("folder" + manual_ending))
+
+    def tearDown(self):
+        shutil.rmtree(self.base)
+
+    def path(self, name):
+        return os.path.join(self.dir, name)
+
+    def test_one_srt_per_wav(self):
+        self.assertEqual(sorted(get_srt_paths(self.dir)), sorted([
+            self.path("both" + manual_ending),
+            self.path("generated" + current_v_ending),
+            self.path("generated2" + current_v_ending),
+            self.path("manual" + manual_ending),
+            self.path("folder" + current_v_ending),
+        ]))
+
+    def test_srt_path_for_wav(self):
+        srt_paths = get_srt_paths(self.dir)
+        for wav_name, expected in {
+            "both": self.path("both" + manual_ending),
+            "generated": self.path("generated" + current_v_ending),
+            "generated2": self.path("generated2" + current_v_ending),
+            "manual": self.path("manual" + manual_ending),
+            "old": None,
+            "missing": None,
+        }.items():
+            # Both list orders, so "generated" never picks "generated2"
+            for paths in (srt_paths, srt_paths[::-1]):
+                with self.subTest(name=wav_name):
+                    self.assertEqual(get_srt_path_for_wav(paths, wav_name), expected)
+
+    def test_no_segments_folder(self):
+        self.assertEqual(get_srt_paths(self.path("nope")), [])
+
+    def test_count_skips_folder(self):
+        self.assertEqual(count_total_label_ms("pop", self.base, ROUNDING_MS), 300 + 600 + 300 + 150 + 300)
 
 
 if __name__ == "__main__":
