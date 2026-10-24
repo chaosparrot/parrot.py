@@ -1,6 +1,6 @@
 """Shared UI primitives.
 
-Imports nothing from ``windows/``, so anything may import it.
+Imports nothing from ``pages/``, so anything may import it.
 Colours and type sizes come from ``theme``.
 """
 from gui import theme
