@@ -77,6 +77,16 @@ class _StepCard(QFrame):
 
 
 class HomePage(QWidget):
+    """
+    ┌──────────────────────────────────────────────────────────┐
+    │ hero_title                                               │
+    │ hero_sub                                                 │
+    │                                                          │
+    │ ┌ step_record ───┐ ┌ step_train ────┐ ┌ step_use ──────┐ │
+    │ │ _StepCard      │ │ _StepCard      │ │ _StepCard      │ │
+    │ └────────────────┘ └────────────────┘ └────────────────┘ │
+    └──────────────────────────────────────────────────────────┘
+    """
     navigate = pyqtSignal(str)   # tab name, handled by MainWindow
 
     def __init__(self, app_state, parent=None):
