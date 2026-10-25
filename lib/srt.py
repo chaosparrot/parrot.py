@@ -1,7 +1,7 @@
 import time
 from config.config import BACKGROUND_LABEL, CURRENT_VERSION
 from .typing import TransitionEvent, DetectionEvent, DetectionFrame
-from typing import List, Optional
+from typing import List, Optional, Tuple
 import math
 import os
 import numpy as np
@@ -140,30 +140,33 @@ def count_total_label_ms(label: str, base_folder: str, rounding_ms: int) -> int:
         total_ms += count_label_ms_in_srt(label, srt_path, rounding_ms)
     return total_ms
 
-def count_label_ms_in_srt(label: str, srt_filename: str, rounding_ms: int) -> int:
+# get_label_ranges_in_srt("pop", srt, 15) example:
+# srt     00:00:00,900 --> 00:00:01,800  pop
+#         00:00:03,000 --> 00:00:03,600  pop
+# returns [(900, 1800), (3000, 3600)]
+def get_label_ranges_in_srt(label: str, srt_filename: str, rounding_ms: int) -> List[Tuple[int, int]]:
     transition_events = parse_srt_file(srt_filename, rounding_ms, False)
-    total_ms = 0
+    ranges = []
     start_ms = -1
     for transition_event in transition_events:
         if transition_event.label.lower() == label.lower():
             start_ms = transition_event.start_ms
         elif start_ms > -1 and transition_event.label.lower() != label.lower():
-            total_ms += transition_event.start_ms - start_ms
+            ranges.append((start_ms, transition_event.start_ms))
             start_ms = -1
     
+    return ranges
+
+def count_label_ms_in_srt(label: str, srt_filename: str, rounding_ms: int) -> int:
+    total_ms = 0
+    for start_ms, end_ms in get_label_ranges_in_srt(label, srt_filename, rounding_ms):
+        total_ms += end_ms - start_ms
     return total_ms
 
 def count_frames_in_srt(label: str, srt_filename: str, rounding_ms: int) -> int:
-    transition_events = parse_srt_file(srt_filename, rounding_ms, False)
-    start_ms = -1
     frames = 0
-    for transition_event in transition_events:
-        if transition_event.label.lower() == label.lower():
-            start_ms = transition_event.start_ms
-        elif start_ms > -1 and transition_event.label.lower() != label.lower():
-            frames += round((transition_event.start_ms - start_ms - rounding_ms) / 15)
-            start_ms = -1
-    
+    for start_ms, end_ms in get_label_ranges_in_srt(label, srt_filename, rounding_ms):
+        frames += round((end_ms - start_ms - rounding_ms) / 15)
     return frames
 
 def print_detection_performance_compared_to_srt(actual_frames: List[DetectionFrame], frames_to_read: int, srt_file_location: str, output_wave_file = None):
