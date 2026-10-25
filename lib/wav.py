@@ -1,5 +1,5 @@
 import wave
-from config.config import BACKGROUND_LABEL, RECORD_SECONDS, SLIDING_WINDOW_AMOUNT, RATE, TYPE_FEATURE_ENGINEERING_NORM_MFSC, PYTORCH_AVAILABLE
+from config.config import BACKGROUND_LABEL, RECORD_SECONDS, SLIDING_WINDOW_AMOUNT, MS_PER_FRAME, RATE, TYPE_FEATURE_ENGINEERING_NORM_MFSC, PYTORCH_AVAILABLE
 from lib.machinelearning import feature_engineering_raw
 from .srt import parse_srt_file
 import numpy as np
@@ -7,7 +7,6 @@ import audioop
 from typing import List
 import os
 import time
-import math
 if (PYTORCH_AVAILABLE == True):
     from audiomentations import Compose, AddGaussianNoise, Shift, TimeStretch
 
@@ -83,7 +82,7 @@ def load_wav_data_from_srt(srt_file: str, source_file: str, feature_engineering_
     number_channels = wf.getnchannels()
     total_frames = wf.getnframes()
     frames_to_read = round( frame_rate * RECORD_SECONDS / SLIDING_WINDOW_AMOUNT )    
-    ms_per_frame = math.floor(RECORD_SECONDS / SLIDING_WINDOW_AMOUNT * 1000)
+    ms_per_frame = MS_PER_FRAME
     
     # If offsets are required - We seek half a frame behind the expected frame to get more data from a different location
     halfframe_offset = round( frames_to_read * number_channels * 0.5 )

@@ -43,7 +43,7 @@ def generate_data_balance_strategy_map(grouped_data_directories, silence=None, b
         raise ValueError(f'SILENCE_TRAINING_MODE must be "all", "balanced" or "none", not {silence!r}')
     if balance_sounds is None:
         balance_sounds = AUTOMATIC_DATASET_BALANCING
-    ms_per_frame = math.floor(RECORD_SECONDS / SLIDING_WINDOW_AMOUNT * 1000)
+    ms_per_frame = MS_PER_FRAME
     directory_counts = {}
     max_size = 0
     min_size = 2147483647 # Large number so that minimum size is always smaller

@@ -1,7 +1,6 @@
 from config.config import *
 import sounddevice as sd
 import time
-import math
 import os
 import glob
 from queue import *
@@ -166,7 +165,7 @@ def record_sound():
     print( "And record tiny audio files to be used for learning later" )
     print( "-------------------------" )
     
-    ms_per_frame = math.floor(RECORD_SECONDS / SLIDING_WINDOW_AMOUNT * 1000)
+    ms_per_frame = MS_PER_FRAME
     directory_counts = {}
     try:
         if os.path.exists(RECORDINGS_FOLDER):
@@ -348,7 +347,7 @@ def non_blocking_record(labels, FULL_WAVE_OUTPUT_FILENAME, SRT_FILE, MICROPHONE_
     micindexed_lambda = lambda indata, frames, time_info, status, queue=recordQueue[mic_index]: multithreaded_record(indata, frames, time_info, status, queue)
     
     detection_strategy = CURRENT_DETECTION_STRATEGY
-    ms_per_frame = math.floor(RECORD_SECONDS / SLIDING_WINDOW_AMOUNT * 1000)
+    ms_per_frame = MS_PER_FRAME
     detection_labels = []
     for label in list(labels.keys()):
         detection_labels.append(DetectionLabel(label, 0, labels[label], "", 0, 0, 0, 0, 0))
