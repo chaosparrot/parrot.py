@@ -32,11 +32,14 @@ jobs:
 
       # sounddevice needs portaudio at run time, xvfb is for the pyautogui
       # import. The wheel carries portaudio on Windows and macOS, not on Linux.
+      # Ubuntu 26.04's portaudio requires an audio server, and GitHub runners
+      # don't have one, so pulseaudio is installed and started here.
       - name: Install system libraries (Linux)
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y libportaudio2 xvfb
+          sudo apt-get install -y libportaudio2 xvfb pulseaudio
+          pulseaudio -D --exit-idle-time=-1
 
       # The torch on PyPI is the CUDA build here, ~2.5 GB of nvidia wheels.
       # Only sticks while requirements-posix.txt asks for a torch this one
