@@ -1,6 +1,7 @@
 import os
 import shutil
 import struct
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -12,7 +13,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 sys.path.insert(0, ROOT)
 os.chdir(ROOT)
 
-from lib.wav import get_frame_count
+from lib.wav import get_frame_count, read_wav, wav_duration, UnreadableWav
 
 
 def write_wav(path, samples, rate=16000, channels=1, width=2):
@@ -80,6 +81,113 @@ class TestGetFrameCount(unittest.TestCase):
         path = os.path.join(self.dir, "a.wav")
         write_wav(path, bytes(4 * 8000), channels=2)
         self.assertEqual(get_frame_count_of(path), 8000)
+
+
+class TestReadWav(unittest.TestCase):
+
+    def setUp(self):
+        self.dir = tempfile.mkdtemp()
+
+    def tearDown(self):
+        shutil.rmtree(self.dir)
+
+    def path(self, name):
+        return os.path.join(self.dir, name)
+
+    def assertUnreadable(self, path, reason):
+        with self.assertRaises(UnreadableWav) as ctx:
+            read_wav(path)
+        self.assertEqual(ctx.exception.reason, reason)
+        return ctx.exception
+
+    def test_mono_16_bit(self):
+        write_wav(self.path("a.wav"), np.array([0, 16384, -32768], dtype=np.int16).tobytes())
+        samples, rate = read_wav(self.path("a.wav"))
+        self.assertEqual(rate, 16000)
+        self.assertEqual(samples.dtype, np.float32)
+        np.testing.assert_array_equal(samples, [0.0, 0.5, -1.0])
+
+    def test_stereo_is_averaged_to_mono(self):
+        frames = np.array([16384, 0, -16384, -16384], dtype=np.int16).tobytes()
+        write_wav(self.path("a.wav"), frames, channels=2)
+        samples, _ = read_wav(self.path("a.wav"))
+        np.testing.assert_array_equal(samples, [0.25, -0.5])
+
+    def test_overcounting_header_reads_what_is_there(self):
+        data = np.array([100, 200, 300], dtype=np.int16).tobytes()
+        raw_wav(self.path("a.wav"), data=data, declared_size=2 * len(data))
+        samples, _ = read_wav(self.path("a.wav"))
+        self.assertEqual(len(samples), 3)
+
+    def test_cut_off_mid_sample_keeps_the_whole_samples(self):
+        raw_wav(self.path("a.wav"), data=np.array([100, 200], dtype=np.int16).tobytes() + b"\x01",
+                declared_size=10, before_data=chunk(b"LIST", b"INFO"))
+        samples, _ = read_wav(self.path("a.wav"))
+        self.assertEqual(len(samples), 2)
+
+    def test_missing_file(self):
+        self.assertUnreadable(self.path("gone.wav"), UnreadableWav.CANT_OPEN)
+
+    def test_not_a_wav(self):
+        with open(self.path("a.wav"), "w") as f:
+            f.write("not audio")
+        self.assertUnreadable(self.path("a.wav"), UnreadableWav.DAMAGED)
+
+    def test_header_cut_short(self):
+        with open(self.path("a.wav"), "wb") as f:
+            f.write(b"RIFF\x00\x00\x00\x00WAVEfmt ")
+        self.assertUnreadable(self.path("a.wav"), UnreadableWav.DAMAGED)
+
+    def test_other_bit_depths(self):
+        for width in (1, 3, 4):
+            with self.subTest(bits=width * 8):
+                write_wav(self.path("a.wav"), bytes(width * 10), width=width)
+                exc = self.assertUnreadable(self.path("a.wav"), UnreadableWav.NOT_16_BIT)
+                self.assertEqual(exc.bits, width * 8)
+
+    def test_float_format(self):
+        raw_wav(self.path("a.wav"), fmt=3, bits=32, data=bytes(40))
+        self.assertUnreadable(self.path("a.wav"), UnreadableWav.NOT_PCM)
+
+    def test_extensible_float_format(self):
+        # ffmpeg's 32-bit float export
+        float_guid = struct.pack("<H", 3) + bytes.fromhex("000000001000800000aa00389b71")
+        fmt = (struct.pack("<HHIIHH", 0xFFFE, 1, 16000, 64000, 4, 32)
+               + struct.pack("<HHI", 22, 32, 4) + float_guid)
+        with open(self.path("a.wav"), "wb") as f:
+            body = b"WAVE" + chunk(b"fmt ", fmt) + chunk(b"data", bytes(40))
+            f.write(b"RIFF" + struct.pack("<I", len(body)) + body)
+        self.assertUnreadable(self.path("a.wav"), UnreadableWav.NOT_PCM)
+
+    def test_empty(self):
+        write_wav(self.path("a.wav"), b"")
+        self.assertUnreadable(self.path("a.wav"), UnreadableWav.EMPTY)
+
+    def test_sample_rate_zero(self):
+        raw_wav(self.path("a.wav"), rate=0, data=bytes(20))
+        self.assertUnreadable(self.path("a.wav"), UnreadableWav.DAMAGED)
+
+
+class TestWavDuration(unittest.TestCase):
+
+    def setUp(self):
+        self.dir = tempfile.mkdtemp()
+
+    def tearDown(self):
+        shutil.rmtree(self.dir)
+
+    def test_from_the_header(self):
+        path = os.path.join(self.dir, "a.wav")
+        write_wav(path, bytes(2 * 8000))
+        self.assertEqual(wav_duration(path), 0.5)
+
+    def test_overcounting_header_is_capped_to_the_file(self):
+        path = os.path.join(self.dir, "a.wav")
+        raw_wav(path, data=bytes(2 * 8000), declared_size=4 * 8000)
+        self.assertEqual(wav_duration(path), 0.5)
+
+    def test_unreadable_is_zero(self):
+        self.assertEqual(wav_duration(os.path.join(self.dir, "gone.wav")), 0.0)
 
 
 class TestDetectWavFrames(unittest.TestCase):
@@ -151,6 +259,20 @@ class TestLoadWavDataFromSrt(unittest.TestCase):
                     np.testing.assert_array_equal(
                         load_wav_data_from_srt(srt, old, with_offset=with_offset,
                                                background=background), honest)
+
+
+class TestImportCost(unittest.TestCase):
+
+    def test_importing_leaves_the_training_stack_unloaded(self):
+        # The GUI imports both at launch
+        for module in ("lib.wav", "lib.recordings"):
+            with self.subTest(module=module):
+                code = (f"import sys, {module}; print(','.join(m for m in "
+                        "('lib.machinelearning', 'sklearn', 'audiomentations', 'scipy', 'matplotlib')"
+                        " if m in sys.modules))")
+                result = subprocess.run([sys.executable, "-c", code], cwd=ROOT,
+                                        capture_output=True, text=True, check=True)
+                self.assertEqual(result.stdout.strip(), "")
 
 
 if __name__ == "__main__":
