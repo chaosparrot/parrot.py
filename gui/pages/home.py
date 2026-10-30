@@ -108,6 +108,8 @@ class HomePage(QWidget):
         scroll.setWidgetResizable(True)
         scroll.setFrameShape(QFrame.Shape.NoFrame)
         outer.addWidget(scroll)
+        # Where keyboard navigation to this page lands
+        self.setFocusProxy(scroll)
 
         wrapper = QWidget()
         wrap_layout = QHBoxLayout(wrapper)
