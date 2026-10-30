@@ -6,9 +6,16 @@ import numpy as np
 import audioop
 from typing import List
 import os
+import struct
 import time
 if (PYTORCH_AVAILABLE == True):
     from audiomentations import Compose, AddGaussianNoise, Shift, TimeStretch
+
+CHUNK_SIZE_OFFSET = 4
+DATA_SUB_CHUNK_SIZE_SIZE_OFFSET = 40
+RIFF_PREFIX_SIZE = 8
+WAV_HEADER_SIZE = DATA_SUB_CHUNK_SIZE_SIZE_OFFSET + 4
+LITTLE_ENDIAN_INT = struct.Struct('<I')
 
 # Resamples the audio down to 16kHz ( or any other RATE filled in )
 # To make sure all the other calculations are stable and correct
@@ -80,7 +87,7 @@ def load_wav_data_from_srt(srt_file: str, source_file: str, feature_engineering_
     wf = wave.open(source_file, 'rb')
     frame_rate = wf.getframerate()
     number_channels = wf.getnchannels()
-    total_frames = wf.getnframes()
+    total_frames = get_frame_count(wf, source_file)
     frames_to_read = round( frame_rate * RECORD_SECONDS / SLIDING_WINDOW_AMOUNT )    
     ms_per_frame = MS_PER_FRAME
     
@@ -133,3 +140,20 @@ def load_wav_data_from_srt(srt_file: str, source_file: str, feature_engineering_
                             keep_collecting = False
     
     return wav_file_data
+
+def get_frame_count(wf, path):
+    frame_bytes = wf.getnchannels() * wf.getsampwidth()
+    data_bytes = os.path.getsize(path) - WAV_HEADER_SIZE
+    return min(wf.getnframes(), data_bytes // frame_bytes)
+
+def rewrite_wav_sizes(wav_file):
+    wav_file.seek(0, 2)
+    file_size = wav_file.tell()
+
+    riff_chunk_size = file_size - RIFF_PREFIX_SIZE
+    wav_file.seek(CHUNK_SIZE_OFFSET)
+    wav_file.write(LITTLE_ENDIAN_INT.pack(riff_chunk_size))
+
+    data_chunk_size = file_size - WAV_HEADER_SIZE
+    wav_file.seek(DATA_SUB_CHUNK_SIZE_SIZE_OFFSET)
+    wav_file.write(LITTLE_ENDIAN_INT.pack(data_chunk_size))

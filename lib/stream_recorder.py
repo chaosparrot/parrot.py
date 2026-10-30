@@ -1,32 +1,14 @@
 from config.config import *
 import sounddevice as sd
-import struct
 import wave
 import math
 import numpy as np
 from lib.print_status import get_current_status
 from lib.stream_processing import process_audio_frame, post_processing
+from lib.wav import rewrite_wav_sizes
 from lib.typing import DetectionState, DetectionFrame
 from typing import List
 import io
-
-def rewrite_wav_sizes(wav_file):
-    CHUNK_SIZE_OFFSET = 4
-    DATA_SUB_CHUNK_SIZE_SIZE_OFFSET = 40
-    RIFF_PREFIX_SIZE = 8
-    WAV_HEADER_SIZE = DATA_SUB_CHUNK_SIZE_SIZE_OFFSET + 4
-    LITTLE_ENDIAN_INT = struct.Struct('<I')
-
-    wav_file.seek(0, 2)
-    file_size = wav_file.tell()
-
-    riff_chunk_size = file_size - RIFF_PREFIX_SIZE
-    wav_file.seek(CHUNK_SIZE_OFFSET)
-    wav_file.write(LITTLE_ENDIAN_INT.pack(riff_chunk_size))
-
-    data_chunk_size = file_size - WAV_HEADER_SIZE
-    wav_file.seek(DATA_SUB_CHUNK_SIZE_SIZE_OFFSET)
-    wav_file.write(LITTLE_ENDIAN_INT.pack(data_chunk_size))
 
 
 class StreamRecorder:

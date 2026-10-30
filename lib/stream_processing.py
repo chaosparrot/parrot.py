@@ -4,7 +4,7 @@ from typing import List
 import wave
 import numpy as np
 from .signal_processing import determine_power, determine_dBFS, determine_log_mels, determine_euclidean_dist
-from .wav import resample_audio
+from .wav import resample_audio, get_frame_count
 from .srt import persist_srt_file, print_detection_performance_compared_to_srt
 import os
 
@@ -15,7 +15,7 @@ def detect_wav_frames(input_file, detection_state, progress_callback = None):
     audioFrames = []
     wf = wave.open(input_file, 'rb')
     number_channels = wf.getnchannels()
-    total_frames = wf.getnframes()
+    total_frames = get_frame_count(wf, input_file)
     frame_rate = wf.getframerate()
     frames_to_read = round( frame_rate * RECORD_SECONDS / SLIDING_WINDOW_AMOUNT )
 

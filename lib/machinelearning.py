@@ -168,7 +168,6 @@ def get_highest_intensity_of_wav_file( wav_file, record_seconds ):
     intensity = []
     with wave.open( wav_file ) as fd:
         number_channels = fd.getnchannels()
-        total_frames = fd.getnframes()
         frame_rate = fd.getframerate()
         frames_to_read = round( frame_rate * record_seconds)
         data = fd.readframes(frames_to_read)
