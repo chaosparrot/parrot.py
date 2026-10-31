@@ -3,7 +3,7 @@ from config.config import BACKGROUND_LABEL, RECORD_SECONDS, SLIDING_WINDOW_AMOUN
 from .srt import parse_srt_file
 import numpy as np
 import audioop
-from typing import List
+from typing import List, Tuple
 import os
 import struct
 import time
@@ -13,6 +13,7 @@ DATA_SUB_CHUNK_SIZE_SIZE_OFFSET = 40
 RIFF_PREFIX_SIZE = 8
 WAV_HEADER_SIZE = DATA_SUB_CHUNK_SIZE_SIZE_OFFSET + 4
 LITTLE_ENDIAN_INT = struct.Struct('<I')
+INT16_FULL_SCALE = 32768.0
 
 # Resamples the audio down to 16kHz ( or any other RATE filled in )
 # To make sure all the other calculations are stable and correct
@@ -142,7 +143,12 @@ def load_wav_data_from_srt(srt_file: str, source_file: str, feature_engineering_
     
     return wav_file_data
 
-def get_frame_count(wf, path):
+def get_frame_count(wf, path) -> int:
+    """Count frames, guarding against an inaccurate header
+
+    Returns:
+        frame count, one sample per channel each. e.g. 16000 for 1 s mono at 16 kHz
+    """
     frame_bytes = wf.getnchannels() * wf.getsampwidth()
     data_bytes = os.path.getsize(path) - WAV_HEADER_SIZE
     return min(wf.getnframes(), data_bytes // frame_bytes)
@@ -171,7 +177,13 @@ class UnreadableWav(Exception):
         self.reason = reason
         self.bits = bits
 
-def read_wav(path):
+def read_wav(path: str) -> Tuple[np.ndarray, int]:
+    """Read a whole wav as mono floats. Raises UnreadableWav with the reason
+
+    Returns (samples, rate):
+        samples: mono float32 array, -1 to 1 e.g. [0.0021, -0.0154, ...]
+        rate: sample rate in Hz e.g. 16000
+    """
     try:
         with wave.open(path, "rb") as wf:
             bits = wf.getsampwidth() * 8
@@ -201,10 +213,13 @@ def read_wav(path):
         raise UnreadableWav(UnreadableWav.EMPTY)
     data = np.frombuffer(raw, dtype=np.int16).astype(np.float32)
     if channels > 1:
+        # Interleaved [L0, R0, L1, R1] -> rows [[L0, R0], [L1, R1]] -> mono [avg0, avg1]
         data = data.reshape(-1, channels).mean(axis=1)
-    return data / 32768.0, rate
+    samples = data / INT16_FULL_SCALE
+    return samples, rate
 
-def wav_duration(path):
+def wav_duration(path: str) -> float:
+    """Returns duration in seconds. 0.0 if unreadable"""
     try:
         with wave.open(path, "rb") as wf:
             rate = wf.getframerate()
