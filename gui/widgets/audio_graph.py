@@ -8,7 +8,7 @@ Terms:
         bin       31.25 Hz apart (bin_hz) - one freq slot of FFT output (1 / frame length)
         window    fade curve, 0 at both ends (Hann / np.hanning) - multiplied into each frame
         dB        20 * log10(strength)
-        mel       pitch scale modelled on hearing (_hz_to_mel)
+        mel       pitch scale modelled on hearing (hz_to_mel)
         row       one freq band, evenly spaced in mel (SPECTROGRAM_ROWS)
         levels    pg ImageItem colour range - dB drawn dark to light, top 60 dB (SPECTROGRAM_RANGE_DB)
 
@@ -23,6 +23,7 @@ import pyqtgraph as pg
 from PyQt6.QtCore import Qt, QRectF
 from PyQt6.QtGui import QColor
 from PyQt6.QtWidgets import QVBoxLayout, QWidget, QScrollBar
+from lib.mfsc import hz_to_mel, mel_to_hz
 from lib.srt import get_label_ranges_in_srt
 from lib.wav import read_wav, UnreadableWav
 from config.config import MS_PER_FRAME
@@ -35,22 +36,14 @@ GRAPH_DISPLAY_SPECTROGRAM = "spectrogram"
 pg.setConfigOptions(antialias=True)
 
 
-def _hz_to_mel(hz):
-    return 2595.0 * np.log10(1.0 + np.asarray(hz) / 700.0)
-
-
-def _mel_to_hz(mel):
-    return 700.0 * (10.0 ** (np.asarray(mel) / 2595.0) - 1.0)
-
-
 def _mel_bands(sample_rate, nfft, rows):
     """Where each of `rows` evenly spaced mel rows falls among the FFT bins:
     its centre, and the whole bins inside it."""
     bin_hz = sample_rate / nfft
     last_bin = nfft // 2
-    mel_edges = np.linspace(0.0, _hz_to_mel(sample_rate / 2.0), rows + 1)
-    edges = _mel_to_hz(mel_edges) / bin_hz
-    centres = np.minimum(_mel_to_hz((mel_edges[:-1] + mel_edges[1:]) / 2.0) / bin_hz, last_bin)
+    mel_edges = np.linspace(0.0, hz_to_mel(sample_rate / 2.0), rows + 1)
+    edges = mel_to_hz(mel_edges) / bin_hz
+    centres = np.minimum(mel_to_hz((mel_edges[:-1] + mel_edges[1:]) / 2.0) / bin_hz, last_bin)
     starts = np.ceil(edges[:-1]).astype(int)
     ends = np.minimum(np.floor(edges[1:]).astype(int), last_bin) + 1
     return centres, starts, ends
@@ -253,7 +246,7 @@ class AudioGraph(QWidget):
             return
         img, levels, nfft, hop = self._spectrogram
         sr = self._sample_rate
-        top_mel = float(_hz_to_mel(sr / 2.0))
+        top_mel = float(hz_to_mel(sr / 2.0))
         self._image.setImage(img, autoLevels=False, levels=levels)
         # Each column centred on its frame, so it lines up with the time
         # axis and the detection regions
@@ -262,7 +255,7 @@ class AudioGraph(QWidget):
         self._image.setLookupTable(pg.colormap.get("inferno").getLookupTable(0.0, 1.0, 256))
         # The y axis is in mel, labelled in kHz
         self.plot.getAxis("left").setTicks([[
-            (float(_hz_to_mel(hz)), text) for hz, text in self.SPECTROGRAM_TICKS_HZ
+            (float(hz_to_mel(hz)), text) for hz, text in self.SPECTROGRAM_TICKS_HZ
             if hz <= sr / 2.0]])
         self.plot.setLimits(yMin=0, yMax=top_mel)
         self._vb.setYRange(0, top_mel, padding=0)
