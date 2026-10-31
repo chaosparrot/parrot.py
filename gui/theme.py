@@ -29,15 +29,35 @@ DARK = {
     "radius_card": "8px",
     "disabled_text": "#828a96",
     "disabled_bg": "#2f343c",
+    "selection": "rgba(65, 217, 127, 0.22)",
+    # Audio graphs: green waveform, blue detection
+    "plot_bg": "#15181c",
+    "wave": (90, 230, 150),
+    "wave_fill": (70, 215, 135, 60),
+    "detect_brush": (90, 175, 245, 50),
+    "detect_pen": (90, 175, 245, 120),
+    "grid_alpha": 0.18,
+}
+
+# Data quantity ratings, from lib.print_status
+QUANTITY_COLORS = {
+    "Not enough": "#e98b8b",
+    "Sufficient": "#e0b020",
+    "Good": "#5ac8e0",
+    "Excellent": "#41d97f",
 }
 
 # Type scale. Every size in the app comes from here.
 #
 #   hero      the Home landing title. One in the app.
+#   title     what a page is about. The largest thing on it.
+#   section   a titled region, an empty state.
 #   card      a heading inside a card or panel.
 #   body      running copy, and the floor.
 TYPE_SCALE = {
     "hero": 28,
+    "title": 20,
+    "section": 18,
     "card": 16,
     "body": 14,
 }
@@ -78,6 +98,20 @@ _STYLESHEET = Template("""
         background-color: $disabled_bg; color: $disabled_text;
         border-color: $border;
     }
+    QTreeWidget {
+        border: 1px solid $border; border-radius: $radius;
+        background-color: $base;
+        /* No current-cell rectangle. The border shows focus instead */
+        outline: none;
+    }
+    QTreeWidget:focus { border: 2px solid $focus; }
+    QTreeWidget::item { padding: 4px 2px; }
+    QTreeWidget::item:selected { background-color: $selection; color: $text_bright; }
+    QHeaderView::section {
+        background-color: $toolbar; color: $text_dim; border: none;
+        border-bottom: 1px solid $border; padding: 6px 8px; font-weight: bold;
+    }
+    QSplitter::handle { background-color: $border; }
     QScrollBar:vertical { background-color: $window; width: 12px; border: none; }
     QScrollBar::handle:vertical { background-color: $control_border; border-radius: 5px; min-height: 20px; }
     QScrollBar::handle:vertical:hover { background-color: $accent; }

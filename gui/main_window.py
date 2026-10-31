@@ -1,8 +1,9 @@
-from PyQt6.QtWidgets import QMainWindow, QToolBar, QStackedWidget, QWidget
+from PyQt6.QtWidgets import QMainWindow, QToolBar, QStackedWidget, QWidget, QApplication
 from PyQt6.QtGui import QAction, QActionGroup
 from PyQt6.QtCore import Qt
 from gui.state import AppState
 from gui.pages.home import HomePage
+from gui.pages.sounds import SoundsPage
 
 
 class MainWindow(QMainWindow):
@@ -30,7 +31,7 @@ class MainWindow(QMainWindow):
         self.home_page.navigate.connect(self._go_to_page)
         self.pages = {
             "Home": self.home_page,
-            "Sounds": QWidget(),
+            "Sounds": SoundsPage(self.app_state, self),
             "Models": QWidget(),
         }
         for page in self.pages.values():
@@ -50,18 +51,27 @@ class MainWindow(QMainWindow):
         for name in self.pages:
             action = QAction(name, self)
             action.setCheckable(True)
-            action.triggered.connect(lambda _checked, n=name: self._show_page(n))
             group.addAction(action)
             toolbar.addAction(action)
+            button = toolbar.widgetForAction(action)
             # Qt default is NoFocus. TabFocus so a click doesn't leave a ring
-            toolbar.widgetForAction(action).setFocusPolicy(Qt.FocusPolicy.TabFocus)
+            button.setFocusPolicy(Qt.FocusPolicy.TabFocus)
+            action.triggered.connect(
+                lambda _checked, n=name, b=button: self._show_page(n, focus_page=b.hasFocus()))
             self.nav_actions[name] = action
         self.nav_actions["Home"].setChecked(True)
 
     def _go_to_page(self, name):
         """Navigation from page buttons: keeps the toolbar checked state in sync."""
         self.nav_actions[name].setChecked(True)
-        self._show_page(name)
+        focused = QApplication.focusWidget()
+        self._show_page(name, focus_page=focused is not None
+                        and self.page_stack.currentWidget().isAncestorOf(focused))
 
-    def _show_page(self, name):
-        self.page_stack.setCurrentWidget(self.pages[name])
+    def _show_page(self, name, focus_page=False):
+        """focus_page: navigated by keyboard. Focus follows into the page, so a
+        screen reader announces where it landed instead of just "checked"."""
+        page = self.pages[name]
+        self.page_stack.setCurrentWidget(page)
+        if focus_page and page.focusProxy():
+            page.setFocus(Qt.FocusReason.TabFocusReason)
