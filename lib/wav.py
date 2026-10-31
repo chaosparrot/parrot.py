@@ -1,14 +1,19 @@
 import wave
 from config.config import BACKGROUND_LABEL, RECORD_SECONDS, SLIDING_WINDOW_AMOUNT, MS_PER_FRAME, RATE, TYPE_FEATURE_ENGINEERING_NORM_MFSC, PYTORCH_AVAILABLE
-from lib.machinelearning import feature_engineering_raw
 from .srt import parse_srt_file
 import numpy as np
 import audioop
-from typing import List
+from typing import List, Tuple
 import os
+import struct
 import time
-if (PYTORCH_AVAILABLE == True):
-    from audiomentations import Compose, AddGaussianNoise, Shift, TimeStretch
+
+CHUNK_SIZE_OFFSET = 4
+DATA_SUB_CHUNK_SIZE_SIZE_OFFSET = 40
+RIFF_PREFIX_SIZE = 8
+WAV_HEADER_SIZE = DATA_SUB_CHUNK_SIZE_SIZE_OFFSET + 4
+LITTLE_ENDIAN_INT = struct.Struct('<I')
+INT16_FULL_SCALE = 32768.0
 
 # Resamples the audio down to 16kHz ( or any other RATE filled in )
 # To make sure all the other calculations are stable and correct
@@ -68,6 +73,8 @@ def load_wav_files_with_srts( directories, label, int_label, start, end, input_t
     return category_dataset_x, category_dataset_labels, totalFeatureEngineeringTime
 
 def augment_wav_data(wavData, sample_rate):
+    # Imported here to keep lib.wav light to import
+    from audiomentations import Compose, AddGaussianNoise, Shift, TimeStretch
     augmenter = Compose([
         AddGaussianNoise(min_amplitude=0.001, max_amplitude=0.015, p=0.5),
         TimeStretch(min_rate=0.8, max_rate=1.25, p=0.5),
@@ -76,11 +83,13 @@ def augment_wav_data(wavData, sample_rate):
     return augmenter(samples=np.array(wavData, dtype="float32"), sample_rate=sample_rate)
 
 def load_wav_data_from_srt(srt_file: str, source_file: str, feature_engineering_type = TYPE_FEATURE_ENGINEERING_NORM_MFSC, with_offset = True, should_augment=False, background=False) -> List[List[float]]:
+    # Imported here to keep lib.wav light to import
+    from lib.machinelearning import feature_engineering_raw
     wav_file_data = []
     wf = wave.open(source_file, 'rb')
     frame_rate = wf.getframerate()
     number_channels = wf.getnchannels()
-    total_frames = wf.getnframes()
+    total_frames = get_frame_count(wf, source_file)
     frames_to_read = round( frame_rate * RECORD_SECONDS / SLIDING_WINDOW_AMOUNT )    
     ms_per_frame = MS_PER_FRAME
     
@@ -133,3 +142,87 @@ def load_wav_data_from_srt(srt_file: str, source_file: str, feature_engineering_
                             keep_collecting = False
     
     return wav_file_data
+
+def get_frame_count(wf, path) -> int:
+    """Count frames, guarding against an inaccurate header
+
+    Returns:
+        frame count, one sample per channel each. e.g. 16000 for 1 s mono at 16 kHz
+    """
+    frame_bytes = wf.getnchannels() * wf.getsampwidth()
+    data_bytes = os.path.getsize(path) - WAV_HEADER_SIZE
+    return min(wf.getnframes(), data_bytes // frame_bytes)
+
+def rewrite_wav_sizes(wav_file):
+    wav_file.seek(0, 2)
+    file_size = wav_file.tell()
+
+    riff_chunk_size = file_size - RIFF_PREFIX_SIZE
+    wav_file.seek(CHUNK_SIZE_OFFSET)
+    wav_file.write(LITTLE_ENDIAN_INT.pack(riff_chunk_size))
+
+    data_chunk_size = file_size - WAV_HEADER_SIZE
+    wav_file.seek(DATA_SUB_CHUNK_SIZE_SIZE_OFFSET)
+    wav_file.write(LITTLE_ENDIAN_INT.pack(data_chunk_size))
+
+class UnreadableWav(Exception):
+    CANT_OPEN = "cant_open"
+    NOT_16_BIT = "not_16_bit"
+    NOT_PCM = "not_pcm"
+    DAMAGED = "damaged"
+    EMPTY = "empty"
+
+    def __init__(self, reason, bits=None):
+        super().__init__(reason)
+        self.reason = reason
+        self.bits = bits
+
+def read_wav(path: str) -> Tuple[np.ndarray, int]:
+    """Read a whole wav as mono floats. Raises UnreadableWav with the reason
+
+    Returns (samples, rate):
+        samples: mono float32 array, -1 to 1 e.g. [0.0021, -0.0154, ...]
+        rate: sample rate in Hz e.g. 16000
+    """
+    try:
+        with wave.open(path, "rb") as wf:
+            bits = wf.getsampwidth() * 8
+            if bits != 16:
+                raise UnreadableWav(UnreadableWav.NOT_16_BIT, bits)
+            channels = wf.getnchannels()
+            rate = wf.getframerate()
+            raw = wf.readframes(get_frame_count(wf, path))
+    except UnreadableWav:
+        raise
+    except OSError:
+        raise UnreadableWav(UnreadableWav.CANT_OPEN)
+    except wave.Error as exc:
+        # "unknown format: 3" for float, "unknown extended format" for
+        # WAVE_FORMAT_EXTENSIBLE ones, which ffmpeg writes above 16 bits
+        not_pcm = str(exc).startswith("unknown")
+        raise UnreadableWav(UnreadableWav.NOT_PCM if not_pcm else UnreadableWav.DAMAGED)
+    except Exception:
+        raise UnreadableWav(UnreadableWav.DAMAGED)
+    if not rate:
+        raise UnreadableWav(UnreadableWav.DAMAGED)
+
+    # A file cut off mid-sample ends the read there. get_frame_count's cap
+    # assumes no chunk before the data, so it doesn't always catch this.
+    raw = raw[:len(raw) - len(raw) % (2 * channels)]
+    if not raw:
+        raise UnreadableWav(UnreadableWav.EMPTY)
+    data = np.frombuffer(raw, dtype=np.int16).astype(np.float32)
+    if channels > 1:
+        # Interleaved [L0, R0, L1, R1] -> rows [[L0, R0], [L1, R1]] -> mono [avg0, avg1]
+        data = data.reshape(-1, channels).mean(axis=1)
+    samples = data / INT16_FULL_SCALE
+    return samples, rate
+
+def wav_duration(path: str) -> float:
+    """Returns duration in seconds. 0.0 if unreadable"""
+    try:
+        with wave.open(path, "rb") as wf:
+            rate = wf.getframerate()
+            return get_frame_count(wf, path) / rate if rate else 0.0
+    except Exception:
+        return 0.0
