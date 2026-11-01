@@ -3,8 +3,10 @@ import sys
 
 def main():
     from importlib.util import find_spec
-    if find_spec("PyQt6") is None:
-        sys.exit("The GUI needs PyQt6: pip install -r requirements-gui.txt")
+    missing = [m for m in ("PyQt6", "pyqtgraph") if find_spec(m) is None]
+    if missing:
+        sys.exit(f"The GUI needs {' and '.join(missing)}: "
+                 "pip install -r requirements-gui.txt")
 
     from gui.app import create_app
     app = create_app(sys.argv)

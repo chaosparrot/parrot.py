@@ -1,16 +1,27 @@
 import os
-from config.config import RECORDINGS_FOLDER, CLASSIFIER_FOLDER
+from config.config import CLASSIFIER_FOLDER
+from lib import recordings
 
 
 class AppState:
-    """What the pages show, read off data/. Never writes."""
+    """What the pages show, read off data/. Never writes. Detected time is
+    cached per label, so a recording made while the app is open counts toward
+    it after a restart."""
+
+    def __init__(self):
+        self._duration_cache = {}
 
     def get_sound_labels(self):
-        """Sound label directory names in data/recordings/."""
-        if not os.path.isdir(RECORDINGS_FOLDER):
-            return []
-        return [entry for entry in sorted(os.listdir(RECORDINGS_FOLDER))
-                if os.path.isdir(os.path.join(RECORDINGS_FOLDER, entry))]
+        return recordings.get_labels()
+
+    def get_recordings_for_label(self, label):
+        return recordings.get_recordings(label)
+
+    def get_label_duration_ms(self, label):
+        """Cached: it parses every srt the label has."""
+        if label not in self._duration_cache:
+            self._duration_cache[label] = recordings.get_detected_ms(label)
+        return self._duration_cache[label]
 
     def get_model_names(self):
         """Model names in data/models/, without the .pkl extension."""
