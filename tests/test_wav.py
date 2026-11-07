@@ -264,11 +264,12 @@ class TestLoadWavDataFromSrt(unittest.TestCase):
 class TestImportCost(unittest.TestCase):
 
     def test_importing_leaves_the_training_stack_unloaded(self):
-        # The GUI imports both at launch
-        for module in ("lib.wav", "lib.recordings"):
+        # The GUI imports these at launch
+        for module in ("lib.wav", "lib.recordings", "lib.models"):
             with self.subTest(module=module):
                 code = (f"import sys, {module}; print(','.join(m for m in "
-                        "('lib.machinelearning', 'sklearn', 'audiomentations', 'scipy', 'matplotlib')"
+                        "('lib.machinelearning', 'sklearn', 'audiomentations', 'scipy', 'matplotlib',"
+                        " 'torch', 'joblib')"
                         " if m in sys.modules))")
                 result = subprocess.run([sys.executable, "-c", code], cwd=ROOT,
                                         capture_output=True, text=True, check=True)

@@ -1,6 +1,4 @@
-import os
-from config.config import CLASSIFIER_FOLDER
-from lib import recordings
+from lib import models, recordings
 
 
 class AppState:
@@ -24,8 +22,4 @@ class AppState:
         return self._duration_cache[label]
 
     def get_model_names(self):
-        """Model names in data/models/, without the .pkl extension."""
-        if not os.path.isdir(CLASSIFIER_FOLDER):
-            return []
-        return sorted(f[:-len(".pkl")] for f in os.listdir(CLASSIFIER_FOLDER)
-                      if f.endswith(".pkl"))
+        return models.get_model_names()
