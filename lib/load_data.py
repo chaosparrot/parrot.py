@@ -228,7 +228,7 @@ def sample_data_from_label(label, grouped_data_directories, sample_strategies, i
             for background_sample in background_samples:
                 total_background_samples.append([full_filename, background_sample])
             
-            augmented_background_samples = load_wav_data_from_srt(listed_files[full_filename], full_filename, input_type, True, False, True)
+            augmented_background_samples = load_wav_data_from_srt(listed_files[full_filename], full_filename, input_type, False, True, True)
             for augmented_background_sample in augmented_background_samples:
                 total_augmented_background_samples.append([full_filename, augmented_background_sample])
 
