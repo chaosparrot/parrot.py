@@ -59,7 +59,8 @@ def read_model_labels(name: str) -> List[str]:
     return list(getattr(model, "classes_", []))
 
 def get_training_run_times() -> Dict[str, int]:
-    """Newest training run per model, from replay csv names
+    """get_trained_at's fallback when a checkpoint has no trained_at. Newest
+    training run per model, from replay csv names
 
     e.g. "model_training_model_a.pkl1786747776.csv" -> {"model_a": 1786747776}
     """
