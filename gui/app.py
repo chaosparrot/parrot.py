@@ -11,6 +11,10 @@ def create_app(argv):
     # Imported after QApplication: the window pulls in config, which imports
     # pyautogui, and that claims Windows DPI awareness if it gets there first.
     from gui.main_window import MainWindow
+
+    from gui.services import playback
+    app.aboutToQuit.connect(playback.shutdown)
+
     window = MainWindow()
     window.show()
     # Strong reference: `window` is only a local, and once create_app() returns

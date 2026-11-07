@@ -36,6 +36,7 @@ DARK = {
     "wave_fill": (70, 215, 135, 60),
     "detect_brush": (90, 175, 245, 50),
     "detect_pen": (90, 175, 245, 120),
+    "playhead": (255, 255, 255),
     "grid_alpha": 0.18,
 }
 
