@@ -9,7 +9,7 @@ from PyQt6.QtGui import QColor
 from gui.widgets.recording_card import RecordingCard
 from gui.widgets.audio_graph import GRAPH_DISPLAY_WAVEFORM, GRAPH_DISPLAY_SPECTROGRAM
 from gui.services import library_ops
-from gui import components, theme
+from gui import components, keys, theme
 from gui.formatters import duration_text, spoken_duration
 from gui.timing import debounced, staggered, next_tick
 from lib.recordings import get_label_dir
@@ -18,10 +18,30 @@ from lib.wav import wav_duration
 
 SOUND_COLUMN, DATA_COLUMN, DETECTED_COLUMN = 0, 1, 2
 
+CARD_KEYS = (
+    (keys.unmodified(Qt.Key.Key_Space),   RecordingCard.toggle_play),
+    (keys.is_go_to_start,                 RecordingCard.go_to_start),
+    (keys.unmodified(Qt.Key.Key_Left),    RecordingCard.seek_back),
+    (keys.unmodified(Qt.Key.Key_Right),   RecordingCard.seek_forward),
+    (keys.unmodified(Qt.Key.Key_Z),       RecordingCard.toggle_zoom),
+    (keys.unmodified(Qt.Key.Key_Escape),  RecordingCard.deselect_or_go_to_start),
+)
+CARD_ACTIONS_THAT_REPEAT = (RecordingCard.seek_back, RecordingCard.seek_forward)
 
-def _is_space(event):
-    return (event.key() == Qt.Key.Key_Space
-            and event.modifiers() == Qt.KeyboardModifier.NoModifier)
+KEYBINDING_HINT = (f"Space play  ·  ←→ seek  ·  {keys.go_to_start_key_name()} start  ·  "
+                   "Z zoom  ·  Esc deselect/start")
+
+
+def _card_action(event):
+    for matches, action in CARD_KEYS:
+        if matches(event):
+            return action
+    return None
+
+
+def _sound_list_keeps(event):
+    """Home for its first sound, and letters so typing a name finds it."""
+    return event.key() == Qt.Key.Key_Home or event.text().isalnum()
 
 
 class SoundsPage(QWidget):
@@ -108,6 +128,7 @@ class SoundsPage(QWidget):
         self.cards_scroll.setObjectName("cardsScroll")
         self.cards_scroll.setFocusPolicy(Qt.FocusPolicy.TabFocus)
         self.cards_scroll.setAccessibleName("Recordings")
+        self.cards_scroll.installEventFilter(self)
         # Always on: wheel scroll over a graph zooms it instead of scrolling the page
         self.cards_scroll.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOn)
         self.cards_scroll.setWidget(self._cards_container_new()[0])
@@ -291,7 +312,9 @@ class SoundsPage(QWidget):
         card.set_normalized(self._normalized)
         card.playback_started.connect(self._on_card_playback_started)
         card.picked.connect(self._on_card_picked)
+        card.range_selected.connect(self._on_card_range_selected)
         card.playback_failed.connect(self._on_card_playback_failed)
+        card.play_btn.installEventFilter(self)
         return card
 
     def _cards_container_new(self):
@@ -381,28 +404,40 @@ class SoundsPage(QWidget):
     def _on_card_picked(self, card):
         self._active_card = card
 
+    def _on_card_range_selected(self, card):
+        for other in self._cards:
+            if other is not card:
+                other.deselect()
+        # deselect() restarts a playing card, which makes it active
+        self._active_card = card
+
     def _on_card_playback_failed(self, message):
         QMessageBox.warning(self, "Playback", message)
 
     def eventFilter(self, obj, event):
-        if (obj is self.sound_list and event.type() == QEvent.Type.KeyPress
-                and _is_space(event)):
-            if not event.isAutoRepeat():
-                self._toggle_play()
+        if (event.type() == QEvent.Type.KeyPress and _card_action(event)
+                and self._card_for_keys() is not None
+                and not (obj is self.sound_list and _sound_list_keeps(event))):
+            self.keyPressEvent(event)
             return True
         return super().eventFilter(obj, event)
 
     def keyPressEvent(self, event):
-        if _is_space(event):
-            if not event.isAutoRepeat():
-                self._toggle_play()
-        else:
+        action = _card_action(event)
+        # The list passes up its own keys it has no use for, like Home on the first sound
+        if action is None or (self.sound_list.hasFocus() and _sound_list_keeps(event)):
             super().keyPressEvent(event)
+            return
+        card = self._card_for_keys()
+        if card is None or (event.isAutoRepeat() and action not in CARD_ACTIONS_THAT_REPEAT):
+            return
+        action(card)
 
-    def _toggle_play(self):
-        card = self._active_card or next((c for c in self._cards if c.playable()), None)
-        if card is not None:
-            card.toggle_play()
+    def keybinding_hint(self):
+        return KEYBINDING_HINT
+
+    def _card_for_keys(self):
+        return self._active_card or next((c for c in self._cards if c.playable()), None)
 
     def _on_open_sound_folder(self):
         item = self.sound_list.currentItem()
