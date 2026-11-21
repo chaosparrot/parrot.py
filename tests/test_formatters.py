@@ -7,7 +7,8 @@ from datetime import datetime
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
 
-from gui.formatters import duration_text, spoken_duration, recorded_at
+from gui.formatters import (duration_text, spoken_duration, recorded_at, trained_when,
+                            file_size_text, percent_span)
 
 
 class TestDurationText(unittest.TestCase):
@@ -50,6 +51,39 @@ class TestRecordedAt(unittest.TestCase):
 
     def test_afternoon(self):
         self.assertEqual(recorded_at(datetime(2026, 12, 31, 23, 59)), "Dec 31, 2026, 11:59 PM")
+
+
+class TestTrainedWhen(unittest.TestCase):
+    NOW = datetime(2026, 11, 12, 9, 0)
+
+    def stamp(self, *args):
+        return datetime(*args).timestamp()
+
+    def test_relative_within_a_week(self):
+        self.assertEqual(trained_when(self.stamp(2026, 11, 12, 8, 0), "checkpoint", self.NOW), "Today")
+        self.assertEqual(trained_when(self.stamp(2026, 11, 11, 23, 0), "checkpoint", self.NOW), "Yesterday")
+        self.assertEqual(trained_when(self.stamp(2026, 11, 6), "replay", self.NOW), "6 days ago")
+
+    def test_date_after_a_week(self):
+        self.assertEqual(trained_when(self.stamp(2026, 11, 5), "checkpoint", self.NOW), "Nov 05, 2026")
+
+    def test_file_date_is_never_relative(self):
+        self.assertEqual(trained_when(self.stamp(2026, 11, 12, 8, 0), "mtime", self.NOW), "~Nov 12, 2026")
+
+
+class TestFileSizeText(unittest.TestCase):
+    def test_units(self):
+        self.assertEqual(file_size_text(512), "512 B")
+        self.assertEqual(file_size_text(16065191), "15.3 MB")
+        self.assertEqual(file_size_text(3 * 1024 ** 3), "3.0 GB")
+
+
+class TestPercentSpan(unittest.TestCase):
+    def test_range(self):
+        self.assertEqual(percent_span([0.972, 0.961], 1), "96.1-97.2%")
+
+    def test_equal_after_rounding_is_one_value(self):
+        self.assertEqual(percent_span([0.991, 0.994], 0), "99%")
 
 
 class TestImportCost(unittest.TestCase):

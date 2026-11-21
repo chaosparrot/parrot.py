@@ -1,9 +1,10 @@
-from PyQt6.QtWidgets import QMainWindow, QToolBar, QStackedWidget, QWidget, QApplication
+from PyQt6.QtWidgets import QMainWindow, QToolBar, QStackedWidget, QApplication
 from PyQt6.QtGui import QAction, QActionGroup
 from PyQt6.QtCore import Qt
 from gui.state import AppState
 from gui.pages.home import HomePage
 from gui.pages.sounds import SoundsPage
+from gui.pages.models import ModelsPage
 
 
 class MainWindow(QMainWindow):
@@ -32,7 +33,7 @@ class MainWindow(QMainWindow):
         self.pages = {
             "Home": self.home_page,
             "Sounds": SoundsPage(self.app_state, self),
-            "Models": QWidget(),
+            "Models": ModelsPage(self.app_state, self),
         }
         for page in self.pages.values():
             self.page_stack.addWidget(page)
